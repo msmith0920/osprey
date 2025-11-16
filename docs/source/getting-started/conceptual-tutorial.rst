@@ -98,11 +98,7 @@ experience in real life, for the weather assistant, users would typically ask qu
 - "What's the weather like in San Francisco today?"
 - "Will it rain tomorrow in New York?"
 - "Give me a 5-day weather forecast for Los Angeles."
-
-Plus some tricky ones that can happen in a chat:
-
 - "What about the day after tomorrow?" -- referring to previous query
-- "Can you tell me a joke about the weather?" -- out of scope query
 
 What capabilities are needed
 ----------------------------
@@ -116,9 +112,10 @@ Therefore we'll need the following contexts:
 - `DateContext` -- to represent the date information
 - `WeatherContext` -- to represent the weather information returned by the capability
 
-Then how can we handle the tricky queries like "Can you tell me a joke about the weather?"?
-Osprey provides a built-in mechanism to route out-of-scope queries to a :ref:`clarify capability <clarify-capability>` -- if
-Osprey doesn't know how to make a plan based on available capabilities, it would ask the user for clarification.
+Beyond fetching weather data, we need a capability to present results to users. Once we have a
+`WeatherContext` with weather data, how do we communicate it back in natural language? Osprey provides
+:ref:`RespondCapability <respond-capability>` - a built-in capability that generates natural language
+responses from execution results and available contexts.
 
 Are those capabilities sufficient? Maybe not. Thinking more carefully about what we have so far: how can we get the
 `LocationContext` and `DateContext` from user queries? It could be easy if the user query is straightforward, but
@@ -169,10 +166,10 @@ Following this iterative thinking process, here's the complete weather assistant
 
       **Provides:** WeatherContext
 
-   .. grid-item-card:: 💬 ConversationCapability
+   .. grid-item-card:: 💬 RespondCapability
       :class-header: bg-secondary text-white
 
-      Provide chat capability for out-of-scope queries and responding to user.
+      Generate natural language responses from execution results.
 
       **Requires:** None
 
@@ -216,35 +213,21 @@ Once you've designed your capabilities and contexts, Osprey's orchestrator autom
 creates execution plans that chain them together. Let's see how this works with our
 weather assistant for different user queries.
 
-**Query 1: "What's the weather in San Francisco today?"**
+**Query: "What's the weather in San Francisco today?"**
 
 The orchestrator creates this plan:
 
 1. **ExtractLocationCapability** → produces ``LocationContext(location="San Francisco")``
 2. **ExtractDateCapability** → produces ``DateContext(date="today")``
 3. **FetchWeatherCapability** → uses ``LocationContext`` + ``DateContext`` → produces ``WeatherContext``
-4. **ConversationCapability** → uses ``WeatherContext`` → generates natural language response
-
-**Query 2: "Will it rain tomorrow?"**
-
-In this case, the query is ambiguous - no location is specified. The orchestrator detects
-that it cannot create a complete plan without clarification:
-
-1. **ConversationCapability** → asks user: *"I can check tomorrow's weather for you. Which location would you like to know about?"*
-
-After the user responds with "New York", the orchestrator creates the full plan:
-
-1. **ExtractLocationCapability** → produces ``LocationContext(location="New York")``
-2. **ExtractDateCapability** → produces ``DateContext(date="tomorrow")``
-3. **FetchWeatherCapability** → uses both contexts → produces ``WeatherContext``
-4. **ConversationCapability** → responds with rain information
+4. **RespondCapability** → generates natural language response from ``WeatherContext``
 
 **Key Observations:**
 
-- The orchestrator **selects different capabilities** based on what's needed for each query
+- The orchestrator **selects capabilities** based on what's needed for each query
 - Capabilities are **chained together** - the output of one becomes the input to another
-- The orchestrator can detect **missing information** and ask for clarification
 - Each plan is created **upfront** before execution begins
+- **RespondCapability** accesses available contexts to generate responses
 
 This planning-first approach is what makes Osprey predictable and reliable for complex,
 multi-step tasks. The orchestrator handles all the coordination logic, so your capabilities
