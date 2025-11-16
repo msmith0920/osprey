@@ -140,6 +140,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated documentation examples across 6 files
 
 ### Fixed
+- **Anthropic Provider Structured Outputs**: Fixed task extraction failures when using Claude Haiku
+  - Added structured output support for all Anthropic models (Haiku, Sonnet, Opus)
+  - Uses native `response_format` API for Sonnet 4.5 and Opus 4.1 models
+  - Falls back to prompt-based JSON extraction for Haiku and older models
+  - Resolves `'str' object has no attribute 'task'` error in task extraction
+- **Google Provider Structured Outputs**: Added structured output support for Google Gemini models
+  - Implements prompt-based JSON extraction with schema validation
+  - Fixed health check to use adequate token budget (100 tokens) for models with thinking capabilities
+  - Added proper error handling when model uses all tokens for thinking with no output
+  - Updated available models list to only include working Gemini 2.5 models (pro, flash, flash-lite)
+  - Removed Gemini 1.5 models that are not available in current API version
+  - Ensures consistent behavior across all LLM providers
 - **Jinja2 Template Syntax**: Fixed invalid `.get('KEY')` method calls in Jinja2 templates
   - Replaced `env.get('CBORG_API_KEY')` with `env.CBORG_API_KEY` in conditionals
   - Fixed `env.get('TZ', 'default')` to use proper Jinja2 filter syntax: `env.TZ | default('default')`
