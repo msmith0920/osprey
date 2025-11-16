@@ -45,51 +45,16 @@ What You'll Learn
 
 - How to generate a test MCP server for development
 - How to generate Osprey capabilities from MCP servers
-- Using simulated mode for quick testing (no server needed)
 - Integrating generated capabilities into your project
 
 .. note::
 
-   This guide uses a **control assistant project** as an example. The commands work with any Osprey project - just replace `my-control-assistant` with your project name. We recommend using Claude Haiku 4.5 as the orchestrator model for best results.
+   This guide uses a control assistant project as an example. The commands work with any Osprey project - just replace `my-control-assistant` with your project name. We strongly **recommend using Claude Haiku 4.5** for best results with capability generation.
 
-Quick Start: Simulated Mode
-============================
+End-to-End MCP Integration
+==========================
 
-The fastest way to explore MCP capability generation is using **simulated mode**, which doesn't require running an actual MCP server.
-
-**From your control assistant project directory:**
-
-.. code-block:: bash
-
-   cd my-control-assistant
-
-   # Generate a capability using simulated weather tools
-   osprey generate capability --from-mcp simulated --name weather_mcp
-
-This creates ``capabilities/weather_mcp.py`` containing:
-
-- **WeatherMcpCapability** class with ReAct agent pattern
-- **Classifier guide** - when to activate (with LLM-generated examples)
-- **Orchestrator guide** - how to plan tasks (with LLM-generated examples)
-- **WeatherMcpResultsContext** class - for storing results
-- **Error handling** and logging
-- **Registry registration snippet** at the bottom
-
-**Generated Architecture:**
-
-The capability uses a **ReAct agent pattern**:
-
-1. Orchestrator provides a high-level ``task_objective`` (e.g., "Get weather for San Francisco")
-2. Capability's internal ReAct agent autonomously selects and calls MCP tools
-3. Agent reasons, acts, observes, and repeats until task complete
-4. Results stored in context for downstream use
-
-This keeps business logic out of orchestration (proper separation of concerns).
-
-Full Workflow: Generate Server + Capability
-============================================
-
-For production use, you'll want to generate and test with a real MCP server.
+This tutorial walks you through generating an MCP server and creating an Osprey capability from it.
 
 Step 1: Generate MCP Server
 ----------------------------
