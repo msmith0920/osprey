@@ -1114,6 +1114,7 @@ Set up your ``.env`` file with your API key:
    # Edit .env and add your API key
    # ANTHROPIC_API_KEY=your-key-here     # If using Anthropic (recommended)
    # CBORG_API_KEY=your-key-here         # If using LBNL CBorg
+   # STANFORD_API_KEY=your-key-here      # If using Stanford AI Playground
    # OPENAI_API_KEY=your-key-here        # If using OpenAI
    # GOOGLE_API_KEY=your-key-here        # If using Google
 
@@ -1158,6 +1159,14 @@ Set up your ``.env`` file with your API key:
    2. As a Berkeley Lab employee, click 'Request API Key'
    3. Create an API key ($50/month per user allocation)
    4. Copy the key provided
+
+   **Stanford AI Playground**
+
+   1. Visit: https://uit.stanford.edu/service/ai-api-gateway
+   2. Requires Stanford University affiliation
+   3. Go to 'Get Started' → 'Request the creation of a new API key'
+   4. Log in with your Stanford credentials and complete the form
+   5. Once approved, copy the API key from the notification email
 
    **Ollama (Local Models)**
 

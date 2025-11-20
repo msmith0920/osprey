@@ -168,6 +168,9 @@ Configure your AI/LLM providers with API keys from environment variables:
        cborg:                   # LBNL's internal service
          api_key: ${CBORG_API_KEY}
          base_url: https://api.cborg.lbl.gov/v1
+       stanford:                # Stanford AI Playground
+         api_key: ${STANFORD_API_KEY}
+         base_url: https://aiapi-prod.stanford.edu/v1
        anthropic:
          api_key: ${ANTHROPIC_API_KEY}
          base_url: https://api.anthropic.com
@@ -369,6 +372,7 @@ Create a ``.env`` file in your project root for secrets and dynamic values:
 
    # API Keys (configure for your chosen provider)
    CBORG_API_KEY=your-cborg-key           # If using CBorg
+   STANFORD_API_KEY=...                   # If using Stanford AI Playground
    ANTHROPIC_API_KEY=sk-ant-...           # If using Anthropic
    OPENAI_API_KEY=sk-...                  # If using OpenAI
    GOOGLE_API_KEY=...                     # If using Google

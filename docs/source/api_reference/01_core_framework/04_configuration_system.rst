@@ -6,7 +6,7 @@ Configuration System
    :class: tip
 
    For a comprehensive guide to the YAML configuration system, self-contained architecture, and best practices, see :doc:`../../developer-guides/03_core-framework-systems/06_configuration-architecture`.
-   
+
    This page provides the complete reference for all configuration sections and the Python API for accessing configuration at runtime.
 
 Configuration system with YAML loading, environment resolution, and seamless LangGraph integration.
@@ -24,7 +24,7 @@ ConfigBuilder
    :undoc-members:
    :show-inheritance:
    :special-members: __init__
-   
+
    Main configuration builder with YAML loading, environment resolution, and LangGraph integration.
 
 Primary Access Functions
@@ -91,10 +91,10 @@ Model and Provider Access
 
 .. dropdown:: Need Support for Additional Providers?
     :color: info
-    :icon: people   
+    :icon: people
 
     The framework's provider system is designed for extensibility. Applications can register custom AI providers directly through the registry system - see :doc:`../../developer-guides/03_core-framework-systems/03_registry-and-discovery` for examples of registering Azure OpenAI, institutional AI services (Stanford AI Playground, LBNL CBorg, etc.), or other providers.
-    
+
     For providers that would benefit the broader community, we're happy to work with you to add native framework support. Please create an issue on the GitHub repository to discuss integration requirements.
 
 Service Configuration
@@ -140,7 +140,7 @@ This section provides a complete reference for all configuration sections availa
    :class: note
 
    Before diving into specific sections, review :doc:`../../developer-guides/03_core-framework-systems/06_configuration-architecture` to understand:
-   
+
    - The self-contained configuration approach
    - Configuration templates and project initialization
    - Environment variable integration
@@ -598,7 +598,7 @@ deployed_services
      - jupyter
      - open_webui
      - pipelines
-     
+
      # Application-specific services (optional)
      - mongo          # E.g., MongoDB for ALS Assistant
      - pv_finder      # E.g., PV Finder MCP for ALS Assistant
@@ -621,7 +621,7 @@ Services use simple names that match their configuration keys:
      - open_webui
      - pipelines
      - mongo       # Application-specific service
-   
+
    # All services defined in services: section
    services:
      jupyter:
@@ -662,19 +662,23 @@ api.providers
          api_key: ${CBORG_API_KEY}
          base_url: https://api.cborg.lbl.gov/v1
          timeout: 30
-       
+
+       stanford:
+         api_key: ${STANFORD_API_KEY}
+         base_url: https://aiapi-prod.stanford.edu/v1
+
        anthropic:
          api_key: ${ANTHROPIC_API_KEY}
          base_url: https://api.anthropic.com
-       
+
       openai:
         api_key: ${OPENAI_API_KEY}
         base_url: https://api.openai.com/v1
-      
+
       google:
         api_key: ${GOOGLE_API_KEY}
         base_url: https://generativelanguage.googleapis.com/v1beta
-       
+
        ollama:
          api_key: ollama
          base_url: http://doudna:11434
@@ -744,35 +748,35 @@ Framework Models
        orchestrator:
          provider: cborg
          model_id: anthropic/claude-sonnet
-       
+
        response:
          provider: cborg
          model_id: google/gemini-flash
          max_tokens: 5000
-       
+
        classifier:
          provider: ollama
          model_id: mistral:7b
-       
+
        approval:
          provider: ollama
          model_id: mistral:7b
-       
+
        task_extraction:
          provider: cborg
          model_id: google/gemini-flash
          max_tokens: 1024
-       
+
        memory:
          provider: cborg
          model_id: google/gemini-flash
          max_tokens: 256
-       
+
        python_code_generator:
          provider: cborg
          model_id: anthropic/claude-haiku
          max_tokens: 4096
-       
+
        time_parsing:
          provider: ollama
          model_id: mistral:7b
@@ -839,17 +843,17 @@ Application Models
      data_analysis:
        provider: cborg
        model_id: anthropic/claude-sonnet
-     
+
      machine_operations:
        provider: cborg
        model_id: anthropic/claude-sonnet
        max_tokens: 4096
-     
+
      data_visualization:
        provider: cborg
        model_id: anthropic/claude-sonnet
        max_tokens: 4096
-     
+
      pv_finder:
        keyword:
          provider: cborg
@@ -940,7 +944,7 @@ development.prompts
        show_all: true
        print_all: true
        latest_only: false
-   
+
    # Production: Silent
    development:
      prompts:
@@ -1010,12 +1014,12 @@ logging Colors
          task_extraction: "thistle1"
          python: "light_salmon1"
          respond: "thistle1"
-     
+
      interface:
        logging_colors:
          cli: "deep_sky_blue1"
          pipeline: "deep_sky_blue1"
-   
+
    # Application colors (src/applications/{app}/config.yml)
    logging:
      logging_colors:
@@ -1069,13 +1073,13 @@ Framework Services
              execution_modes: ["write_access"]
          copy_src: true
          render_kernel_templates: true
-       
+
        open_webui:
          path: ./services/osprey/open-webui
          hostname: appsdev2
          port_host: 8080
          port_container: 8080
-       
+
        pipelines:
          path: ./services/osprey/pipelines
          port_host: 9099
@@ -1138,14 +1142,14 @@ Application Services
        port_host: 27017
        port_container: 27017
        copy_src: true
-     
+
      pv_finder:
        path: ./services/applications/als_assistant/pv_finder
        name: pv-finder
        port_host: 8051
        port_container: 8051
        copy_src: true
-     
+
      langfuse:
        path: ./services/applications/als_assistant/langfuse
        name: langfuse
@@ -1216,7 +1220,7 @@ Complete Configuration Example
    build_dir: ./build
    project_root: ${PROJECT_ROOT}
    registry_path: ./src/my_app/registry.py
-   
+
    # Model configuration (8 specialized models)
    models:
      orchestrator:
@@ -1226,13 +1230,13 @@ Complete Configuration Example
        provider: cborg
        model_id: google/gemini-flash
      # ... other 6 models ...
-   
+
    # Service deployment
    deployed_services:
      - jupyter
      - open_webui
      - pipelines
-   
+
    # Safety controls
    approval:
      global_mode: "selective"
@@ -1242,7 +1246,7 @@ Complete Configuration Example
          mode: "epics_writes"
        memory:
          enabled: true
-   
+
    execution_control:
      epics:
        writes_enabled: false
@@ -1256,10 +1260,10 @@ Complete Configuration Example
        max_execution_time_seconds: 3000
        graph_recursion_limit: 100
        max_concurrent_classifications: 5
-   
+
    system:
      timezone: ${TZ:-America/Los_Angeles}
-   
+
    file_paths:
      agent_data_dir: _agent_data
      executed_python_scripts_dir: executed_scripts
@@ -1268,32 +1272,35 @@ Complete Configuration Example
      registry_exports_dir: registry_exports
      prompts_dir: prompts
      checkpoints: checkpoints
-   
+
    deployed_services:
      - jupyter
      - open_webui
      - pipelines
      - mongo
      - pv_finder
-   
+
    development:
      raise_raw_errors: false
      prompts:
        show_all: false
        print_all: true
        latest_only: true
-   
+
    logging:
      rich_tracebacks: false
      show_traceback_locals: false
      show_full_paths: false
-   
+
    api:
      providers:
        cborg:
          api_key: ${CBORG_API_KEY}
          base_url: https://api.cborg.lbl.gov/v1
          timeout: 30
+       stanford:
+         api_key: ${STANFORD_API_KEY}
+         base_url: https://aiapi-prod.stanford.edu/v1
        anthropic:
          api_key: ${ANTHROPIC_API_KEY}
          base_url: https://api.anthropic.com
@@ -1312,10 +1319,10 @@ Application Configuration Example
 .. code-block:: yaml
 
    # src/applications/als_assistant/config.yml
-   
+
    file_paths:
      launcher_outputs_dir: launcher_outputs
-   
+
    services:
      pv_finder:
        path: ./services/applications/als_assistant/pv_finder
@@ -1323,36 +1330,36 @@ Application Configuration Example
        port_host: 8051
        port_container: 8051
        copy_src: true
-     
+
      mongo:
        name: mongo
        path: ./services/applications/als_assistant/mongo
        port_host: 27017
        port_container: 27017
        copy_src: true
-   
+
    models:
      data_analysis:
        provider: cborg
        model_id: anthropic/claude-sonnet
-     
+
      machine_operations:
        provider: cborg
        model_id: anthropic/claude-sonnet
        max_tokens: 4096
-     
+
      pv_finder:
        keyword:
          provider: cborg
          model_id: google/gemini-flash
          max_tokens: 4096
-   
+
    pipeline:
      name: "ALS Assistant"
      startup_hooks:
        - "initialization.setup_nltk_resources"
        - "initialization.setup_pv_finder_resources"
-   
+
    logging:
      logging_colors:
        data_analysis: "deep_sky_blue1"

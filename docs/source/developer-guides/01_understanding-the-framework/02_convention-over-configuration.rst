@@ -625,6 +625,9 @@ The model factory integrates with the configuration system following the same pr
        cborg:
          api_key: "${CBORG_API_KEY}"
          base_url: "https://api.cborg.lbl.gov/v1"     # LBNL internal service
+       stanford:
+         api_key: "${STANFORD_API_KEY}"
+         base_url: "https://aiapi-prod.stanford.edu/v1"  # Stanford AI Playground
        anthropic:
          api_key: "${ANTHROPIC_API_KEY}"
          base_url: "https://api.anthropic.com"
