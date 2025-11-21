@@ -56,10 +56,10 @@ class MockArchiverConnector(ArchiverConnector):
         Args:
             config: Configuration with keys:
                 - sample_rate_hz: Sampling rate (default: 1.0)
-                - noise_level: Relative noise level (default: 0.01)
+                - noise_level: Relative noise level (default: 0.1)
         """
         self._sample_rate_hz = config.get('sample_rate_hz', 1.0)
-        self._noise_level = config.get('noise_level', 0.01)
+        self._noise_level = config.get('noise_level', 0.1)
         self._connected = True
         logger.debug("Mock archiver connector initialized")
 
@@ -142,11 +142,41 @@ class MockArchiverConnector(ArchiverConnector):
         - Linear trends
         - Random noise
         - PV-type-specific characteristics
+        - BPMs use random offsets with slow oscillations
         """
         t = np.linspace(0, 1, num_points)
         pv_lower = pv_name.lower()
 
-        # Base value depends on PV type
+        # Check if this is a BPM - use new approach
+        if 'position' in pv_lower or 'pos' in pv_lower or 'bpm' in pv_lower:
+            # Use PV name as seed for reproducibility
+            rng = np.random.default_rng(seed=hash(pv_name) % (2**32))
+
+            # BPM positions in mm (±100 µm = ±0.1 mm range)
+            base = 0.0
+            offset_range = 0.1  # ±100 µm equilibrium position
+            perturbation_amp = 0.01  # ±10 µm oscillation
+            trend = np.ones(num_points) * base
+
+            # Random offset for this BPM (equilibrium position)
+            offset = rng.uniform(-offset_range, offset_range)
+
+            # Random phase and frequency for perturbation
+            phase = rng.uniform(0, 2 * np.pi)
+            # Very low frequencies: 0.01 to 0.5 cycles over time range
+            # Appears as slow drift / quasi-linear behavior
+            frequency = rng.uniform(0.01, 0.5)
+
+            # Sinusoidal perturbation with random phase
+            wave = perturbation_amp * np.sin(2 * np.pi * t * frequency + phase)
+
+            # Add random noise
+            noise_amplitude = perturbation_amp * self._noise_level
+            noise = rng.normal(0, noise_amplitude, num_points)
+
+            return trend + offset + wave + noise
+
+        # Original behavior for all other PV types
         if ('beam' in pv_lower and 'current' in pv_lower) or 'dcct' in pv_lower:
             # Beam current: slow decay with refills
             base = 500.0
@@ -181,10 +211,6 @@ class MockArchiverConnector(ArchiverConnector):
             base = 10.0
             trend = base - 2 * t  # Lifetime decreases with current
             wave = 1 * np.sin(2 * np.pi * t * 3)
-        elif 'position' in pv_lower or 'pos' in pv_lower:
-            base = 0.0
-            trend = 0.1 * np.sin(2 * np.pi * t * 0.5)  # Slow drift
-            wave = 0.01 * np.sin(2 * np.pi * t * 20)  # Fast oscillations
         else:
             base = 100.0
             trend = base + 20 * t

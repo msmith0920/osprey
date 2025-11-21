@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Interactive Menu Enhancements**: Version number display in interactive menu banner
 - **Stanford AI Playground Provider**: Added Stanford AI playground as a built-in API provider
 
+### Changed
+- **Mock Archiver Connector**: Improved BPM position data generation
+  - BPM positions now use realistic ±100 µm equilibrium offsets with ±10 µm oscillations
+  - Each BPM has unique, reproducible random characteristics based on PV name
+  - Slow drift patterns simulate realistic beam position variations
+  - Adjusted default noise level from 0.01 to 0.1 for more realistic data
+
 ### Fixed
 - **Weather Template**: Fixed context extraction example in hello world weather template (PR #26)
 
