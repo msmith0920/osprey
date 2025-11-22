@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Adjusted default noise level from 0.01 to 0.1 for more realistic data
 
 ### Fixed
+- **Stanford API Key Detection**: Added missing STANFORD_API_KEY to environment variable detection (Reported by Marty)
 - **Weather Template**: Fixed context extraction example in hello world weather template (PR #26)
 
 ## [0.9.1] - 2025-11-16

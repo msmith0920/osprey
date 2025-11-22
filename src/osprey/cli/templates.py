@@ -93,6 +93,7 @@ class TemplateManager:
             'OPENAI_API_KEY',
             'ANTHROPIC_API_KEY',
             'GOOGLE_API_KEY',
+            'STANFORD_API_KEY',
             'PROJECT_ROOT',
             'LOCAL_PYTHON_VENV',
             'TZ',

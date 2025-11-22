@@ -1215,7 +1215,7 @@ def run_interactive_init() -> str:
 
         # Check if API keys were detected and .env was created
         detected_env = manager._detect_environment_variables()
-        api_keys = ['CBORG_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY']
+        api_keys = ['CBORG_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GOOGLE_API_KEY', 'STANFORD_API_KEY']
         has_api_keys = any(key in detected_env for key in api_keys)
 
         if has_api_keys:
