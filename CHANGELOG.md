@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Interactive Menu Registry Contamination** ([#29](https://github.com/als-apg/osprey/issues/29))
+  - Fixed bug where creating multiple projects in the same interactive menu session caused capability contamination
+  - Global registry singleton now properly reset when switching between projects
+  - Added `reset_registry()` calls in `handle_chat_action()` before launching chat
+  - Prevents second project from inheriting capabilities from first project
+  - Added comprehensive test suite to verify registry isolation
+
 ## [0.9.2] - 2025-11-22
 
 ### 🎉 Major Features
