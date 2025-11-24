@@ -227,11 +227,7 @@ class TaskExtractionNode(BaseInfrastructureNode):
             "backoff_factor": 1.5     # Standard backoff for network issues
         }
 
-    @staticmethod
-    async def execute(
-        state: AgentState,
-        **kwargs
-    ) -> dict[str, Any]:
+    async def execute(self) -> dict[str, Any]:
         """Main task extraction logic with bypass support and error handling.
 
         Converts conversational exchanges into clear, actionable task descriptions.
@@ -241,9 +237,6 @@ class TaskExtractionNode(BaseInfrastructureNode):
         Supports bypass mode where full chat history is passed directly as the task,
         skipping LLM-based extraction for performance optimization.
 
-        :param state: Current agent state (TypedDict)
-        :type state: AgentState
-        :param kwargs: Additional LangGraph parameters
         :return: Dictionary of state updates to apply
         :rtype: Dict[str, Any]
         """
@@ -252,13 +245,13 @@ class TaskExtractionNode(BaseInfrastructureNode):
         logger = get_logger("task_extraction")
 
         # Define streaming helper here for step awareness
-        streamer = get_streamer("task_extraction", state)
+        streamer = get_streamer("task_extraction", self._state)
 
         # Get native LangGraph messages from flat state structure (move outside try block)
-        messages = state["messages"]
+        messages = self._state["messages"]
 
         # Check if task extraction bypass is enabled
-        bypass_enabled = state.get("agent_control", {}).get("task_extraction_bypass_enabled", False)
+        bypass_enabled = self._state.get("agent_control", {}).get("task_extraction_bypass_enabled", False)
 
         if bypass_enabled:
             logger.info("Task extraction bypass enabled - using full context with data sources")
@@ -271,7 +264,7 @@ class TaskExtractionNode(BaseInfrastructureNode):
             try:
                 data_manager = get_data_source_manager()
                 requester = DataSourceRequester("task_extraction", "task_extraction")
-                request = create_data_source_request(state, requester)
+                request = create_data_source_request(self._state, requester)
                 retrieval_result = await data_manager.retrieve_all_context(request)
                 logger.info(f"Retrieved data from {retrieval_result.total_sources_attempted} sources")
             except (ImportError, ModuleNotFoundError):
