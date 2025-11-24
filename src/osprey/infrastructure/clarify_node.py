@@ -71,13 +71,9 @@ class ClarifyCapability(BaseCapability):
     provides = []  # Communication capability - no context output (questions go to user via chat history)
     requires = []  # Can work with any execution context
 
-    @staticmethod
-    async def execute(state: AgentState, **kwargs):
+    async def execute(self) -> dict[str, Any]:
         """Generate specific questions to ask user based on missing information.
 
-        :param state: Current agent state
-        :type state: AgentState
-        :param kwargs: Additional parameters (may include step)
         :return: State update with clarification response
         :rtype: Dict[str, Any]
         """
@@ -85,8 +81,8 @@ class ClarifyCapability(BaseCapability):
         # Explicit logger retrieval - professional practice
         logger = get_logger("clarify")
 
-        # Use StateManager to get the current step
-        step = StateManager.get_current_step(state)
+        # Get step (injected by decorator)
+        step = self._step
 
         # Extract task_objective from step
         task_objective = step.get('task_objective', 'unknown') if step else 'unknown'
@@ -105,7 +101,7 @@ class ClarifyCapability(BaseCapability):
             # Generate clarifying questions using PydanticAI
             # Run sync function in thread pool to avoid blocking event loop for streaming
             questions_response = await asyncio.to_thread(
-                _generate_clarifying_questions, state, task_objective
+                _generate_clarifying_questions, self._state, task_objective
             )
 
             if streaming:
