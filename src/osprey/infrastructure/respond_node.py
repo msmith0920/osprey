@@ -97,13 +97,9 @@ class RespondCapability(BaseCapability):
     provides = ["FINAL_RESPONSE"]
     requires = []  # Can work with any previous context, or none at all
 
-    @staticmethod
-    async def execute(state: AgentState, **kwargs):
+    async def execute(self) -> dict[str, Any]:
         """Generate appropriate response using unified dynamic prompt construction.
 
-        :param state: Current agent state
-        :type state: AgentState
-        :param kwargs: Additional parameters (may include step)
         :return: State update with generated response
         :rtype: Dict[str, Any]
         """
@@ -111,17 +107,17 @@ class RespondCapability(BaseCapability):
         # Explicit logger retrieval - professional practice
         logger = get_logger("respond")
 
-        # Use StateManager to get the current step
-        step = StateManager.get_current_step(state)
+        # Get step (injected by decorator)
+        step = self._step
 
         # Define streaming helper here for step awareness
-        streamer = get_streamer("respond", state)
+        streamer = get_streamer("respond", self._state)
 
         try:
             streamer.status("Gathering information for response...")
 
             # Gather all available information
-            response_context = _gather_information(state)
+            response_context = _gather_information(self._state)
 
             streamer.status("Generating response...")
 
