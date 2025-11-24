@@ -56,10 +56,7 @@ from osprey.base.examples import OrchestratorGuide, TaskClassifierGuide
 from osprey.context.base import CapabilityContext
 from osprey.prompts.loader import get_framework_prompts
 from osprey.registry import get_registry
-from osprey.state import AgentState, StateManager
 from osprey.utils.config import get_model_config
-from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
 
 registry = get_registry()
 
@@ -211,7 +208,7 @@ class TimeRangeContext(CapabilityContext):
                     # Fallback: try without timezone
                     return datetime.strptime(v, '%Y-%m-%d %H:%M:%S')
                 except ValueError as e:
-                    raise ValueError(f"Invalid datetime string: {v}. Expected ISO format. Error: {e}")
+                    raise ValueError(f"Invalid datetime string: {v}. Expected ISO format. Error: {e}") from e
         elif isinstance(v, datetime):
             return v
         else:
@@ -363,12 +360,6 @@ def _get_time_parsing_system_prompt(user_query: str) -> str:
     yesterday_end = (now - timedelta(days=1)).strftime('%Y-%m-%d') + ' 23:59:59'
     twenty_four_hours_ago = (now - timedelta(hours=24)).strftime('%Y-%m-%d %H:%M:%S')
     two_weeks_ago = (now - timedelta(days=14)).strftime('%Y-%m-%d %H:%M:%S')
-
-    # DEBUG: Log what we're calculating
-    logger = get_logger("time_range_parsing")
-    logger.debug(f"TIME DEBUG - Current time: {current_time_str}")
-    logger.debug(f"TIME DEBUG - 24 hours ago: {twenty_four_hours_ago}")
-    logger.debug(f"TIME DEBUG - User query: {user_query}")
 
     prompt = textwrap.dedent(f"""
         You are an expert time range parser. Your task is to extract time ranges from user queries and convert them to absolute datetime values.
@@ -525,20 +516,17 @@ class TimeRangeParsingCapability(BaseCapability):
            :meth:`classify_error` : Error classification method for parsing failures
         """
 
-        # Explicit logger retrieval - professional practice
-        logger = get_logger("time_range_parsing")
+        # Get unified logger with automatic streaming support
+        logger = self.get_logger()
 
         # Current step is injected by decorator
         step = self._step
-
-        # Define streaming helper here for step awareness
-        streamer = get_streamer("time_range_parsing", self._state)
 
         # Display task with structured formatting
         task_objective = step.get('task_objective', 'unknown')
         logger.info("Starting time range parsing")
         logger.info(f'[bold]Query:[/bold] "[italic]{task_objective}[/italic]"')
-        streamer.status("Parsing time range with LLM...")
+        logger.status("Parsing time range with LLM...")
 
         # Build sophisticated system prompt
         full_prompt = _get_time_parsing_system_prompt(task_objective)
@@ -559,13 +547,13 @@ class TimeRangeParsingCapability(BaseCapability):
 
         except Exception as e:
             logger.error(f"LLM call failed for time parsing: {e}")
-            raise TimeParsingError(f"LLM failed to parse time range: {str(e)}")
+            raise TimeParsingError(f"LLM failed to parse time range: {str(e)}") from e
 
         if not isinstance(response_data, TimeRangeOutput):
             logger.error(f"LLM did not return TimeRangeOutput. Got: {type(response_data)}")
             raise TimeParsingError("LLM failed to return structured time range output")
 
-        streamer.status("Validating parsed time range...")
+        logger.status("Validating parsed time range...")
 
         # Debug logging to see what LLM actually returned
         logger.debug(f"LLM returned: start={response_data.start_date}, end={response_data.end_date}, found={response_data.found}")
@@ -586,7 +574,7 @@ class TimeRangeParsingCapability(BaseCapability):
             logger.error(f"⚠️ LLM returned FUTURE year: start={response_data.start_date}, end={response_data.end_date}, current_year={current_year}")
             raise InvalidTimeFormatError(f"Invalid date range: dates cannot be in future years (current year: {current_year})")
 
-        streamer.status("Creating time range context...")
+        logger.status("Creating time range context...")
 
         # Create rich context object
         time_context = TimeRangeContext(
@@ -601,18 +589,11 @@ class TimeRangeParsingCapability(BaseCapability):
         logger.info(f"  Start: [cyan]{start_str}[/cyan]")
         logger.info(f"  End:   [cyan]{end_str}[/cyan]")
 
-        # Store context using StateManager
-        state_updates = StateManager.store_context(
-            self._state,
-            "TIME_RANGE",
-            step.get("context_key"),
-            time_context
-        )
-
-        streamer.status("Time range parsing complete")
+        # Store context using helper method
+        logger.success("Time range parsing complete")
 
         # Return state updates (LangGraph will merge automatically)
-        return state_updates
+        return self.store_output_context(time_context)
 
     @staticmethod
     def classify_error(exc: Exception, context: dict) -> ErrorClassification:

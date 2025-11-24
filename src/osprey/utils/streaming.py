@@ -1,16 +1,39 @@
 """
 Streaming Event Helper for LangGraph
 
-Provides a unified API for creating streaming events that parallel the logger pattern.
-Handles automatic step counting for task preparation phases and eliminates the need
-for manual writer availability checks.
+.. deprecated:: 0.9.3
+   This module is deprecated in favor of the unified logging system.
+   Use ``self.get_logger()`` in capabilities or ``get_logger(component, state=state)``
+   for automatic streaming support. See :class:`osprey.utils.logger.ComponentLogger`.
 
-Usage:
+Legacy streaming API that provides a separate streaming interface from logging.
+This has been replaced by the unified logging system which automatically handles
+both CLI output and web UI streaming through a single API.
+
+**Old Pattern (Deprecated):**
+
+.. code-block:: python
+
     from osprey.utils.streaming import get_streamer
 
     streamer = get_streamer("orchestrator", state)
     streamer.status("Creating execution plan...")
-    streamer.success("Plan created")
+
+**New Pattern (Recommended):**
+
+.. code-block:: python
+
+    # In capabilities
+    logger = self.get_logger()
+    logger.status("Creating execution plan...")  # Logs + streams automatically
+
+    # In other nodes with state
+    logger = get_logger("orchestrator", state=state)
+    logger.status("Creating execution plan...")
+
+.. seealso::
+   :class:`osprey.utils.logger.ComponentLogger` : Unified logging with automatic streaming
+   :meth:`osprey.base.capability.BaseCapability.get_logger` : Recommended logger API
 """
 
 import time
@@ -138,7 +161,25 @@ def get_streamer(component: str, state: Any | None = None, *, source: str = None
     """
     Get a stream writer for consistent streaming events.
 
-    Parallels the get_logger() pattern for familiar usage.
+    .. deprecated:: 0.9.2
+       Use the unified logging system instead: ``self.get_logger()`` in capabilities
+       or ``get_logger(component, state=state)`` for automatic streaming support.
+
+    This function is maintained for backward compatibility but the unified logging
+    system provides better integration with both CLI and web UI streaming through
+    a single API.
+
+    **Migration Guide:**
+
+    .. code-block:: python
+
+        # Old pattern (deprecated)
+        streamer = get_streamer("orchestrator", state)
+        streamer.status("Creating execution plan...")
+
+        # New pattern (recommended)
+        logger = self.get_logger()  # In capabilities
+        logger.status("Creating execution plan...")  # Logs + streams automatically
 
     Args:
         component: Component name (e.g., "orchestrator", "python_executor")
@@ -148,16 +189,22 @@ def get_streamer(component: str, state: Any | None = None, *, source: str = None
     Returns:
         StreamWriter instance that handles event emission automatically
 
-    Example:
-        streamer = get_streamer("orchestrator", state)
-        streamer.status("Creating execution plan...")
-        streamer.success("Plan created")
-
-    .. deprecated::
-        The two-parameter API get_streamer(source, component, state) is deprecated.
-        Use get_streamer(component, state) instead to match the simplified logger API.
+    .. seealso::
+       :class:`osprey.utils.logger.ComponentLogger` : Unified logging with streaming
+       :meth:`osprey.base.capability.BaseCapability.get_logger` : Recommended API
     """
     import warnings
+
+    # Emit deprecation warning
+    warnings.warn(
+        f"get_streamer() is deprecated and will be removed in a future version. "
+        f"Use the unified logging system instead: self.get_logger() in capabilities "
+        f"or get_logger('{component}', state=state) for automatic streaming support. "
+        f"See ComponentLogger documentation for migration details.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
     if source is not None:
         warnings.warn(
             f"The 'source' parameter in get_streamer('{source}', '{component}') is deprecated. "

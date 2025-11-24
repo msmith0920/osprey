@@ -22,11 +22,6 @@ from osprey.prompts.loader import get_framework_prompts
 from osprey.registry import get_registry
 from osprey.state import AgentState, StateManager
 from osprey.utils.config import get_model_config
-from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
-
-# Use colored logger for message generator with light_cyan1 color
-logger = get_logger("message_generator")
 
 
 @dataclass
@@ -107,22 +102,19 @@ class RespondCapability(BaseCapability):
         """
         state = self._state
 
-        # Explicit logger retrieval - professional practice
-        logger = get_logger("respond")
+        # Get unified logger with automatic streaming support
+        logger = self.get_logger()
 
         # Get step (injected by decorator)
         step = self._step
 
-        # Define streaming helper here for step awareness
-        streamer = get_streamer("respond", state)
-
         try:
-            streamer.status("Gathering information for response...")
+            logger.status("Gathering information for response...")
 
             # Gather all available information
             response_context = _gather_information(state)
 
-            streamer.status("Generating response...")
+            logger.status("Generating response...")
 
             # Build prompt dynamically based on available information
             prompt = _get_base_system_prompt(response_context.current_task, response_context)
@@ -144,7 +136,7 @@ class RespondCapability(BaseCapability):
             else:
                 raise Exception("No response from LLM, please try again.")
 
-            streamer.status("Response generated")
+            logger.status("Response generated")
 
             # Use actual task objective if available, otherwise describe response mode
             if step and step.get("task_objective"):

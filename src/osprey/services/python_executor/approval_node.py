@@ -145,24 +145,23 @@ def create_approval_node():
                 >>> print(f"User approved: {result['approved']}")
         """
 
-        # Define streaming helper here for step awareness
-        from osprey.utils.streaming import get_streamer
-        streamer = get_streamer("python", state)
-        streamer.status("Requesting human approval...")
+        # Get logger with streaming support (shadows module-level logger)
+        node_logger = get_logger("python", state=state)
+        node_logger.status("Requesting human approval...")
 
         # Get the pre-created interrupt data from analyzer
         interrupt_data = state.get("approval_interrupt_data")
         if not interrupt_data:
             raise RuntimeError("No approval interrupt data found in state")
 
-        logger.info("Requesting human approval for Python code execution")
+        node_logger.info("Requesting human approval for Python code execution")
 
         # This is the ONLY critical line - everything else is routing
         human_response = interrupt(interrupt_data)
 
         # Simple approval processing for routing
         approved = human_response.get("approved", False)
-        logger.info(f"Approval result: {approved}")
+        node_logger.info(f"Approval result: {approved}")
 
         return {
             "approval_result": human_response,

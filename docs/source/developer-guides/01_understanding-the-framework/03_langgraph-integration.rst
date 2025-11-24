@@ -242,26 +242,24 @@ The framework handles service calls that may generate interrupts:
 Real-Time Streaming
 ===================
 
-The framework provides real-time status updates through LangGraph's streaming:
+The framework provides real-time status updates through LangGraph's streaming via the unified logger:
 
 .. code-block:: python
-
-   from osprey.utils.streaming import get_streamer
 
    @capability_node
    class DataAnalysisCapability(BaseCapability):
        async def execute(self) -> Dict[str, Any]:
-           # Get streaming helper
-           streamer = get_streamer("osprey", "data_analysis", self._state)
+           # Get unified logger with automatic streaming
+           logger = self.get_logger()
 
            # Provide real-time status updates
-           streamer.status("Loading data sources...")
+           logger.status("Loading data sources...")
            data = await load_data_sources()
 
-           streamer.status("Performing analysis...")
+           logger.status("Performing analysis...")
            analysis = await perform_analysis(data)
 
-           streamer.status("Analysis complete")
+           logger.success("Analysis complete")
 
            return {"analysis_results": analysis}
 

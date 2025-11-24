@@ -24,9 +24,8 @@ from osprey.state import AgentState
 from osprey.state.state import create_status_update
 from osprey.utils.config import get_classification_config, get_model_config
 from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
 
-# Use colored logger for classifier
+# Module-level logger for helper functions
 logger = get_logger("classifier")
 
 
@@ -153,15 +152,15 @@ class ClassificationNode(BaseInfrastructureNode):
         """
         state = self._state
 
+        # Get unified logger with automatic streaming support
+        logger = self.get_logger()
+
         # Get the current task from state
         current_task = state.get("task_current_task")
 
         if not current_task:
             logger.error("No current task found in state")
             raise ReclassificationRequiredError("No current task found")
-
-        # Define streaming helper here for step awareness
-        streamer = get_streamer("classifier", state)
 
         # Check if capability selection bypass is enabled
         bypass_enabled = state.get("agent_control", {}).get(
@@ -170,14 +169,13 @@ class ClassificationNode(BaseInfrastructureNode):
 
         if bypass_enabled:
             logger.info("Capability selection bypass enabled - activating all capabilities")
-            streamer.status("Bypassing capability selection - activating all capabilities")
+            logger.status("Bypassing capability selection - activating all capabilities")
 
             # Get all capability names directly from registry
             registry = get_registry()
             active_capabilities = registry.get_stats()["capability_names"]
 
-            logger.key_info(f"Bypass mode: activated all {len(active_capabilities)} capabilities")
-            streamer.status("All capabilities activated")
+            logger.success(f"Bypass mode: activated all {len(active_capabilities)} capabilities")
 
             # Return standardized classification result
             return _create_classification_result(
@@ -195,12 +193,10 @@ class ClassificationNode(BaseInfrastructureNode):
         reclassification_count = state.get("control_reclassification_count", 0)
 
         if previous_failure:
-            streamer.status(f"Reclassifying task (attempt {reclassification_count + 1})...")
-            logger.info(f"Reclassifying task (attempt {reclassification_count + 1})...")
+            logger.status(f"Reclassifying task (attempt {reclassification_count + 1})...")
             logger.warning(f"Previous failure reason: {previous_failure}")
         else:
-            streamer.status("Analyzing task requirements...")
-            logger.info("Analyzing task requirements...")
+            logger.status("Analyzing task requirements...")
 
         logger.info(f"Classifying task: {current_task}")
 
@@ -219,12 +215,10 @@ class ClassificationNode(BaseInfrastructureNode):
             previous_failure=previous_failure,  # Pass failure context for reclassification
         )
 
-        logger.key_info(
+        logger.success(
             f"Classification completed with {len(active_capabilities)} active capabilities"
         )
         logger.debug(f"Active capabilities: {active_capabilities}")
-        streamer.status("Task classification complete")
-        logger.info("Classification completed")
 
         # Return standardized classification result
         return _create_classification_result(
@@ -513,7 +507,7 @@ async def select_capabilities(
         classification_results = await asyncio.gather(*classification_tasks, return_exceptions=True)
 
         # Process results and collect active capabilities
-        for capability, result in zip(remaining_capabilities, classification_results):
+        for capability, result in zip(remaining_capabilities, classification_results, strict=False):
             if isinstance(result, Exception):
                 logger.error(f"Classification failed for capability '{capability.name}': {result}")
                 # Skip failed classifications - don't activate capability on error

@@ -189,24 +189,16 @@ class BaseInfrastructureNode(ABC):
 
         Example::
 
-            @staticmethod
-            async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
-                # Explicit logger retrieval - professional practice
-                from osprey.utils.logger import get_logger
-                logger = get_logger("orchestrator")
-
-                # Define streaming helper here for step awareness
-                from osprey.utils.streaming import get_streamer
-                streamer = get_streamer("orchestrator", state)
-                streamer.status("Starting orchestration")
-
-                logger.info("Starting execution planning")
+            async def execute(self) -> Dict[str, Any]:
+                # Get unified logger with automatic streaming
+                logger = self.get_logger()
+                logger.status("Starting orchestration")
 
                 # Infrastructure logic
-                plan = create_execution_plan(state)
+                current_task = self.get_current_task()
+                plan = create_execution_plan(current_task)
 
-                streamer.status("Orchestration complete")
-                logger.info("Execution plan created")
+                logger.success("Execution plan created")
 
                 # Return state updates
                 return {
@@ -216,9 +208,9 @@ class BaseInfrastructureNode(ABC):
 
         .. note::
            Infrastructure nodes should focus on orchestration, routing, and state
-           management logic. Retrieve loggers explicitly using get_logger() for
-           professional code. The @infrastructure_node decorator handles timing,
-           error handling, and retry policies. Use get_streamer() for streaming updates.
+           management logic. Use self.get_logger() for unified logging with automatic
+           streaming support. The @infrastructure_node decorator handles timing,
+           error handling, and retry policies.
         """
         pass
 
@@ -321,6 +313,93 @@ class BaseInfrastructureNode(ABC):
             "delay_seconds": 0.2,  # Fast retry for infrastructure
             "backoff_factor": 1.2  # Minimal backoff
         }
+
+    # ===== STATE HELPER METHODS =====
+    # These helper methods provide convenient access to StateManager utilities
+    # using self._state (which is injected by the @infrastructure_node decorator)
+
+    def get_current_task(self) -> str | None:
+        """Get current task from state.
+
+        Returns:
+            Current task string, or None if not set
+
+        Example:
+            ```python
+            async def execute(self) -> dict[str, Any]:
+                current_task = self.get_current_task()
+                if not current_task:
+                    raise ValueError("No current task available")
+            ```
+        """
+        from osprey.state import StateManager
+        return StateManager.get_current_task(self._state)
+
+    def get_user_query(self) -> str | None:
+        """Get the user's query from the current conversation.
+
+        Returns:
+            The user's query string, or None if no user messages exist
+
+        Example:
+            ```python
+            async def execute(self) -> dict[str, Any]:
+                original_query = self.get_user_query()
+            ```
+        """
+        from osprey.state import StateManager
+        return StateManager.get_user_query(self._state)
+
+    def get_execution_plan(self):
+        """Get current execution plan from state with type validation.
+
+        Returns:
+            ExecutionPlan if available and valid, None otherwise
+
+        Example:
+            ```python
+            async def execute(self) -> dict[str, Any]:
+                execution_plan = self.get_execution_plan()
+                if not execution_plan:
+                    # Route to orchestrator
+            ```
+        """
+        from osprey.state import StateManager
+        return StateManager.get_execution_plan(self._state)
+
+    def get_current_step_index(self) -> int:
+        """Get current step index from state.
+
+        Returns:
+            Current step index (defaults to 0 if not set)
+
+        Example:
+            ```python
+            async def execute(self) -> dict[str, Any]:
+                current_index = self.get_current_step_index()
+            ```
+        """
+        from osprey.state import StateManager
+        return StateManager.get_current_step_index(self._state)
+
+    def get_current_step(self):
+        """Get current execution step from state.
+
+        Returns:
+            PlannedStep: Current step dictionary with capability, task_objective, etc.
+
+        Raises:
+            RuntimeError: If execution plan is missing or step index is invalid
+
+        Example:
+            ```python
+            async def execute(self) -> dict[str, Any]:
+                step = self.get_current_step()
+                task_objective = step.get('task_objective')
+            ```
+        """
+        from osprey.state import StateManager
+        return StateManager.get_current_step(self._state)
 
     def __repr__(self) -> str:
         """Return a string representation of the infrastructure node for debugging.

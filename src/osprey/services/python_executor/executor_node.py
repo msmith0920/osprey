@@ -466,10 +466,10 @@ def create_executor_node():
     async def executor_node(state: PythonExecutionState) -> dict[str, Any]:
         """Execute approved Python code."""
 
-        # Define streaming helper here for step awareness
-        from osprey.utils.streaming import get_streamer
-        streamer = get_streamer("python_executor", state)
-        streamer.status("Executing Python code...")
+        # Get logger with streaming support
+        from osprey.utils.logger import get_logger
+        logger = get_logger("python_executor", state=state)
+        logger.status("Executing Python code...")
 
         # Check if we have code to execute
         generated_code = state.get("generated_code")
@@ -536,9 +536,7 @@ def create_executor_node():
                 state
             )
 
-            streamer.status("Python code executed successfully")
-
-            logger.info("Code execution completed successfully")
+            logger.success("Python code executed successfully")
 
             return {
                 "is_successful": True,

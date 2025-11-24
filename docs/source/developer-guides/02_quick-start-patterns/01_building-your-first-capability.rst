@@ -75,11 +75,7 @@ Step 2: Implement Capability
 
    from typing import Dict, Any
    from osprey.base import BaseCapability, capability_node
-   from osprey.utils.logger import get_logger
-   from osprey.utils.streaming import get_streamer
    from applications.my_app.context_classes import ProcessedDataContext
-
-   logger = get_logger("data_processor")
 
    @capability_node
    class DataProcessorCapability(BaseCapability):
@@ -92,11 +88,13 @@ Step 2: Implement Capability
 
        async def execute(self) -> Dict[str, Any]:
            """Execute the capability's core business logic."""
+           # Get unified logger with automatic streaming
+           logger = self.get_logger()
+
            current_task = self.get_task_objective()
-           streamer = get_streamer("my_app", self._state)
 
            try:
-               streamer.status("Processing your request...")
+               logger.status("Processing your request...")
 
                # Process the user query
                user_query = current_task.lower() if current_task else ""
@@ -104,6 +102,9 @@ Step 2: Implement Capability
                    "word_count": len(user_query.split()) if user_query else 0,
                    "contains_numbers": any(char.isdigit() for char in user_query),
                }
+
+               # Detailed logging (CLI only)
+               logger.info(f"Processed query: {len(user_query)} characters")
 
                # Create structured context
                context = ProcessedDataContext(
@@ -113,7 +114,7 @@ Step 2: Implement Capability
                )
 
                # Store context and return state updates
-               streamer.status("Processing completed!")
+               logger.success("Processing completed!")
                return self.store_output_context(context)
 
            except Exception as e:
@@ -124,6 +125,17 @@ Helper Methods Reference
 ------------------------
 
 Instance-based capabilities provide access to helper methods that eliminate boilerplate code:
+
+**get_logger()** - Get unified logger with automatic streaming
+
+.. code-block:: python
+
+   async def execute(self) -> Dict[str, Any]:
+       logger = self.get_logger()  # Uses capability name and state automatically
+
+       logger.status("Processing data...")  # Logs to CLI + streams to web UI
+       logger.info("Detailed information")  # Logs to CLI only
+       logger.success("Completed!")          # Logs to CLI + streams to web UI
 
 **get_task_objective()** - Get the current task
 
@@ -273,23 +285,33 @@ Add custom error classification for domain-specific retry logic:
 Streaming Updates
 -----------------
 
-Provide progress feedback during operations:
+Provide progress feedback during operations using the unified logger (see :ref:`framework-logging-streaming` for complete details on logging and streaming behavior):
 
 .. code-block:: python
 
    async def execute(self) -> Dict[str, Any]:
-       streamer = get_streamer("my_app", self._state)
+       # Get unified logger with automatic streaming support
+       logger = self.get_logger()
 
-       streamer.status("Phase 1: Extracting data...")
+       logger.status("Phase 1: Extracting data...")
        raw_data = await extract_data()
 
-       streamer.status("Phase 2: Processing data...")
+       logger.status("Phase 2: Processing data...")
        processed_data = await process_data(raw_data)
 
-       streamer.status("Phase 3: Storing results...")
+       logger.status("Phase 3: Storing results...")
        context = create_context(processed_data)
 
+       logger.success("All phases complete!")
        return self.store_output_context(context)
+
+The ``status()`` method automatically logs to CLI and streams to web UI.
+Use ``info()`` for detailed logging that only appears in CLI:
+
+.. code-block:: python
+
+   logger.info(f"Processing {len(raw_data)} items")  # CLI only
+   logger.status("Processing data...")  # CLI + web UI
 
 Common Issues
 =============

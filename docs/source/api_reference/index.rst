@@ -77,9 +77,7 @@ API Reference
 
         **Manage LLM models** → :func:`~osprey.models.get_model` + :func:`~osprey.models.get_chat_completion`
 
-        **Configure logging** → :func:`~osprey.utils.logger.get_logger` + :class:`~osprey.utils.logger.ComponentLogger`
-
-        **Stream responses** → :func:`~osprey.utils.streaming.get_streamer` + :class:`~osprey.utils.streaming.StreamWriter`
+        **Configure logging and streaming** → :func:`~osprey.utils.logger.get_logger` + :class:`~osprey.utils.logger.ComponentLogger`
 
       .. tab-item:: By System Component
          :class-content: component-tab

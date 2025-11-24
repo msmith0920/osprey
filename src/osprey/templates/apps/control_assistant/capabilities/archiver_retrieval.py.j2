@@ -49,8 +49,6 @@ from osprey.connectors.factory import ConnectorFactory
 from osprey.context.context_manager import ContextManager
 from osprey.registry import get_registry
 from osprey.state import AgentState, StateManager
-from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
 
 # Application imports
 from ..context_classes import ArchiverDataContext, ChannelAddressesContext
@@ -119,13 +117,13 @@ class ArchiverRetrievalCapability(BaseCapability):
             ArchiverDataError: If data retrieval fails.
         """
 
-        # Define streaming helper
-        streamer = get_streamer("archiver_retrieval", self._state)
+        # Get unified logger with automatic streaming
+        logger = self.get_logger()
 
         # Get task description for logging
         task_objective = self.get_task_objective(default='unknown')
         logger.info(f"Starting archiver data retrieval: {task_objective}")
-        streamer.status("Initializing archiver data retrieval...")
+        logger.status("Initializing archiver data retrieval...")
 
         try:
             # Extract required contexts from execution state
@@ -139,7 +137,7 @@ class ArchiverRetrievalCapability(BaseCapability):
             if not channels_to_retrieve or len(channels_to_retrieve) == 0:
                 raise ArchiverDependencyError("No channel addresses available for archiver data retrieval. The channel finding step may have failed to locate suitable channels.")
 
-            streamer.status(f"Found {len(channels_to_retrieve)} channels, retrieving data...")
+            logger.status(f"Found {len(channels_to_retrieve)} channels, retrieving data...")
 
             logger.debug(f"Retrieving archiver data for {len(channels_to_retrieve)} channels from {time_range_context.start_date} to {time_range_context.end_date}")
 
@@ -161,7 +159,7 @@ class ArchiverRetrievalCapability(BaseCapability):
                     precision_ms=precision_ms
                 )
 
-                streamer.status("Converting archiver data to structured format...")
+                logger.status("Converting archiver data to structured format...")
 
                 # Extract timestamps from DataFrame index
                 timestamps = [ts.to_pydatetime() for ts in archiver_df.index]
@@ -179,7 +177,7 @@ class ArchiverRetrievalCapability(BaseCapability):
                 # Always disconnect connector
                 await connector.disconnect()
 
-            streamer.status("Creating archiver data context...")
+            logger.status("Creating archiver data context...")
 
             # Create rich context object
             archiver_context = ArchiverDataContext(
@@ -199,7 +197,7 @@ class ArchiverRetrievalCapability(BaseCapability):
 
         except Exception as e:
             logger.error(f"Archiver data retrieval failed: {e}")
-            streamer.error(f"Archiver data retrieval failed: {str(e)}")
+            logger.error(f"Archiver data retrieval failed: {str(e)}")
             raise
 
     def process_extracted_contexts(self, contexts):

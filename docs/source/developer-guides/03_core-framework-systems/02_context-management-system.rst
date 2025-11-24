@@ -329,6 +329,35 @@ Most of the time, you want to handle both single and multiple contexts flexibly 
 3. Use ``"multiple"`` only when truly enforcing 2+ items (e.g., comparisons)
 4. Document your normalization logic in ``process_extracted_contexts()`` docstring
 
+Using Context Objects
+^^^^^^^^^^^^^^^^^^^^^
+
+After extracting contexts, use their attributes directly without redundant nesting:
+
+.. code-block:: python
+
+   # ✅ RECOMMENDED: Use context attributes directly
+   location, = self.get_required_contexts()
+   weather_data = await fetch_weather(location.city, location.country)
+   # Or pass the entire context if your function expects it
+   weather_data = await fetch_weather(location)
+
+   # ✅ GOOD: Access context data fields
+   time_range, = self.get_required_contexts()
+   data = query_database(time_range.start_date, time_range.end_date)
+
+   # ✅ GOOD: Work with lists from context
+   channels, = self.get_required_contexts()
+   for channel in channels.channel_list:
+       values = await read_pv(channel)
+
+   # ❌ AVOID: Redundant nesting (anti-pattern)
+   location_context, = self.get_required_contexts()
+   weather_data = await fetch_weather(location_context.location)
+   # This implies poor context design with unnecessary attribute wrapping
+
+**Design Principle:** Context classes should be designed so their attributes contain the data needed directly. Avoid creating contexts that simply wrap a single value with the same name as the context type.
+
 Manual Context Management
 --------------------------
 
@@ -563,7 +592,8 @@ Handle missing context gracefully:
    required_data = context_manager.get_context("REQUIRED_TYPE", "key")
 
    if not required_data:
-       return {"error": "Required data not available"}
+       # Raise exception instead of returning error dict
+       raise ValueError("Required data not available")
 
 **"Context serialization failed"**
 

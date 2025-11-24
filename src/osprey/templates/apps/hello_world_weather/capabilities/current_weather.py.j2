@@ -22,8 +22,6 @@ from osprey.base import (
 from osprey.base.errors import ErrorClassification, ErrorSeverity
 from osprey.registry import get_registry
 from osprey.state import AgentState, StateManager
-from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
 
 from {{ package_name }}.context_classes import CurrentWeatherContext
 from {{ package_name }}.mock_weather_api import weather_api
@@ -53,7 +51,8 @@ class CurrentWeatherCapability(BaseCapability):
         Extracts the location from the user's query, calls the mock weather API,
         and returns a structured CurrentWeatherContext with temperature and conditions.
         """
-        streamer = get_streamer("current_weather", self._state)
+        # Get unified logger with automatic streaming support
+        logger = self.get_logger()
 
         try:
             # Extract location from user's query
@@ -67,7 +66,7 @@ class CurrentWeatherCapability(BaseCapability):
                 location = "Prague"
 
             # Get weather data
-            streamer.status(f"Getting weather for {location}...")
+            logger.status(f"Getting weather for {location}...")
             weather = weather_api.get_current_weather(location)
 
             # Create context with the results
@@ -78,7 +77,7 @@ class CurrentWeatherCapability(BaseCapability):
                 timestamp=weather.timestamp
             )
 
-            streamer.status(f"Weather retrieved: {location} - {weather.temperature}°C")
+            logger.status(f"Weather retrieved: {location} - {weather.temperature}°C")
             return self.store_output_context(context)
 
         except Exception as e:

@@ -240,11 +240,8 @@ from osprey.base.examples import OrchestratorGuide, OrchestratorExample, TaskCla
 from osprey.context import CapabilityContext
 from osprey.state import StateManager
 from osprey.registry import get_registry
-from osprey.utils.streaming import get_streamer
-from osprey.utils.logger import get_logger
 
 
-logger = get_logger("{capability_name}")
 registry = get_registry()
 
 
@@ -323,32 +320,28 @@ class {class_name}(BaseCapability):
     provides = ["{context_type}"]
     requires = []  # TODO: Add any context types this capability depends on
 
-    @staticmethod
-    async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
+    async def execute(self) -> Dict[str, Any]:
         """Execute {capability_name} capability.
 
         TODO: IMPLEMENT THE ACTUAL BUSINESS LOGIC HERE.
 
         This is a placeholder. You need to:
-        1. Get the current step from state
-        2. Extract task_objective and any inputs
+        1. Extract task_objective and any inputs using self.get_task_objective()
+        2. Extract required contexts using self.get_required_contexts()
         3. Perform the actual work
         4. Create a proper context object with results
-        5. Store it in state and return state updates
-
-        Args:
-            state: Current agent state
-            **kwargs: Additional keyword arguments
+        5. Store it in state using self.store_output_context()
 
         Returns:
             State updates dictionary
         """
-        step = StateManager.get_current_step(state)
-        task_objective = step.get('task_objective', 'unknown')
+        # Get unified logger with automatic streaming support
+        logger = self.get_logger()
 
-        streamer = get_streamer("{capability_name}", state)
-        logger.info(f"{capability_name}: {{task_objective}}")
-        streamer.status(f"Processing {{task_objective}}...")
+        # Extract task objective (with automatic fallback to current task)
+        task_objective = self.get_task_objective()
+
+        logger.status(f"Processing {{task_objective}}...")
 
         try:
             # TODO: IMPLEMENT YOUR ACTUAL BUSINESS LOGIC HERE
@@ -370,16 +363,9 @@ class {class_name}(BaseCapability):
                 # etc.
             )
 
-            # 3. Store in state
-            state_updates = StateManager.store_context(
-                state,
-                registry.context_types.{context_type},
-                step.get("context_key"),
-                context
-            )
-
-            streamer.status(f"{capability_name} complete")
-            return state_updates
+            # 3. Store in state using new pattern and return updates
+            logger.status(f"{capability_name} complete")
+            return self.store_output_context(context)
 
         except Exception as e:
             error_msg = f"{capability_name} failed: {{str(e)}}"

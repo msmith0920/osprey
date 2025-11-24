@@ -31,8 +31,6 @@ from osprey.base.examples import (
 from osprey.base.planning import PlannedStep
 from osprey.registry import get_registry
 from osprey.state import StateManager
-from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
 
 # Application imports
 from ..context_classes import ChannelAddressesContext
@@ -116,11 +114,12 @@ class ChannelFindingCapability(BaseCapability):
         # Extract search query from task objective
         search_query = self.get_task_objective(default='unknown')
 
-        streamer = get_streamer("channel_finding", self._state)
+        # Get unified logger with automatic streaming
+        logger = self.get_logger()
 
         # Log the query
         logger.info(f'Channel finding query: "{search_query}"')
-        streamer.status("Finding channel addresses...")
+        logger.status("Finding channel addresses...")
 
         # Configure logging for channel finder service to show detailed pipeline logs
         # This ensures the hierarchical navigation logs (Level: system, Selected, etc.) are visible
@@ -138,7 +137,7 @@ class ChannelFindingCapability(BaseCapability):
             # Initialize service (reads pipeline_mode from config.yml at runtime)
             service = ChannelFinderService()
 
-            streamer.status("Searching channel database...")
+            logger.status("Searching channel database...")
 
             # Execute channel finding
             result = await service.find_channels(search_query)
@@ -160,7 +159,7 @@ class ChannelFindingCapability(BaseCapability):
             for ch in result.channels:
                 logger.debug(f"  {ch.channel} -> {ch.address}")
 
-        streamer.status("Creating channel context...")
+        logger.status("Creating channel context...")
 
         # Convert service layer response to framework context
         # CRITICAL: Extract ADDRESSES, not channel names
@@ -180,7 +179,7 @@ class ChannelFindingCapability(BaseCapability):
             description=description,
         )
 
-        streamer.status("Channel finding complete")
+        logger.status("Channel finding complete")
 
         # Store result in execution context
         return self.store_output_context(channel_context)

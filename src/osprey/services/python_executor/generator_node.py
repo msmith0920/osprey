@@ -11,11 +11,11 @@ from typing import Any
 from osprey.models import get_chat_completion
 from osprey.utils.config import get_model_config
 from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
 
 from .exceptions import CodeGenerationError
 from .models import PythonExecutionState
 
+# Module-level logger for class methods
 logger = get_logger("python_generator")
 
 
@@ -66,7 +66,7 @@ class LLMCodeGenerator:
                 generation_attempt=1,
                 error_chain=error_chain,
                 technical_details={"original_error": str(e)}
-            )
+            ) from e
 
     def _build_code_generation_prompt(self, request, error_chain: list[str]) -> str:
         """Build prompt for code generation with error feedback"""
@@ -152,6 +152,9 @@ def create_generator_node():
     async def generator_node(state: PythonExecutionState) -> dict[str, Any]:
         """Generate Python code using LLM."""
 
+        # Get logger with streaming support for this node
+        logger = get_logger("python_generator", state=state)
+
         # Debug log what we received in state
         logger.debug(f"Generator node received state type: {type(state)}")
         logger.debug(f"Generator node state keys: {list(state.keys()) if hasattr(state, 'keys') else 'no keys method'}")
@@ -160,9 +163,7 @@ def create_generator_node():
         else:
             logger.error(f"NO REQUEST FOUND IN STATE! State content: {state}")
 
-        # Define streaming helper here for step awareness
-        streamer = get_streamer("python_generator", state)
-        streamer.status("Generating Python code...")
+        logger.status("Generating Python code...")
 
         # Use existing code generator logic - access request data via state.request
         generator = LLMCodeGenerator()
@@ -175,9 +176,7 @@ def create_generator_node():
                 state.get("error_chain", [])  # Use service state for error tracking
             )
 
-            streamer.status(f"Generated {len(generated_code)} characters of code")
-
-            logger.info(f"Code generated successfully: {len(generated_code)} characters")
+            logger.success(f"Generated {len(generated_code)} characters of code")
 
             # Update state with generated code
             return {

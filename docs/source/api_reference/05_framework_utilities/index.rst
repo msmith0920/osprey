@@ -18,10 +18,28 @@ Multi-provider LLM model management for structured generation and direct complet
 Developer Tools
 ===============
 
-Component logging and streaming utilities for framework development.
+Unified logging system with automatic LangGraph streaming support for framework development.
 
-Logging System
---------------
+Logging and Streaming
+---------------------
+
+The framework provides a unified logging API that automatically handles both CLI output
+and web UI streaming. Use ``logger.status()`` for high-level updates that should appear
+in both interfaces, and standard logging methods (``info()``, ``debug()``) for detailed
+CLI-only output.
+
+**Recommended Pattern:**
+
+.. code-block:: python
+
+   # In capabilities - automatic streaming
+   logger = self.get_logger()
+   logger.status("Creating execution plan...")  # Logs + streams
+   logger.info("Active capabilities: [...]")   # Logs only
+
+   # In other nodes with state
+   logger = get_logger("orchestrator", state=state)
+   logger.status("Processing...")  # Logs + streams
 
 .. currentmodule:: osprey.utils.logger
 
@@ -31,8 +49,15 @@ Logging System
    :members:
    :show-inheritance:
 
-Streaming System
-----------------
+Legacy Streaming API (Deprecated)
+----------------------------------
+
+.. deprecated:: 0.9.2
+   The separate streaming API is deprecated in favor of the unified logging system.
+   Use :meth:`osprey.base.capability.BaseCapability.get_logger` in capabilities or
+   :func:`get_logger` with ``state`` parameter for automatic streaming support.
+
+For backward compatibility only. New code should use the unified logging system above.
 
 .. currentmodule:: osprey.utils.streaming
 

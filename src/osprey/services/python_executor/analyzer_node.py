@@ -12,7 +12,6 @@ from typing import Any
 from osprey.approval.approval_system import create_code_approval_interrupt
 from osprey.utils.config import get_full_configuration
 from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
 
 from .exceptions import (
     CodeGenerationError,
@@ -247,9 +246,9 @@ def create_analyzer_node():
     async def analyzer_node(state: PythonExecutionState) -> dict[str, Any]:
         """Perform static analysis and package approval data to avoid double execution."""
 
-        # Define streaming helper here for step awareness
-        streamer = get_streamer("python_analyzer", state)
-        streamer.status("Analyzing Python code...")
+        # Get logger with streaming support
+        logger = get_logger("python_analyzer", state=state)
+        logger.status("Analyzing Python code...")
 
         # Check if we have code to analyze
         generated_code = state.get("generated_code")
@@ -297,7 +296,7 @@ def create_analyzer_node():
             requires_approval = analysis_result.needs_approval
 
             status_msg = "Code requires approval" if requires_approval else "Code analysis passed"
-            streamer.status(status_msg)
+            logger.status(status_msg)
 
             if requires_approval:
                 # CRITICAL: Create approval interrupt data here to avoid double execution

@@ -398,8 +398,6 @@ from osprey.base.examples import OrchestratorGuide, OrchestratorExample, TaskCla
 from osprey.context import CapabilityContext
 from osprey.state import StateManager
 from osprey.registry import get_registry
-from osprey.utils.streaming import get_streamer
-from osprey.utils.logger import get_logger
 
 # MCP and LangGraph imports
 try:
@@ -415,7 +413,6 @@ except ImportError:
 from osprey.utils.config import get_model_config, get_provider_config
 
 
-logger = get_logger("{self.capability_name}")
 registry = get_registry()
 
 
@@ -594,20 +591,21 @@ class {class_name}(BaseCapability):
 
         return cls._react_agent
 
-    @staticmethod
-    async def execute(state: AgentState, **kwargs) -> Dict[str, Any]:
+    async def execute(self) -> Dict[str, Any]:
         """Execute {self.server_name} MCP capability using ReAct agent."""
-        step = StateManager.get_current_step(state)
-        task_objective = step.get('task_objective', 'unknown')
+        # Get unified logger with automatic streaming support
+        logger = self.get_logger()
 
-        streamer = get_streamer("{self.capability_name}", state)
+        # Extract task objective
+        task_objective = self.get_task_objective()
+
         logger.info(f"{self.server_name} MCP: {{task_objective}}")
-        streamer.status(f"Initializing {self.server_name} ReAct agent...")
+        logger.status(f"Initializing {self.server_name} ReAct agent...")
 
         try:
             # Get ReAct agent
             agent = await {class_name}._get_react_agent()
-            streamer.status(f"Agent reasoning about task...")
+            logger.status(f"Agent reasoning about task...")
 
             # Invoke ReAct agent
             response = await agent.ainvoke({{
@@ -630,16 +628,9 @@ class {class_name}(BaseCapability):
                 description=f"{self.server_name} ReAct agent: {{task_objective}}"
             )
 
-            # Store in state
-            state_updates = StateManager.store_context(
-                state,
-                registry.context_types.{context_type},
-                step.get("context_key"),
-                context
-            )
-
-            streamer.status(f"{self.server_name} ReAct agent complete")
-            return state_updates
+            # Store in state and return updates
+            logger.status(f"{self.server_name} ReAct agent complete")
+            return self.store_output_context(context)
 
         except {self.server_name}ConnectionError:
             raise

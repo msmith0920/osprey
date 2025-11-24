@@ -36,13 +36,8 @@ from osprey.state.state_manager import StateManager
 from osprey.utils.config import get_agent_dir, get_model_config
 
 # Factory code consolidated inline as helper function
-from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
-
 if TYPE_CHECKING:
     from osprey.base.errors import ErrorClassification
-
-logger = get_logger("orchestrator")
 
 
 # =============================================================================
@@ -253,11 +248,8 @@ class OrchestrationNode(BaseInfrastructureNode):
         """
         state = self._state
 
-        # Explicit logger retrieval - professional practice
-        logger = get_logger("orchestrator")
-
-        # Define streaming helper here for step awareness
-        streamer = get_streamer("orchestrator", state)
+        # Get unified logger with automatic streaming support
+        logger = self.get_logger()
 
         # =====================================================================
         # STEP 1: CHECK FOR APPROVED PLAN IN AGENT STATE (HIGHEST PRIORITY)
@@ -277,8 +269,6 @@ class OrchestrationNode(BaseInfrastructureNode):
                 plan_source = file_load_result["source"]
                 logger.success(f"Using approved execution plan from file ({plan_source})")
 
-                streamer.status(f"Using approved execution plan from file ({plan_source})")
-
                 # Clean up processed plan files
                 _cleanup_processed_plan_files(logger=logger)
 
@@ -296,8 +286,6 @@ class OrchestrationNode(BaseInfrastructureNode):
                     logger.warning(
                         f"File loading failed ({file_load_result.get('error')}), using in-memory plan"
                     )
-
-                    streamer.status("Using approved execution plan from memory")
 
                     # Create state updates with explicit cleanup of approval and error state
                     return {
@@ -317,7 +305,7 @@ class OrchestrationNode(BaseInfrastructureNode):
         # STEP 2: EXTRACT CURRENT TASK AND ACTIVE CAPABILITIES
         # =====================================================================
 
-        current_task = StateManager.get_current_task(state)
+        current_task = self.get_current_task()
         if not current_task:
             raise ValueError("No current task available for orchestration")
 
@@ -426,7 +414,7 @@ class OrchestrationNode(BaseInfrastructureNode):
         # Create system prompt
         system_prompt = await create_system_prompt()
 
-        streamer.status("Generating execution plan...")
+        logger.status("Generating execution plan...")
 
         # Call LLM directly for execution planning
         logger.key_info("Creating execution plan with orchestrator LLM")
@@ -466,10 +454,10 @@ class OrchestrationNode(BaseInfrastructureNode):
             # Orchestrator hallucinated non-existent capabilities - trigger re-classification
             logger.error(f"Execution plan validation failed: {e}")
             logger.warning("Triggering re-classification due to hallucinated capabilities")
-            streamer.status("Re-planning due to invalid capabilities...")
+            logger.status("Re-planning due to invalid capabilities...")
 
             # Raise exception to trigger reclassification through error system
-            raise ReclassificationRequiredError(f"Orchestrator validation failed: {e}")
+            raise ReclassificationRequiredError(f"Orchestrator validation failed: {e}") from e
 
         # =====================================================================
         # STEP 4: HANDLE RESULTING EXECUTION PLAN
@@ -478,11 +466,11 @@ class OrchestrationNode(BaseInfrastructureNode):
         if _is_planning_mode_enabled(state):
             logger.info("PLANNING MODE DETECTED - entering approval workflow")
             # LangGraph handles caching automatically - no manual caching needed
-            await _handle_planning_mode(execution_plan, current_task, state, logger, streamer)
+            await _handle_planning_mode(execution_plan, current_task, state, logger)
         else:
             logger.info("Planning mode not enabled - proceeding with normal execution")
 
-        streamer.status("Execution plan created")
+        logger.status("Execution plan created")
 
         logger.key_info("Orchestration processing completed")
 
@@ -679,13 +667,11 @@ def _cleanup_processed_plan_files(logger=None):
 
 
 async def _handle_planning_mode(
-    execution_plan: ExecutionPlan, current_task: str, state: AgentState, logger, streamer
+    execution_plan: ExecutionPlan, current_task: str, state: AgentState, logger
 ):
     """Handle planning mode using structured approval system with file-based plan storage."""
 
     logger.approval("Planning mode enabled - requesting plan approval")
-
-    streamer.status("Saving execution plan and requesting approval...")
 
     # Save execution plan to file for human approval workflow
     save_result = _save_execution_plan_to_file(

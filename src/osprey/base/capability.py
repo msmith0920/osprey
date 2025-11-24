@@ -649,6 +649,58 @@ class BaseCapability(ABC):
 
         return merged
 
+    def get_logger(self):
+        """Get unified logger with automatic streaming support.
+
+        Creates a logger that:
+        - Uses this capability's name automatically
+        - Has access to state for streaming via self._state
+        - Streams high-level messages automatically when in LangGraph context
+        - Logs to CLI with Rich formatting
+
+        The logger intelligently handles both CLI output and web UI streaming through
+        a single API. High-level status updates (status, error, success) automatically
+        stream to the web UI, while detailed logging (info, debug) goes to CLI only
+        by default.
+
+        Returns:
+            ComponentLogger instance with streaming capability
+
+        Example:
+            ```python
+            async def execute(self) -> dict[str, Any]:
+                logger = self.get_logger()
+
+                # High-level status - logs + streams automatically
+                logger.status("Creating execution plan...")
+
+                # Detailed info - logs only (unless explicitly requested)
+                logger.info(f"Active capabilities: {capabilities}")
+
+                # Explicit streaming for specific info
+                logger.info("Step 1 of 5 complete", stream=True, progress=0.2)
+
+                # Errors always stream
+                logger.error("Validation failed", validation_errors=[...])
+
+                # Success with metadata
+                logger.success("Plan created", steps=5, total_time=2.3)
+
+                return self.store_output_context(result)
+            ```
+
+        .. note::
+           The logger uses lazy initialization for streaming, so it gracefully
+           handles contexts where LangGraph streaming is not available (tests,
+           utilities, CLI-only execution).
+
+        .. seealso::
+           :class:`ComponentLogger` : Logger class with streaming methods
+           :func:`get_logger` : Underlying logger factory function
+        """
+        from osprey.utils.logger import get_logger
+        return get_logger(self.name, state=self._state)
+
     @abstractmethod
     async def execute(self) -> dict[str, Any]:
         """Execute the main capability logic with comprehensive state management.

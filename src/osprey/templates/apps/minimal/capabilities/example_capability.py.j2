@@ -165,11 +165,10 @@ class ExampleCapability(BaseCapability):
         """
 
         # ──────────────────────────────────────────────────────────────────
-        # 3.1: Setup streaming for user feedback (optional but recommended)
+        # 3.1: Setup logging with automatic streaming support
         # ──────────────────────────────────────────────────────────────────
-        from osprey.utils.streaming import get_streamer
-        streamer = get_streamer("example_capability", self._state)
-        streamer.status("Starting example capability execution...")
+        logger = self.get_logger()
+        logger.status("Starting example capability execution...")
 
         logger.debug(f"Executing example_capability for step: {self._step.get('context_key')}")
 
@@ -242,7 +241,7 @@ class ExampleCapability(BaseCapability):
         # ──────────────────────────────────────────────────────────────────
         # 3.6: Update streaming status
         # ──────────────────────────────────────────────────────────────────
-        streamer.status("Example capability completed")
+        logger.success("Example capability completed")
 
         # ──────────────────────────────────────────────────────────────────
         # 3.7: Store output context and return

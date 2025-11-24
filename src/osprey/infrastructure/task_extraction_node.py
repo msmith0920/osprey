@@ -29,8 +29,8 @@ from osprey.registry import get_registry
 # Updated imports for LangGraph compatibility with TypedDict state
 from osprey.utils.config import get_model_config
 from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
 
+# Module-level logger for helper functions
 logger = get_logger("task_extraction")
 
 # =============================================================================
@@ -244,11 +244,8 @@ class TaskExtractionNode(BaseInfrastructureNode):
         """
         state = self._state
 
-        # Explicit logger retrieval - professional practice
-        logger = get_logger("task_extraction")
-
-        # Define streaming helper here for step awareness
-        streamer = get_streamer("task_extraction", state)
+        # Get unified logger with automatic streaming support
+        logger = self.get_logger()
 
         # Get native LangGraph messages from flat state structure (move outside try block)
         messages = state["messages"]
@@ -258,11 +255,11 @@ class TaskExtractionNode(BaseInfrastructureNode):
 
         if bypass_enabled:
             logger.info("Task extraction bypass enabled - using full context with data sources")
-            streamer.status(
+            logger.status(
                 "Bypassing task extraction - retrieving data and formatting full context"
             )
         else:
-            streamer.status("Extracting actionable task from conversation")
+            logger.status("Extracting actionable task from conversation")
         try:
             # Attempt to retrieve context from data sources if available
             retrieval_result = None
@@ -302,14 +299,14 @@ class TaskExtractionNode(BaseInfrastructureNode):
                     f" * Builds on previous context: {processed_task.depends_on_chat_history}"
                 )
                 logger.info(f" * Uses memory context: {processed_task.depends_on_user_memory}")
-                streamer.status("Task extraction bypassed - full context ready")
+                logger.success("Task extraction bypassed - full context ready")
             else:
                 logger.info(f" * Extracted: '{processed_task.task[:100]}...'")
                 logger.info(
                     f" * Builds on previous context: {processed_task.depends_on_chat_history}"
                 )
                 logger.info(f" * Uses memory context: {processed_task.depends_on_user_memory}")
-                streamer.status("Task extraction completed")
+                logger.success("Task extraction completed")
 
             # Create direct state update with correct field names
             return {
@@ -319,7 +316,6 @@ class TaskExtractionNode(BaseInfrastructureNode):
             }
 
         except Exception as e:
-            # Task extraction failed
+            # Task extraction failed - error() automatically streams
             logger.error(f"Task extraction failed: {e}")
-            streamer.error(f"Task extraction failed: {str(e)}")
             raise e  # Raise original error for better debugging

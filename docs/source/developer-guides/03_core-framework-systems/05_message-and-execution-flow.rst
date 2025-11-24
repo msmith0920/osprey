@@ -301,7 +301,7 @@ OrchestrationNode creates detailed execution plans with LLM coordination.
 
            # Handle planning mode (approval workflow)
            if _is_planning_mode_enabled(state):
-               await _handle_planning_mode(execution_plan, current_task, logger, streamer)
+               await _handle_planning_mode(execution_plan, current_task, state, logger)
                # Execution pauses here until user approval
 
            return {

@@ -66,8 +66,8 @@ from osprey.services.memory_storage import MemoryContent, get_memory_storage_man
 from osprey.state import AgentState, ChatHistoryFormatter, StateManager
 from osprey.utils.config import get_model_config, get_session_info
 from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
 
+# Module-level logger for helper functions
 logger = get_logger("memory")
 
 
@@ -557,9 +557,9 @@ class MemoryOperationsCapability(BaseCapability):
            :func:`osprey.approval.get_approval_resume_data` : Approval resume handling
         """
 
-
-        # Define streaming helper here for step awareness
-        streamer = get_streamer("memory", self._state)
+        # Get unified logger with automatic streaming support
+        logger = self.get_logger()
+        state = self._state
 
         # =====================================================================
         # PHASE 1: CHECK FOR APPROVED MEMORY OPERATION (HIGHEST PRIORITY)
@@ -569,7 +569,7 @@ class MemoryOperationsCapability(BaseCapability):
 
         if has_approval_resume and approved_payload:
             logger.success("Using approved memory operation from agent state")
-            streamer.status("Executing approved memory operation...")
+            logger.status("Executing approved memory operation...")
 
             # Execute the approved memory operation
             content = approved_payload.get("content")
@@ -613,21 +613,16 @@ class MemoryOperationsCapability(BaseCapability):
             operation = await _classify_memory_operation(task_objective, logger)
 
             if operation == MemoryOperation.RETRIEVE:
-                streamer.status("Retrieving user memory...")
+                logger.status("Retrieving user memory...")
 
                 memory_context = await _perform_memory_retrieve_operation(user_id, logger)
-                streamer.status("Memory retrieval complete")
+                logger.status("Memory retrieval complete")
 
-                # Store context using StateManager
-                return StateManager.store_context(
-                    self._state,
-                    "MEMORY_CONTEXT",
-                    step.get("context_key"),
-                    memory_context
-                )
+                # Store context using helper method
+                return self.store_output_context(memory_context)
 
             elif operation == MemoryOperation.SAVE:
-                streamer.status("Extracting content to save...")
+                logger.status("Extracting content to save...")
 
                 # Extract content to save from chat history using correct LangGraph state access
                 messages = state.get("messages", [])
@@ -692,7 +687,7 @@ class MemoryOperationsCapability(BaseCapability):
                 if not memory_extraction_result:
                     raise ContentExtractionError("No content specified for memory save operation")
 
-                streamer.status("Preparing memory content...")
+                logger.status("Preparing memory content...")
 
                 # =====================================================================
                 # PHASE 3: APPROVAL CHECK AND INTERRUPT HANDLING
@@ -705,7 +700,7 @@ class MemoryOperationsCapability(BaseCapability):
                 if decision.needs_approval:
                     logger.info(f"Memory operation requires approval: {decision.reasoning}")
 
-                    streamer.status("Requesting memory approval...")
+                    logger.status("Requesting memory approval...")
 
                     # Create structured memory approval interrupt
                     interrupt_data = create_memory_approval_interrupt(
@@ -725,21 +720,16 @@ class MemoryOperationsCapability(BaseCapability):
                     logger.info("Memory save operation allowed without approval")
 
                     # Execute the memory save operation
-                    streamer.status("Saving to memory...")
+                    logger.status("Saving to memory...")
                     memory_context = await _perform_memory_save_operation(
                         content=memory_extraction_result.content,
                         user_id=user_id,
                         logger=logger
                     )
-                    streamer.status("Memory saved successfully")
+                    logger.status("Memory saved successfully")
 
-                    # Store context using StateManager
-                    return StateManager.store_context(
-                        self._state,
-                        "MEMORY_CONTEXT",
-                        step.get("context_key"),
-                        memory_context
-                    )
+                    # Store context using helper method
+                    return self.store_output_context(memory_context)
             else:
                 raise ContentExtractionError("Unknown memory operation. Supported operations: save content to memory, show memory")
 

@@ -246,24 +246,20 @@ Capability Debugging
 
 .. code-block:: python
 
-   from osprey.utils.logger import get_logger
-   from osprey.utils.streaming import get_streamer
-
-   logger = get_logger("debug_capability")
-
    @capability_node
    class DebuggingCapability(BaseCapability):
        name = "debug_capability"
        description = "Capability with debug instrumentation"
 
        async def execute(self) -> Dict[str, Any]:
+           # Get unified logger with automatic streaming
+           logger = self.get_logger()
+
            logger.debug("=== Capability Execution Started ===")
            logger.debug(f"State keys: {list(self._state.keys())}")
 
-           streamer = get_streamer("my_app", "debug_capability", self._state)
-
            try:
-               streamer.status("Debug: Starting execution...")
+               logger.status("Debug: Starting execution...")
                logger.debug("Business logic starting")
 
                # Your business logic with debug logging
@@ -277,35 +273,42 @@ Capability Debugging
                )
 
                logger.debug("=== Execution Completed ===")
+               logger.success("Debug capability completed")
                return self.store_output_context(context)
 
            except Exception as e:
-               logger.exception(f"Execution failed: {e}")
-               streamer.error(f"Processing failed: {e}")
+               logger.error(f"Execution failed: {e}", exc_info=True)
                raise
 
-Effective Streaming
--------------------
+Effective Logging and Streaming
+--------------------------------
 
 .. code-block:: python
 
    async def execute(self) -> Dict[str, Any]:
-       streamer = get_streamer("my_app", "my_capability", self._state)
+       logger = self.get_logger()
 
        try:
-           streamer.status("Starting data processing...")
+           # High-level status updates stream automatically
+           logger.status("Starting data processing...")
            data = await fetch_data()
 
-           streamer.status(f"Retrieved {len(data)} records")
+           # Detailed info for CLI logs only
+           logger.info(f"Retrieved {len(data)} records")
+
+           # Stream specific progress updates
+           logger.status("Processing batch data...")
            processed = await process_data(data)
 
-           streamer.status("Data processing complete")
+           # Success streams automatically
+           logger.success("Data processing complete")
            context = create_context(processed)
 
            return self.store_output_context(context)
 
        except Exception as e:
-           streamer.error(f"Processing failed: {e}")
+           # Errors automatically stream to web UI
+           logger.error(f"Processing failed: {e}")
            raise
 
 Common Issues

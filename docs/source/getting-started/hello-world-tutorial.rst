@@ -338,43 +338,44 @@ The ``execute()`` method contains your main business logic, which you could call
 
 .. code-block:: python
 
-       async def execute(self) -> Dict[str, Any]:
-           """Execute weather retrieval."""
-           streamer = get_streamer("hello_world_weather", "current_weather", self._state)
+      async def execute(self) -> Dict[str, Any]:
+          """Execute weather retrieval."""
+          # Get unified logger with automatic streaming
+          logger = self.get_logger()
 
-           try:
-               streamer.status("Extracting location from query...")
-               query = self.get_task_objective().lower()
+          try:
+              logger.status("Extracting location from query...")
+              query = self.get_task_objective().lower()
 
-               # Simple location detection
-               location = "San Francisco"  # default
-               if "new york" in query or "nyc" in query:
-                   location = "New York"
-               elif "prague" in query or "praha" in query:
-                   location = "Prague"
+              # Simple location detection
+              location = "San Francisco"  # default
+              if "new york" in query or "nyc" in query:
+                  location = "New York"
+              elif "prague" in query or "praha" in query:
+                  location = "Prague"
 
-               streamer.status(f"Getting weather for {location}...")
-               weather = weather_api.get_current_weather(location)
+              logger.status(f"Getting weather for {location}...")
+              weather = weather_api.get_current_weather(location)
 
-               # Create context object
-               context = CurrentWeatherContext(
-                   location=weather.location,
-                   temperature=weather.temperature,
-                   conditions=weather.conditions,
-                   timestamp=weather.timestamp
-               )
+              # Create context object
+              context = CurrentWeatherContext(
+                  location=weather.location,
+                  temperature=weather.temperature,
+                  conditions=weather.conditions,
+                  timestamp=weather.timestamp
+              )
 
-               # Store context and return state updates
-               streamer.status(f"Weather retrieved: {location} - {weather.temperature}°C")
-               return self.store_output_context(context)
+              # Store context and return state updates
+              logger.success(f"Weather retrieved: {location} - {weather.temperature}°C")
+              return self.store_output_context(context)
 
-           except Exception as e:
-               logger.error(f"Weather retrieval error: {e}")
-               raise
+          except Exception as e:
+              logger.error(f"Weather retrieval error: {e}")
+              raise
 
 .. admonition:: Key Steps
 
-   1. **Framework Setup** - Get streaming utilities using self._state
+   1. **Logger Setup** - Get unified logger using self.get_logger()
    2. **Task Retrieval** - Get task of current execution step
    3. **Location Extraction** - Parse user query to find location (simplified for demo)
    4. **Data Retrieval** - Call your API/service to get actual data
@@ -524,14 +525,10 @@ The classifier guide teaches the LLM when to activate your capability based on u
       )
       from osprey.base.errors import ErrorClassification, ErrorSeverity
       from osprey.registry import get_registry
-      from osprey.state import AgentState, StateManager
-      from osprey.utils.logger import get_logger
-      from osprey.utils.streaming import get_streamer
 
       from weather_agent.context_classes import CurrentWeatherContext
       from weather_agent.mock_weather_api import weather_api
 
-      logger = get_logger("current_weather")
       registry = get_registry()
 
       @capability_node
@@ -546,10 +543,11 @@ The classifier guide teaches the LLM when to activate your capability based on u
 
           async def execute(self) -> Dict[str, Any]:
               """Execute weather retrieval."""
-              streamer = get_streamer("hello_world_weather", "current_weather", self._state)
+              # Get unified logger with automatic streaming support
+              logger = self.get_logger()
 
               try:
-                  streamer.status("Extracting location from query...")
+                  logger.status("Extracting location from query...")
                   query = self.get_task_objective().lower()
 
                   # Simple location detection
@@ -559,20 +557,20 @@ The classifier guide teaches the LLM when to activate your capability based on u
                   elif "prague" in query or "praha" in query:
                       location = "Prague"
 
-                  streamer.status(f"Getting weather for {location}...")
+                  logger.status(f"Getting weather for {location}...")
                   weather = weather_api.get_current_weather(location)
 
                   # Create context object
                   context = CurrentWeatherContext(
                       location=weather.location,
                       temperature=weather.temperature,
-                  conditions=weather.conditions,
-                  timestamp=weather.timestamp
-              )
+                      conditions=weather.conditions,
+                      timestamp=weather.timestamp
+                  )
 
-              # Store context and return
-              streamer.status(f"Weather retrieved: {location} - {weather.temperature}°C")
-              return self.store_output_context(context)
+                  # Store context and return
+                  logger.success(f"Weather retrieved: {location} - {weather.temperature}°C")
+                  return self.store_output_context(context)
 
               except Exception as e:
                   logger.error(f"Weather retrieval error: {e}")

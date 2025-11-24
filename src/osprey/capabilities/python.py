@@ -60,8 +60,8 @@ from osprey.services.python_executor.models import PythonExecutionRequest
 from osprey.state import AgentState, StateManager
 from osprey.utils.config import get_full_configuration
 from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
 
+# Module-level logger for helper functions
 logger = get_logger("python")
 
 
@@ -395,12 +395,13 @@ class PythonCapability(BaseCapability):
         # GENERIC SETUP (needed for both paths)
         # ========================================
 
+        # Get unified logger with automatic streaming support
+        logger = self.get_logger()
+
         # Current step is injected by decorator
         step = self._step
 
-        # Define streaming helper here for step awareness
-        streamer = get_streamer("python", self._state)
-        streamer.status("Initializing Python executor service...")
+        logger.status("Initializing Python executor service...")
 
         # Get Python executor service from registry
         python_service = registry.get_service("python_executor")
@@ -495,7 +496,7 @@ class PythonCapability(BaseCapability):
                 retries=3
             )
 
-            streamer.status("Invoking Python executor service...")
+            logger.status("Invoking Python executor service...")
 
             # Normal service execution using centralized interrupt handler
             service_result = await handle_service_with_interrupts(
@@ -507,7 +508,7 @@ class PythonCapability(BaseCapability):
             )
 
         # Process results - single path for both approval and normal execution
-        streamer.status("Processing Python execution results...")
+        logger.status("Processing Python execution results...")
 
         # Create context using private helper function - ultra-clean!
         results_context = _create_python_context(service_result)
@@ -515,7 +516,7 @@ class PythonCapability(BaseCapability):
         # Service only returns on success, so always provide success feedback
         execution_time = results_context.execution_time
         figure_count = len(results_context.figure_paths)
-        streamer.status(f"Python execution complete - {execution_time:.2f}s, {figure_count} figures")
+        logger.success(f"Python execution complete - {execution_time:.2f}s, {figure_count} figures")
 
         # Store context using StateManager
         result_updates = StateManager.store_context(

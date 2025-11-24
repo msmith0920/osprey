@@ -527,10 +527,9 @@ def infrastructure_node(cls=None, *, quiet=False):
                 from osprey.utils.logger import get_logger
                 logger = get_logger("task_extraction")
 
-                # Define streaming helper here for step awareness
-                from osprey.utils.streaming import get_streamer
-                streamer = get_streamer("task_extraction", state)
-                streamer.status("Processing...")
+                # Get unified logger with automatic streaming
+                logger = self.get_logger()
+                logger.status("Processing...")
 
                 logger.info("Starting task extraction")
 
@@ -680,8 +679,8 @@ def _create_infrastructure_node(cls, quiet=False):
                     instance._step = current_step
 
                 # Execute instance method
-                # Note: Nodes get logger via get_logger(), config via get_config(),
-                # streaming via get_streamer() - no kwargs injection needed
+                # Note: Nodes get logger via self.get_logger() which provides
+                # both logging and automatic streaming - no kwargs injection needed
                 result = await instance.execute()
 
             execution_time = time.time() - start_time

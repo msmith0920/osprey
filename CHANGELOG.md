@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Unified Logging with Automatic Streaming**
+  - Added `BaseCapability.get_logger()` method providing single API for logging and streaming
+  - Enhanced `ComponentLogger` with automatic LangGraph streaming support
+  - New `status()` method for high-level progress updates
+  - Streaming behavior configurable per method with `stream` parameter
+  - Smart defaults: `status()`, `error()`, `success()`, `warning()` stream automatically to web UI
+  - Detailed logging methods (`info()`, `debug()`) remain CLI-only by default
+  - Lazy stream writer initialization with graceful degradation when LangGraph unavailable
+  - Custom metadata support via `**kwargs` on all logging methods
+  - Automatic step tracking integrated with existing TASK_PREPARATION_STEPS
+  - All infrastructure nodes, capabilities, service nodes, and templates migrated to unified pattern
+  - Comprehensive test coverage with 26 test cases in `tests/utils/test_logger.py`
+  - Backward compatible: existing `get_logger()` and `get_streamer()` patterns continue to work
+
 ## [0.9.2] - 2025-11-25
 
 ### 🎉 Major Features

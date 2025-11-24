@@ -55,8 +55,6 @@ from osprey.connectors.factory import ConnectorFactory
 from osprey.context.context_manager import ContextManager
 from osprey.registry import get_registry
 from osprey.state import AgentState, StateManager
-from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
 
 # Import context classes
 from ..context_classes import ChannelAddressesContext, ChannelValue, ChannelValuesContext
@@ -122,9 +120,9 @@ class ChannelValueRetrievalCapability(BaseCapability):
             ChannelAccessError: If channel reading fails.
         """
 
-        # Define streaming helper
-        streamer = get_streamer("channel_value_retrieval", self._state)
-        streamer.status("Starting channel value retrieval...")
+        # Get unified logger with automatic streaming
+        logger = self.get_logger()
+        logger.status("Starting channel value retrieval...")
 
         # Extract channel addresses from execution context
         try:
@@ -132,7 +130,7 @@ class ChannelValueRetrievalCapability(BaseCapability):
         except ValueError as e:
             raise ChannelDependencyError(str(e))
 
-        streamer.status(f"Reading {len(channels_to_read)} channel values...")
+        logger.status(f"Reading {len(channels_to_read)} channel values...")
 
         # Create control system connector from configuration
         # This will use 'mock' for development or 'epics' for production
@@ -145,7 +143,7 @@ class ChannelValueRetrievalCapability(BaseCapability):
             total_channels = len(channels_to_read)
 
             for i, channel_address in enumerate(channels_to_read):
-                streamer.status(f"Reading channel {i+1}/{total_channels}: {channel_address}")
+                logger.status(f"Reading channel {i+1}/{total_channels}: {channel_address}")
 
                 try:
                     # Read PV using connector (returns PVValue with metadata)
@@ -169,7 +167,7 @@ class ChannelValueRetrievalCapability(BaseCapability):
         # Create structured result
         result = ChannelValuesContext(channel_values=channel_values)
 
-        streamer.status(f"Successfully retrieved {result.channel_count} channel values")
+        logger.status(f"Successfully retrieved {result.channel_count} channel values")
 
         logger.info(f"Channel value retrieval result: {result.channel_count} channels retrieved")
 

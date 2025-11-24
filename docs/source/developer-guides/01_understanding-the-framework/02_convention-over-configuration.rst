@@ -106,13 +106,20 @@ Transforms capability classes into LangGraph-compatible nodes with complete infr
        requires = ["LOCATION"]
 
        async def execute(self) -> Dict[str, Any]:
-           location_context, = self.get_required_contexts()
-           weather_data = await fetch_weather(location_context.location)
+           # Extract the location context
+           location, = self.get_required_contexts()
 
-           return {
-               "weather_current_conditions": weather_data,
-               "weather_last_updated": datetime.now().isoformat()
-           }
+           # Use context attributes directly (e.g., city, country)
+           weather_data = await fetch_weather(location.city, location.country)
+
+           # Create context object with the data
+           weather_context = WeatherDataContext(
+               current_conditions=weather_data,
+               last_updated=datetime.now().isoformat()
+           )
+
+           # Use helper method to store - automatically handles state updates
+           return self.store_output_context(weather_context)
 
 **Infrastructure Features Provided:**
 - LangGraph node creation (`langgraph_node` attribute)
@@ -332,7 +339,10 @@ All components must be explicitly declared in registry configurations and implem
 
        # REQUIRED: Main execution logic (instance method for capabilities)
        async def execute(self) -> Dict[str, Any]:
-           return {"result": "success"}
+           # Create context object
+           result_context = MyResultContext(status="success")
+           # Use helper method to store
+           return self.store_output_context(result_context)
 
        # OPTIONAL: Custom error handling (inherits defaults)
        @staticmethod
@@ -377,23 +387,23 @@ Some capabilities are always included in execution:
 Streaming Integration
 =====================
 
-Framework components use LangGraph's native streaming:
+Framework components use LangGraph's native streaming via the unified logger:
 
 .. code-block:: python
 
    @capability_node
    class MyCapability(BaseCapability):
        async def execute(self) -> Dict[str, Any]:
-           from osprey.utils.streaming import get_streamer
+           # Get unified logger with automatic streaming support
+           logger = self.get_logger()
 
-           # Get framework streaming support
-           streamer = get_streamer("my_capability", self._state)
-
-           streamer.status("Processing data...")
+           logger.status("Processing data...")
            result = await process_data()
-           streamer.status("Processing complete")
+           logger.success("Processing complete")
 
-           return {"processed_data": result}
+           # Create context and use helper method to store
+           result_context = ProcessedDataContext(data=result)
+           return self.store_output_context(result_context)
 
 Benefits
 ========
@@ -497,30 +507,77 @@ Development Utilities Integration
 
 The framework's development utilities follow the same convention-over-configuration patterns, providing consistent interfaces that reduce boilerplate and integrate seamlessly with the configuration system.
 
-Framework Logging Conventions
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. _framework-logging-streaming:
 
-Component logging follows the structured API pattern used throughout the framework:
+Framework Logging and Streaming
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The framework provides a unified logging system that automatically handles both CLI output and web UI streaming through a single, consistent API.
+
+.. versionadded:: 0.9.4
+   Unified logging with automatic streaming support via ``logger.status()``
+
+.. admonition:: Evolving Interface Design
+   :class: note
+
+   The logging and streaming system is designed to grow with our interfaces (OpenWebUI, CLI, and future additions). Currently, "streaming" refers to real-time updates in OpenWebUI while logging appears in the CLI. As our interfaces mature, different interfaces will be able to subscribe to different message types and granularities based on their needs.
+
+   We're actively refining the balance between detailed logging and high-level status updates. **Your feedback is valuable** - if you find the current message granularity doesn't match your interface needs, please share your use case.
+
+**Capability Logging Pattern** (Recommended):
+
+.. code-block:: python
+
+   @capability_node
+   class MyCapability(BaseCapability):
+       name = "my_capability"
+       description = "Example capability"
+
+       async def execute(self) -> Dict[str, Any]:
+           # Get unified logger - automatically uses capability name and state
+           logger = self.get_logger()
+
+           # High-level status updates - automatically stream to web UI
+           logger.status("Processing data...")
+
+           # Detailed information - CLI only by default
+           logger.info(f"Retrieved {len(data)} records")
+           logger.debug("Detailed trace information")
+
+           # Explicit streaming when needed
+           logger.info("Step 1 of 3 complete", stream=True, progress=0.33)
+
+           # Errors and warnings automatically stream
+           logger.warning("Retrying connection...")
+           logger.error("Processing failed", exc_info=True)
+
+           # Success messages automatically stream
+           logger.success("Capability completed successfully")
+
+           return self.store_output_context(result)
+
+**Module-Level Logging Pattern** (Utilities, Tests):
 
 .. code-block:: python
 
    from osprey.utils.logger import get_logger
 
-   # All components use simple, flat component names
-   logger = get_logger("orchestrator")
-   logger = get_logger("task_extraction")
-   logger = get_logger("current_weather")
-   logger = get_logger("data_analysis")
+   # Simple component name - no streaming (no state available)
+   logger = get_logger("data_processor")
 
-   # Rich message hierarchy for development
-   logger.key_info("Starting capability execution")
+   logger.key_info("Starting data processing")
    logger.info("Processing user request")
    logger.debug("Detailed trace information")
    logger.warning("Configuration fallback used")
-   logger.error("Processing failed", exc_info=True)
-   logger.success("Capability completed successfully")
    logger.timing("Execution completed in 2.3 seconds")
-   logger.approval("Awaiting human approval")
+
+**Streaming Behavior**:
+
+The logger intelligently determines what to stream based on message type:
+
+- **Always streams**: ``status()``, ``error()``, ``success()`` (default), ``warning()`` (default)
+- **Never streams by default**: ``info()``, ``debug()``, ``key_info()``, ``timing()``
+- **Override with** ``stream=True`` parameter to explicitly stream any message
 
 **Configuration Integration**: Color schemes are automatically loaded from the configuration using the same paths as component registration:
 
@@ -539,34 +596,13 @@ Component logging follows the structured API pattern used throughout the framewo
        current_weather: "blue"
        data_analysis: "magenta"
 
-**Graceful Fallbacks**: When configuration is unavailable, logging gracefully falls back to white, maintaining functionality during development and testing.
+**Automatic Step Tracking**: When streaming is enabled (via ``self.get_logger()`` in capabilities), the logger automatically includes execution context:
 
-LangGraph Streaming Integration
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+- **Task Preparation Phase**: Automatic step numbering for infrastructure components (1/3, 2/3, 3/3)
+- **Execution Phase**: Dynamic step extraction from execution plan (e.g., "Step 2 of 5")
+- **Custom Metadata**: Pass additional data via ``**kwargs`` (e.g., ``progress=0.5``, ``batch_num=2``)
 
-Streaming events integrate with LangGraph's native streaming and follow the same component naming conventions:
-
-.. code-block:: python
-
-   from osprey.utils.streaming import get_streamer
-
-   @capability_node
-   class MyCapability(BaseCapability):
-       async def execute(self) -> Dict[str, Any]:
-           # Follows same naming pattern as get_logger
-           streamer = get_streamer("my_capability", self._state)
-
-           streamer.status("Processing data...")
-           result = await process_data()
-           streamer.status("Processing complete")
-
-           return {"processed_data": result}
-
-**Automatic Step Detection**: The streaming system automatically determines execution context:
-
-- **Task Preparation Phase**: Hard-coded mapping for infrastructure components (task_extraction, classifier, orchestrator)
-- **Execution Phase**: Dynamic extraction from StateManager and execution plans
-- **Fallback**: Component name formatting for unknown components
+**Graceful Degradation**: The logger works seamlessly in all contexts - when LangGraph streaming is unavailable (tests, utilities, CLI-only execution), streaming is automatically disabled while logging continues normally.
 
 
 .. _performance-configuration-section:

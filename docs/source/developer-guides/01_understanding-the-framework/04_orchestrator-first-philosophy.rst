@@ -254,7 +254,7 @@ The orchestrator integrates with LangGraph interrupts for human approval:
    # Handle planning mode with interrupts
    if _is_planning_mode_enabled(state):
        logger.info("PLANNING MODE DETECTED - entering approval workflow")
-       await _handle_planning_mode(execution_plan, current_task, logger, streamer)
+       await _handle_planning_mode(execution_plan, current_task, state, logger)
 
 Planning Mode Detection
 ~~~~~~~~~~~~~~~~~~~~~~~
