@@ -40,17 +40,13 @@ class RouterNode(BaseInfrastructureNode):
     name = "router"
     description = "Central routing decision authority"
 
-    @staticmethod
-    async def execute(state: AgentState, **kwargs) -> dict[str, Any]:
+    async def execute(self) -> dict[str, Any]:
         """Router node execution - updates routing metadata only.
 
         This node serves as the entry point and routing hub, but does no routing logic itself.
         The actual routing decision is made by the conditional edge function.
         This keeps the logic DRY and avoids duplication.
 
-        :param state: Current agent state
-        :type state: AgentState
-        :param kwargs: Additional LangGraph parameters
         :return: Dictionary of state updates for routing metadata
         :rtype: Dict[str, Any]
         """
@@ -58,7 +54,7 @@ class RouterNode(BaseInfrastructureNode):
         # Update routing metadata only - no routing logic to avoid duplication
         return {
             "control_routing_timestamp": time.time(),
-            "control_routing_count": state.get("control_routing_count", 0) + 1
+            "control_routing_count": self._state.get("control_routing_count", 0) + 1
         }
 
 
