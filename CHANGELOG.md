@@ -7,79 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- **Argo AI Provider** (ANL institutional service)
-  - New provider adapter for Argonne National Laboratory's Argo proxy service
-  - Supports 8 models: Claude (Haiku 4.5, Sonnet 4.5, Sonnet 3.7, Opus 4.1), Gemini (2.5 Flash, 2.5 Pro), GPT-5, GPT-5 Mini
-  - OpenAI-compatible interface with automatic structured output support
-  - Uses `$USER` environment variable for ANL authentication
-  - File: `src/osprey/models/providers/argo.py`
-  - Registered in framework registry
-  - Added `ARGO_API_KEY` to all project templates
+## [0.9.2] - 2025-11-25
 
-### Changed
-- **Infrastructure Node Instance Method Migration** ✅ **COMPLETE**
-  - **All 7 infrastructure nodes** migrated from static method pattern to instance method pattern
-  - Aligns infrastructure nodes with capability node implementation from v0.9.2
-  - **Decorator Enhancements**:
-    - Automatic detection of static vs instance methods (backward compatible)
-    - Runtime injection of `_state` for all infrastructure nodes
-    - Selective `_step` injection only for in-execution nodes (clarify, respond)
-    - Defensive None checks for step injection with warning logs
-    - Validation for invalid method types (classmethod, property)
-  - **Migrated Nodes**:
-    - ✅ Router: Minimal state usage, routing metadata
-    - ✅ Task Extraction: Data source integration, state refs updated
-    - ✅ Classification: Extensive state usage (100+ refs), bypass mode
-    - ✅ Clarify: First `_step` injection, task_objective extraction
-    - ✅ Respond: `_step` injection, response generation
-    - ✅ Error: NO `_step` injection (uses `StateManager.get_current_step_index()`)
-    - ✅ Orchestration: 200+ lines, nested functions via closure
-  - **Code Quality**:
-    - Extracted `state = self._state` at top of each method for readability
-    - `classify_error()` and `get_retry_policy()` remain static (pure functions)
-    - Module-level helpers unchanged (just updated call sites)
-  - **Testing**:
-    - Added 15 unit tests for infrastructure pattern (`tests/infrastructure/`)
-    - Tests validate decorator injection logic (_state, _step)
-    - Tests verify backward compatibility with static methods
-    - All 300 tests pass (285 original + 15 new infrastructure tests)
-  - Implementation plan: `_ISSUES/INFRASTRUCTURE_NODE_MIGRATION_PLAN.md`
+### 🎉 Major Features
 
-- **Capability Instance Method Pattern Testing** ✅ **COMPLETE**
-  - **Test Coverage**: Added 12 comprehensive tests for migrated capabilities
-  - **New Test Directory**: Created `tests/capabilities/` with fixtures and integration tests
-  - **Memory Capability Tests** (4 tests):
-    - Validates instance method signature (not `@staticmethod`)
-    - Tests state/step injection mechanism
-    - Verifies decorator creates `langgraph_node` attribute
-    - Integration test for approval path execution
-  - **Python Capability Tests** (3 tests):
-    - Signature validation for instance method pattern
-    - State injection validation
-    - Decorator integration verification
-  - **TimeRangeParsing Capability Tests** (5 tests):
-    - Full end-to-end integration test suite
-    - LLM-based time parsing with mocked dependencies
-    - Context storage validation
-    - Decorator wrapper execution test
-    - Validates complete execution flow with `self._state` and `self._step`
-  - **Test Infrastructure**:
-    - Shared fixtures in `tests/capabilities/conftest.py`
-    - Mock registry configuration to avoid config.yml dependency
-    - Mock state and step objects for consistent testing
-    - All tests formatted with black and linted
-  - **Results**: 27/27 tests passing (15 infrastructure + 12 capability tests)
+#### Argo AI Provider (ANL Institutional Service)
+- **New provider adapter** for Argonne National Laboratory's Argo proxy service
+- **8 models supported**: Claude (Haiku 4.5, Sonnet 4.5, Sonnet 3.7, Opus 4.1), Gemini (2.5 Flash, 2.5 Pro), GPT-5, GPT-5 Mini
+- **OpenAI-compatible interface** with automatic structured output support
+- Uses `$USER` environment variable for ANL authentication
+- File: `src/osprey/models/providers/argo.py`
+- Added `ARGO_API_KEY` to all project templates
 
-### Fixed
-- **Interactive Menu Registry Contamination** ([#29](https://github.com/als-apg/osprey/issues/29))
-  - Fixed bug where creating multiple projects in the same interactive menu session caused capability contamination
-  - Global registry singleton now properly reset when switching between projects
-  - Added `reset_registry()` calls in `handle_chat_action()` before launching chat
-  - Prevents second project from inheriting capabilities from first project
-  - Added comprehensive test suite to verify registry isolation
+#### Infrastructure Node Instance Method Migration ✅ COMPLETE
+- **All 7 infrastructure nodes** migrated from static method pattern to instance method pattern
+- Aligns infrastructure nodes with capability node implementation
+- **Decorator Enhancements**:
+  - Automatic detection of static vs instance methods (backward compatible)
+  - Runtime injection of `_state` for all infrastructure nodes
+  - Selective `_step` injection only for in-execution nodes (clarify, respond)
+  - Defensive None checks for step injection with warning logs
+  - Validation for invalid method types (classmethod, property)
+- **Migrated Nodes**:
+  - Router: Minimal state usage, routing metadata
+  - Task Extraction: Data source integration, state refs updated
+  - Classification: Extensive state usage (100+ refs), bypass mode
+  - Clarify: First `_step` injection, task_objective extraction
+  - Respond: `_step` injection, response generation
+  - Error: NO `_step` injection (uses `StateManager.get_current_step_index()`)
+  - Orchestration: 200+ lines, nested functions via closure
+- **Testing**: Added 15 unit tests for infrastructure pattern
+  - Tests validate decorator injection logic (_state, _step)
+  - Tests verify backward compatibility with static methods
+  - All tests passing
 
-## [0.9.2] - 2025-11-22
+#### Capability Instance Method Pattern Testing
+- Added 12 comprehensive tests for migrated capabilities
+- New test directory: `tests/capabilities/` with fixtures and integration tests
+- Memory Capability Tests (4 tests): signature validation, state/step injection, decorator integration
+- Python Capability Tests (3 tests): instance method pattern validation
+- TimeRangeParsing Capability Tests (5 tests): full end-to-end integration
+- All tests formatted with black and linted
 
 ### 🎉 Major Features
 
@@ -156,6 +124,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Adjusted default noise level from 0.01 to 0.1 for more realistic data
 
 ### Fixed
+- **Interactive Menu Registry Contamination** ([#29](https://github.com/als-apg/osprey/issues/29))
+  - Fixed bug where creating multiple projects in the same interactive menu session caused capability contamination
+  - Global registry singleton now properly reset when switching between projects
+  - Added `reset_registry()` calls in `handle_chat_action()` before launching chat
+  - Prevents second project from inheriting capabilities from first project
+  - Added comprehensive test suite to verify registry isolation
 - **Stanford API Key Detection**: Added missing STANFORD_API_KEY to environment variable detection (Reported by Marty)
 - **Weather Template**: Fixed context extraction example in hello world weather template (PR #26)
 - **CRITICAL BUG FIX**: `ContextManager.extract_from_step()` now correctly handles multiple contexts of the same type

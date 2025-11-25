@@ -1,80 +1,141 @@
-# Osprey Framework - Latest Release (v0.9.1)
+# Osprey Framework - Latest Release (v0.9.2)
 
-🎉 **MCP Integration Release** - Auto-generate Capabilities from Model Context Protocol Servers
+🎉 **Instance Method Pattern Release** - Major Ergonomic Improvements & Critical Bug Fixes
 
-## What's New in v0.9.1
+## What's New in v0.9.2
 
 ### 🚀 Major New Features
 
-**MCP Capability Generator (Prototype):**
-- **Auto-generate Osprey capabilities** from Model Context Protocol (MCP) servers
-- **`osprey generate capability`** - Create complete capabilities from running MCP servers
-- **`osprey generate mcp-server`** - Generate demo MCP servers for testing and development
-- **Automatic ReAct agent integration** - Built-in LangGraph ReAct agent pattern
-- **LLM-powered guide generation** - Automatically creates classifier and orchestrator examples
-- **Interactive registry integration** - Confirms and updates registry and config automatically
-- **Complete tutorial** - End-to-end MCP integration workflow in Quick Start Patterns
-- **Dependencies**: Requires `langchain-mcp-adapters`, `langgraph`, and provider-specific LangChain packages
+#### Instance Method Pattern for Capabilities
+- **~60% Less Boilerplate**: New instance method pattern dramatically simplifies capability development
+- **Helper Methods Available via `self`**:
+  - `get_required_contexts()` - Extract required contexts with automatic validation and tuple unpacking
+  - `get_task_objective()` - Get current task description
+  - `get_parameters()` - Get step parameters
+  - `store_output_context()` / `store_output_contexts()` - Store output contexts
+- **Full Backward Compatibility**: Static method pattern still works
+- **Runtime State Injection**: `@capability_node` decorator injects `_state` and `_step` automatically
+- **Migration Guide**: Comprehensive documentation at `docs/source/developer-guides/migration-guide-instance-methods.rst`
 
-**Capability Removal Command:**
-- **`osprey remove capability`** - Safe, automated removal of generated capabilities
-- **Comprehensive cleanup** - Removes registry entries, config models, and capability files
-- **Automatic backups** - Creates `.bak` files before any modifications
-- **Interactive confirmation** - Preview changes before applying them
-- **Force mode** - Optional `--force` flag to skip confirmation prompts
+#### Infrastructure Node Instance Method Migration ✅ COMPLETE
+- **All 7 infrastructure nodes** migrated to instance method pattern
+- **Enhanced Decorators**: Automatic `_state` injection for all nodes, selective `_step` injection for clarify/respond
+- **15 New Tests**: Validates decorator injection logic and backward compatibility
+- Aligns infrastructure with capability implementation patterns
 
-### 🔧 Improvements
+#### Argo AI Provider (ANL Institutional Service)
+- **New provider** for Argonne National Laboratory's Argo proxy service
+- **8 models supported**: Claude (4 models), Gemini (3 models), GPT-5, GPT-5 Mini
+- **OpenAI-compatible interface** with structured output support
+- Uses `$USER` environment variable for ANL authentication
 
-**Core Dependencies:**
-- Added `matplotlib>=3.10.3` to core dependencies
-- Python capability visualization now works out of the box
-- Tutorial examples (plotting, visualization) work immediately after installation
+#### Cardinality Constraints
+- **Declare requirements with cardinality**: `requires = [("DATA", "single")]`
+- **Automatic validation**: Framework raises clear errors if violated
+- **Eliminates manual checks**: No more `isinstance(context, list)` in your code
+- **9 new tests** for cardinality validation
 
-## Installation
+### 🐛 Critical Bug Fixes
+
+**Context Manager Data Loss** - CRITICAL
+- Fixed bug where multiple contexts of same type were silently lost
+- Two-phase extraction algorithm now preserves all contexts
+- Returns list for multiple contexts, object for single context
+- 17 comprehensive test cases added
+
+**Interactive Menu Registry Contamination** ([#29](https://github.com/als-apg/osprey/issues/29))
+- Fixed capability leakage between projects in interactive menu
+- Registry properly resets when switching projects
+- Prevents second project from inheriting first project's capabilities
+
+**Template Fixes**
+- Stanford API key detection added
+- Weather template context extraction fixed
+- Archiver retrieval template uses string literals instead of registry references
+
+### 📊 Testing
+
+- **312 Total Tests** (87 new tests added)
+  - 15 tests for capability helper methods
+  - 17 tests for context extraction with multiple contexts
+  - 9 tests for cardinality validation
+  - 15 tests for infrastructure decorator pattern
+  - 12 tests for capability instance method pattern
+  - 3 tests for registry reset/isolation
+- **All tests passing** ✅
+
+### ⚠️ Breaking Changes
+
+These breaking changes are acceptable as the framework is in early access (0.9.x):
+
+1. **`BaseCapabilityContext.get_summary()`** - No longer takes `key` parameter
+2. **`BaseCapabilityContext.get_access_details()`** - Now requires `key` parameter (no longer optional)
+3. **`ContextManager.get_summaries()`** - Returns `list` instead of `dict`
+
+See migration guide for details on updating custom implementations.
+
+### 📚 Documentation
+
+- **20+ files updated** with new patterns
+- **New migration guide** for instance method pattern
+- **Updated templates**: All capability templates use new recommended pattern
+- **API reference** updated for breaking changes
+
+### 📦 Installation
 
 ```bash
-pip install osprey-framework==0.9.1
+pip install osprey-framework==0.9.2
 ```
 
-## Quick Start - MCP Integration
+Or upgrade from previous version:
 
 ```bash
-# 1. Generate a demo MCP server
-osprey generate mcp-server --name weather_demo
-
-# 2. Run the server (in another terminal)
-python weather_demo_server.py
-
-# 3. Generate capability from MCP server
-osprey generate capability --from-mcp http://localhost:3001 --name weather_demo
-
-# 4. Test your capability
-osprey chat
+pip install --upgrade osprey-framework
 ```
 
-## Documentation
+### 🎯 Quick Start with New Pattern
 
-- **Tutorial**: [End-to-End MCP Integration](https://osprey-framework.readthedocs.io/en/latest/developer-guides/02_quick-start-patterns/04_mcp-capability-generation.html)
-- **Full Changelog**: See CHANGELOG.md
-- **Project Homepage**: https://github.com/als-apg/osprey
+```python
+from osprey.base.capability import BaseCapability, capability_node
 
-## Requirements
+class MyCapability(BaseCapability):
+    """Example using new instance method pattern"""
 
-- Python >=3.11
-- For MCP integration: `pip install langchain-mcp-adapters langgraph langchain-anthropic` (or `langchain-openai`)
-- Recommended: Claude Haiku 4.5 for best capability generation results
+    requires = [
+        ("DATA", "single"),      # Cardinality constraint
+        ("TIME_RANGE", "single")
+    ]
+    provides = ["ANALYSIS"]
 
-## Migration Notes
+    @capability_node
+    def execute(self):
+        # Use helper methods - no boilerplate!
+        data, time_range = self.get_required_contexts()
+        objective = self.get_task_objective()
+        params = self.get_parameters()
 
-This is a prototype release for MCP integration. The API and generated code structure may evolve in future releases. Generated capabilities use the ReAct agent pattern with LangGraph for autonomous tool selection and execution.
+        # Do your work
+        result = analyze_data(data, time_range)
 
-## What's Next
+        # Store output - one line!
+        self.store_output_context("ANALYSIS", result)
 
-- Enhanced MCP server templates and presets
-- Improved context class customization
-- Additional LLM provider support for capability generation
-- Production-ready MCP integration patterns
+        return "Analysis complete"
+```
+
+### 🔗 Links
+
+- **Documentation**: https://osprey-framework.readthedocs.io
+- **GitHub**: https://github.com/als-apg/osprey
+- **Migration Guide**: https://osprey-framework.readthedocs.io/en/latest/developer-guides/migration-guide-instance-methods.html
+- **Changelog**: See CHANGELOG.md for complete details
+
+### 🙏 Contributors
+
+Special thanks to everyone who reported issues and provided feedback for this release!
 
 ---
 
-**Previous Release**: [v0.9.0 Release Notes](https://github.com/als-apg/osprey/releases/tag/v0.9.0)
+## Previous Releases
+
+For previous release notes, see [CHANGELOG.md](CHANGELOG.md).
