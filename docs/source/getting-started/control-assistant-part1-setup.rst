@@ -177,11 +177,16 @@ Configure your AI/LLM providers with API keys from environment variables:
        openai:
          api_key: ${OPENAI_API_KEY}
          base_url: https://api.openai.com/v1
-       ollama:                  # Local models
-         api_key: ollama
-         base_url: http://localhost:11434
+      ollama:                  # Local models
+        api_key: ollama
+        base_url: http://localhost:11434
 
-The template includes CBorg (LBNL's service) by default. Simply update the providers to match your environment. See :doc:`Convention over Configuration <../developer-guides/01_understanding-the-framework/02_convention-over-configuration>` for provider patterns.
+The template includes CBorg (LBNL's service) by default. Simply update the providers to match your environment.
+
+.. admonition:: Custom Providers
+   :class: tip
+
+   Need to integrate your institution's AI service or a provider not listed above? You can register custom providers in your application registry. See :ref:`custom-ai-provider-registration` for complete implementation guidance including all required methods and metadata fields.
 
 Semantic Channel Finding Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

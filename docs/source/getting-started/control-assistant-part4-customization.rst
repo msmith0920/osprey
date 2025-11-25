@@ -361,6 +361,11 @@ Model Configuration
        provider: cborg
        model_id: anthropic/claude-haiku
 
+.. admonition:: Need a Custom Provider?
+   :class: tip
+
+   The framework includes built-in providers for Anthropic, OpenAI, Google, Ollama, CBorg (LBNL), and Stanford AI Playground. If you need to integrate with your institution's AI service or another commercial provider, you can register custom providers. See :ref:`custom-ai-provider-registration` for complete implementation guidance.
+
 **Optimization Strategy:**
 
 1. **Start with Haiku everywhere** - Reliable baseline with good cost/performance

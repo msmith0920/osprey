@@ -111,6 +111,8 @@ Developer Guides
 
          **Integrate external data** → :doc:`05_production-systems/02_data-source-integration`
 
+         **Register custom model provider** → :doc:`03_core-framework-systems/03_registry-and-discovery` (AI Provider Registration)
+
          **Understand the architecture** → :doc:`01_understanding-the-framework/01_infrastructure-architecture`
 
          **Debug execution flow** → :doc:`03_core-framework-systems/05_message-and-execution-flow`
