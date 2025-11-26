@@ -471,8 +471,8 @@ That's it—no code changes required. The template includes complete implementat
 
             .. code-block:: bash
 
-               # From project root directory
-               python -m my_control_assistant.services.channel_finder.cli
+               # From my-control-assistant directory
+               python src/my_control_assistant/services/channel_finder/cli.py
 
             This launches an interactive terminal where you can:
 
@@ -523,13 +523,13 @@ That's it—no code changes required. The template includes complete implementat
             .. code-block:: bash
 
                # Run all benchmark queries
-               python -m my_control_assistant.services.channel_finder.benchmarks.cli
+               python src/my_control_assistant/services/channel_finder/benchmarks/cli.py
 
                # Test specific queries (useful during development)
-               python -m my_control_assistant.services.channel_finder.benchmarks.cli --queries 0,1
+               python src/my_control_assistant/services/channel_finder/benchmarks/cli.py --queries 0,1
 
                # Compare model performance
-               python -m my_control_assistant.services.channel_finder.benchmarks.cli --model anthropic/claude-sonnet
+               python src/my_control_assistant/services/channel_finder/benchmarks/cli.py --model anthropic/claude-sonnet
 
             **Benchmark Capabilities:**
 
@@ -614,14 +614,14 @@ That's it—no code changes required. The template includes complete implementat
             .. code-block:: bash
 
                # Use a different dataset
-               python -m my_control_assistant.services.channel_finder.benchmarks.cli \
+               python src/my_control_assistant/services/channel_finder/benchmarks/cli.py \
                   --dataset src/my_control_assistant/data/benchmarks/datasets/custom_dataset.json
 
                # Run specific queries
-               python -m my_control_assistant.services.channel_finder.benchmarks.cli --queries 0,1,5,10
+               python src/my_control_assistant/services/channel_finder/benchmarks/cli.py --queries 0,1,5,10
 
                # Show detailed logs
-               python -m my_control_assistant.services.channel_finder.benchmarks.cli --verbose
+               python src/my_control_assistant/services/channel_finder/benchmarks/cli.py --verbose
 
             **When to use these tools:**
 
@@ -654,6 +654,11 @@ That's it—no code changes required. The template includes complete implementat
          :width: 100%
 
          **Live Example**: Hierarchical pipeline processing "whats the beam current?" through 5 navigation levels (system → family → device → field → subfield) to find ``DIAG:DCCT[MAIN]:CURRENT:RB`` from 1,050 channels. Shows the recursive branching at each level.
+
+      .. admonition:: Database Format (v0.9.3+)
+         :class: tip
+
+         Hierarchical databases now support **flexible hierarchy configuration** - you can arbitrarily mix tree navigation and instance expansion at any level. Want instances at the root? Consecutive instance levels? Instance → tree → instance patterns? The ``hierarchy_config`` section lets you define any hierarchy structure. This also provides clear semantics and better validation. Legacy format (implicit configuration with ``devices``, ``fields``, ``subfields`` containers) is still supported via automatic inference—see ``examples/hierarchical_legacy.json`` for reference.
 
       **How It Works:**
 
@@ -713,30 +718,55 @@ That's it—no code changes required. The template includes complete implementat
                {
                  "hierarchy_definition": ["system", "family", "device", "field", "subfield"],
                  "naming_pattern": "{system}:{family}[{device}]:{field}:{subfield}",
+                 "hierarchy_config": {
+                   "levels": {
+                     "system": {
+                       "type": "category",
+                       "structure": "tree",
+                       "allow_branching": true
+                     },
+                     "family": {
+                       "type": "category",
+                       "structure": "tree",
+                       "allow_branching": true
+                     },
+                     "device": {
+                       "type": "instance",
+                       "structure": "expand_here",
+                       "allow_branching": false
+                     },
+                     "field": {
+                       "type": "category",
+                       "structure": "tree",
+                       "allow_branching": true
+                     },
+                     "subfield": {
+                       "type": "category",
+                       "structure": "tree",
+                       "allow_branching": true
+                     }
+                   }
+                 },
                  "tree": {
                    "MAG": {
                      "_description": "Magnet System: Controls beam trajectory and focusing. Includes dipoles, quadrupoles, sextupoles, and correctors.",
                      "QF": {
                        "_description": "Focusing Quadrupoles: Positive gradient magnets. Focus horizontal, defocus vertical. Part of tune correction system.",
-                       "devices": {
-                         "_type": "range",
-                         "_pattern": "QF{:02d}",
-                         "_range": [1, 16]
-                       },
-                       "fields": {
+                       "DEVICE": {
+                         "_expansion": {
+                           "_type": "range",
+                           "_pattern": "QF{:02d}",
+                           "_range": [1, 16]
+                         },
                          "CURRENT": {
                            "_description": "Excitation Current (Amperes): Current through coil windings. Proportional to field gradient.",
-                           "subfields": {
-                             "SP": {"_description": "Setpoint (read-write): Commanded current"},
-                             "RB": {"_description": "Readback (read-only): Measured current"}
-                           }
+                           "SP": {"_description": "Setpoint (read-write): Commanded current"},
+                           "RB": {"_description": "Readback (read-only): Measured current"}
                          },
                          "STATUS": {
                            "_description": "Operational status indicators",
-                           "subfields": {
-                             "READY": {"_description": "Ready (read-only): Power supply ready"},
-                             "ON": {"_description": "On (read-only): Power supply energized"}
-                           }
+                           "READY": {"_description": "Ready (read-only): Power supply ready"},
+                           "ON": {"_description": "On (read-only): Power supply energized"}
                          }
                        }
                      }
@@ -745,12 +775,13 @@ That's it—no code changes required. The template includes complete implementat
                      "_description": "Diagnostic System: Beam instrumentation and measurement devices",
                      "DCCT": {
                        "_description": "DC Current Transformers: Non-invasive beam current measurement",
-                       "devices": {"_type": "explicit", "_devices": ["MAIN"]},
-                       "fields": {
+                       "DEVICE": {
+                         "_expansion": {
+                           "_type": "list",
+                           "_instances": ["MAIN"]
+                         },
                          "CURRENT": {
-                           "subfields": {
-                             "RB": {"_description": "Readback (read-only): Measured beam current in mA"}
-                           }
+                           "RB": {"_description": "Readback (read-only): Measured beam current in mA"}
                          }
                        }
                      }
@@ -760,10 +791,53 @@ That's it—no code changes required. The template includes complete implementat
 
             **Key features:**
 
+            - **Explicit configuration**: ``hierarchy_config`` defines level types (``tree`` for navigation, ``expand_here`` for instances)
             - **Deep descriptions**: Rich domain knowledge at every level guides LLM navigation
-            - **Device ranges**: Define device families once (e.g., QF01-QF16) using range notation
+            - **Device expansion**: Define device families once (e.g., QF01-QF16) using ``_expansion`` with ranges or lists
             - **Physical organization**: Hierarchy mirrors actual control system structure
             - **Naming pattern**: Automatic assembly of full channel names from navigation paths
+
+            .. dropdown:: Understanding Hierarchy Levels: Tree vs Expand Here
+               :color: info
+
+               The ``hierarchy_config`` defines how each level behaves during navigation. Understanding the two structure types is key to building effective hierarchical databases.
+
+               **Tree Structure (``"structure": "tree"``):**
+
+               - **Purpose**: Navigate through named semantic choices
+               - **Behavior**: LLM selects from explicitly defined options at this level
+               - **When to use**: For categorical decisions where each option has different meaning
+               - **Examples**:
+                  - Systems: MAG (magnets), VAC (vacuum), RF (radio frequency), DIAG (diagnostics)
+                  - Families: DIPOLE, QUADRUPOLE, SEXTUPOLE, CORRECTOR
+                  - Fields: CURRENT, STATUS, POSITION, VOLTAGE
+                  - Subfields: SP (setpoint), RB (readback), GOLDEN (reference)
+
+               **Expand Here Structure (``"structure": "expand_here"``):**
+
+               - **Purpose**: Expand across numbered or named instances
+               - **Behavior**: Instances are generated from ``_expansion`` definition (range or list)
+               - **When to use**: For device families where all instances have identical structure
+               - **Examples**:
+                  - Devices: QF01, QF02, ..., QF16 (all focusing quadrupoles with same fields)
+                  - Numbered sensors: BPM01, BPM02, ..., BPM20 (all beam position monitors)
+                  - Named instances: MAIN, BACKUP (both have same measurement structure)
+
+               **Key Difference:**
+
+               - **Tree**: Each option may have different children (MAG system has different families than VAC system)
+               - **Expand Here**: All instances have identical children (QF01 has same fields as QF02, QF03, etc.)
+
+               **Typical Pattern for Accelerators:**
+
+               .. code-block:: text
+
+                  system [tree] → family [tree] → device [expand_here] → field [tree] → subfield [tree]
+                     ↓               ↓                ↓                     ↓                ↓
+                  Navigate        Navigate         Expand all          Navigate         Navigate
+                  (MAG/VAC/RF)    (QF/QD/DIPOLE)   (01-16)             (CURRENT/STATUS) (SP/RB)
+
+               This pattern creates a powerful combination: semantic navigation through systems and families, automatic expansion across device instances, then semantic navigation through measurements.
 
             Result example: ``MAG:QF[QF03]:CURRENT:RB`` (Magnet system → QF family → device QF03 → CURRENT field → RB subfield)
 
@@ -782,19 +856,34 @@ That's it—no code changes required. The template includes complete implementat
 
             **Step 1: Understand the Schema**
 
-            A hierarchical database has three required top-level keys:
+            The hierarchical database format in OSPREY uses four top-level keys to define a hierarchy of any depth:
 
             .. code-block:: json
 
                {
                  "hierarchy_definition": ["system", "family", "device", "field", "subfield"],
                  "naming_pattern": "{system}:{family}[{device}]:{field}:{subfield}",
+                 "hierarchy_config": {
+                   "levels": {
+                     "system": {"type": "category", "structure": "tree", "allow_branching": true},
+                     "family": {"type": "category", "structure": "tree", "allow_branching": true},
+                     "device": {"type": "instance", "structure": "expand_here", "allow_branching": false},
+                     "field": {"type": "category", "structure": "tree", "allow_branching": true},
+                     "subfield": {"type": "category", "structure": "tree", "allow_branching": true}
+                   }
+                 },
                  "tree": { /* nested structure */ }
                }
 
-            **hierarchy_definition**: An ordered list of level names. The LLM navigates these levels in sequence. Five levels is typical for accelerator facilities, but you can adapt this to your system (e.g., three levels for simpler systems).
+            **hierarchy_definition**: An ordered list of level names. The LLM navigates these levels in sequence. Define as many or as few levels as your system needs—three levels for simple systems, five for typical accelerators, ten or more for complex facilities.
 
             **naming_pattern**: A template showing how to assemble complete channel names from navigation selections. Uses Python format string syntax with level names as placeholders.
+
+            **hierarchy_config**: Defines the behavior of each hierarchy level. For each level defined in ``hierarchy_definition``, you must specify:
+
+            - ``structure``: Either ``"tree"`` (navigate through named options like MAG, VAC, RF) or ``"expand_here"`` (expand numbered/named instances like QF01, QF02)
+            - ``type``: Either ``"category"`` (semantic choices) or ``"instance"`` (numbered copies)
+            - ``allow_branching``: Whether selecting multiple options at this level causes parallel exploration paths
 
             **tree**: The nested hierarchy structure with descriptions at every level (details below).
 
@@ -823,49 +912,61 @@ That's it—no code changes required. The template includes complete implementat
 
                "QF": {
                  "_description": "Focusing Quadrupoles (QF): Positive gradient magnets...",
-                 "devices": { /* device definition */ },
-                 "fields": { /* field definitions */ }
+                 "DEVICE": {
+                   "_expansion": { /* expansion definition */ },
+                   /* fields go here as direct children */
+                 }
                }
 
-            - **Device level**: Specify device instances using ranges or explicit lists
+            - **Device level**: Container with ``_expansion`` definition specifying instances
 
             .. code-block:: json
 
-               "devices": {
-                 "_type": "range",
-                 "_pattern": "QF{:02d}",
-                 "_range": [1, 16]
+               "DEVICE": {
+                 "_expansion": {
+                   "_type": "range",
+                   "_pattern": "QF{:02d}",
+                   "_range": [1, 16]
+                 },
+                 /* fields defined here */
                }
 
             This generates QF01, QF02, ..., QF16 automatically. For explicit lists:
 
             .. code-block:: json
 
-               "devices": {
-                 "_type": "list",
-                 "_instances": ["MAIN", "BACKUP"]
+               "DEVICE": {
+                 "_expansion": {
+                   "_type": "list",
+                   "_instances": ["MAIN", "BACKUP"]
+                 },
+                 /* fields defined here */
                }
 
-            - **Field level**: Physical quantities or subsystems
+            - **Field level**: Physical quantities or subsystems (as direct children of DEVICE)
 
             .. code-block:: json
 
-               "fields": {
+               "DEVICE": {
+                 "_expansion": { /* ... */ },
                  "CURRENT": {
                    "_description": "Excitation Current (Amperes): Current through coil windings...",
-                   "subfields": { /* subfield definitions */ }
+                   "SP": {"_description": "Setpoint (read-write): Commanded current"},
+                   "RB": {"_description": "Readback (read-only): Measured current"}
                  },
                  "STATUS": {
                    "_description": "Operational status indicators",
-                   "subfields": { /* subfield definitions */ }
+                   "READY": {"_description": "Ready (read-only): Power supply ready"},
+                   "ON": {"_description": "On (read-only): Power supply energized"}
                  }
                }
 
-            - **Subfield level**: Specific measurements or control points
+            - **Subfield level**: Specific measurements or control points (as direct children of each field)
 
             .. code-block:: json
 
-               "subfields": {
+               "CURRENT": {
+                 "_description": "Excitation Current (Amperes)...",
                  "SP": {"_description": "Setpoint (read-write): Commanded current"},
                  "RB": {"_description": "Readback (read-only): Measured current"},
                  "GOLDEN": {"_description": "Golden reference value for optimal operation"}
@@ -885,11 +986,19 @@ That's it—no code changes required. The template includes complete implementat
 
             .. code-block:: json
 
-               "CURRENT": {
-                 "_description": "Quadrupole Excitation Current (Amperes): Current through QF coil windings. Proportional to positive field gradient. Typically 0-200A. Adjusted for tune correction and beam optics optimization.",
-                 "subfields": {
+               "DEVICE": {
+                 "_expansion": {
+                   "_type": "range",
+                   "_pattern": "QF{:02d}",
+                   "_range": [1, 16]
+                 },
+                 "CURRENT": {
+                   "_description": "Quadrupole Excitation Current (Amperes): Current through QF coil windings. Proportional to positive field gradient. Typically 0-200A. Adjusted for tune correction and beam optics optimization.",
                    "SP": {
                      "_description": "Setpoint (read-write): Commanded focusing current for tune correction."
+                   },
+                   "RB": {
+                     "_description": "Readback (read-only): Measured focusing current from DCCT sensor."
                    }
                  }
                }
@@ -965,8 +1074,8 @@ That's it—no code changes required. The template includes complete implementat
 
             .. code-block:: bash
 
-               # From project root directory
-               python -m my_control_assistant.services.channel_finder.cli
+               # From my-control-assistant directory
+               python src/my_control_assistant/services/channel_finder/cli.py
 
             This launches an interactive terminal where you can:
 
@@ -1018,13 +1127,13 @@ That's it—no code changes required. The template includes complete implementat
             .. code-block:: bash
 
                # Run all benchmark queries
-               python -m my_control_assistant.services.channel_finder.benchmarks.cli
+               python src/my_control_assistant/services/channel_finder/benchmarks/cli.py
 
                # Test specific queries (useful during development)
-               python -m my_control_assistant.services.channel_finder.benchmarks.cli --queries 0,1
+               python src/my_control_assistant/services/channel_finder/benchmarks/cli.py --queries 0,1
 
                # Compare model performance
-               python -m my_control_assistant.services.channel_finder.benchmarks.cli --model anthropic/claude-sonnet
+               python src/my_control_assistant/services/channel_finder/benchmarks/cli.py --model anthropic/claude-sonnet
 
             **Benchmark Capabilities:**
 
@@ -1103,14 +1212,14 @@ That's it—no code changes required. The template includes complete implementat
             .. code-block:: bash
 
                # Use a different dataset
-               python -m my_control_assistant.services.channel_finder.benchmarks.cli \
+               python src/my_control_assistant/services/channel_finder/benchmarks/cli.py \
                   --dataset src/my_control_assistant/data/benchmarks/datasets/custom_dataset.json
 
                # Run specific queries
-               python -m my_control_assistant.services.channel_finder.benchmarks.cli --queries 0,1,5,10
+               python src/my_control_assistant/services/channel_finder/benchmarks/cli.py --queries 0,1,5,10
 
                # Show detailed logs
-               python -m my_control_assistant.services.channel_finder.benchmarks.cli --verbose
+               python src/my_control_assistant/services/channel_finder/benchmarks/cli.py --verbose
 
             **When to use these tools:**
 

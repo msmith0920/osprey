@@ -47,15 +47,18 @@ def _save_prompt_to_file(prompt: str, stage: str, level: str = "", query: str = 
     if stage == 'query_split':
         filename = 'prompt_stage1_query_split.txt'
     elif stage == 'level_selection' and level:
-        # Stage 2 is hierarchical navigation with 5 levels
-        level_map = {
-            'system': 'prompt_stage2_level1_system.txt',
-            'family': 'prompt_stage2_level2_family.txt',
-            'device': 'prompt_stage2_level3_device.txt',
-            'field': 'prompt_stage2_level4_field.txt',
-            'subfield': 'prompt_stage2_level5_subfield.txt',
-        }
-        filename = level_map.get(level, f'prompt_stage2_level_{level}.txt')
+        # Dynamic level mapping based on hierarchy definition
+        config_builder = _get_config()
+        hierarchy_levels = config_builder.get(
+            'channel_finder.pipelines.hierarchical.database.hierarchy_levels',
+            []
+        )
+
+        try:
+            level_idx = hierarchy_levels.index(level) + 1
+            filename = f'prompt_stage2_level{level_idx}_{level}.txt'
+        except (ValueError, AttributeError):
+            filename = f'prompt_stage2_level_{level}.txt'
     else:
         filename = f'prompt_{stage}.txt'
 
@@ -282,10 +285,13 @@ class HierarchicalPipeline(BasePipeline):
 
         logger.info(f"{indent}  → Selected: {selected[:3] if len(selected) > 3 else selected}{'...' if len(selected) > 3 else ''}")
 
-        # Determine if we should branch
+        # Determine if we should branch - now dynamic based on config
+        level_config = self.database.hierarchy_config["levels"][level]
+        allow_branching = level_config.get("allow_branching", True)
+
         should_branch = (
             len(selected) > 1 and
-            level in ['system', 'family', 'field']  # Branching levels
+            allow_branching  # Now configurable!
         )
 
         if should_branch:
@@ -438,6 +444,33 @@ class HierarchicalPipeline(BasePipeline):
         level_instruction = ""
         if self.hierarchical_context and level in self.hierarchical_context:
             level_instruction = f"\n{self.hierarchical_context[level].strip()}\n"
+        else:
+            # Fallback guidance based on level type for arbitrary hierarchies
+            level_config = self.database.hierarchy_config["levels"][level]
+            if level_config["type"] == "instance":
+                level_instruction = f"""
+Select specific instance(s) of {level} based on the query.
+
+Guidelines:
+- Specific number/name mentioned → select that instance exactly
+- "all" or no specific instance → select all available instances
+- Range mentioned → select instances in that range
+- Multiple instances can be selected - they share the same structure
+"""
+            elif level_config.get("allow_branching", True):
+                level_instruction = f"""
+Select the {level} category/categories that match the query.
+
+BRANCHING BEHAVIOR: If you select multiple options, each will be explored
+separately with its own subtree. This is important when different options
+have different structures or children.
+
+Select multiple when the query spans multiple categories or is ambiguous.
+"""
+            else:
+                level_instruction = f"""
+Select the {level} option that best matches the query context.
+"""
 
         # Add facility description for system-level navigation (provides device naming conventions)
         facility_context = ""

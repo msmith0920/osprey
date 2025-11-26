@@ -1,0 +1,103 @@
+{
+  "_comment": "Example: Instance-First Pattern - Instance level at root of hierarchy",
+  "_use_case": "Production lines, numbered facilities, lettered sections - any case where numbered/lettered divisions come first",
+  "_structure": "LINE[instances] → STATION[tree] → PARAMETER[tree]",
+
+  "hierarchy_definition": ["line", "station", "parameter"],
+  "naming_pattern": "LINE{line}:{station}:{parameter}",
+
+  "hierarchy_config": {
+    "levels": {
+      "line": {
+        "type": "instance",
+        "structure": "expand_here",
+        "allow_branching": false
+      },
+      "station": {
+        "type": "category",
+        "structure": "tree",
+        "allow_branching": true
+      },
+      "parameter": {
+        "type": "category",
+        "structure": "tree",
+        "allow_branching": true
+      }
+    }
+  },
+
+  "tree": {
+    "LINE": {
+      "_expansion": {
+        "_type": "range",
+        "_pattern": "{}",
+        "_range": [1, 5],
+        "_comment": "5 production lines: 1, 2, 3, 4, 5"
+      },
+      "ASSEMBLY": {
+        "_description": "Assembly station - components joined together",
+        "SPEED": {
+          "_description": "Assembly line speed (units per minute)"
+        },
+        "POSITION": {
+          "_description": "Current carriage position (millimeters)"
+        },
+        "TORQUE": {
+          "_description": "Fastening torque (Newton-meters)"
+        },
+        "STATUS": {
+          "_description": "Station operational status (ready/running/fault)"
+        }
+      },
+      "INSPECTION": {
+        "_description": "Quality inspection station - automated vision inspection",
+        "PASS_COUNT": {
+          "_description": "Number of parts passed inspection"
+        },
+        "FAIL_COUNT": {
+          "_description": "Number of parts failed inspection"
+        },
+        "REJECT_RATE": {
+          "_description": "Current reject rate percentage"
+        },
+        "CAMERA_STATUS": {
+          "_description": "Inspection camera operational status"
+        },
+        "STATUS": {
+          "_description": "Station operational status"
+        }
+      },
+      "PACKAGING": {
+        "_description": "Final packaging station - automated boxing and labeling",
+        "SPEED": {
+          "_description": "Packaging rate (boxes per minute)"
+        },
+        "BOX_COUNT": {
+          "_description": "Total boxes packaged"
+        },
+        "LABEL_STATUS": {
+          "_description": "Label printer status (ok/paper_low/fault)"
+        },
+        "STATUS": {
+          "_description": "Station operational status"
+        }
+      },
+      "CONVEYOR": {
+        "_description": "Main conveyor system connecting stations",
+        "SPEED": {
+          "_description": "Conveyor belt speed (meters per minute)"
+        },
+        "LOAD": {
+          "_description": "Motor load percentage"
+        },
+        "EMERGENCY_STOP": {
+          "_description": "Emergency stop button status (armed/triggered)"
+        },
+        "STATUS": {
+          "_description": "Conveyor operational status"
+        }
+      }
+    }
+  }
+}
+

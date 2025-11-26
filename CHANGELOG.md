@@ -7,67 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.3] - 2025-11-27
-
 ### Added
-- **LLM API Call Logging** - Comprehensive logging of all LLM API interactions for debugging and transparency
-  - New `development.api_calls` configuration section with `save_all`, `latest_only`, and `include_stack_trace` options
-  - Automatic capture of complete input/output pairs with rich metadata (caller function, module, class, line number, model config)
-  - Context variable propagation through async/thread boundaries using Python's `contextvars` for accurate caller detection
-  - Intelligent caller detection that skips thread pool and asyncio internals to find actual business logic
-  - Integration with classifier and orchestrator nodes via `set_api_call_context()` helper function
-  - Capability-aware logging: classifier logs include capability name in filename for parallel classification tasks
-  - Files saved to `_agent_data/api_calls/` with descriptive naming: `{module}_{class}_{function}_{capability}_latest.txt`
-  - Documentation added to prompt customization guide and configuration reference
-  - Complements existing prompt debugging (`development.prompts`) for complete LLM interaction transparency
-- **End-to-End Test Infrastructure** - Complete LLM-based testing system for workflow validation
-  - New `tests/e2e/` directory with comprehensive e2e test framework
-  - **LLM Judge System** (`judge.py`) - AI-powered test evaluation with structured scoring
-    - Evaluates workflows against plain-text expectations for flexible validation
-    - Provides confidence scores (0.0-1.0) and detailed reasoning
-    - Identifies warnings and concerns even in passing tests
-  - **E2E Project Factory** (`conftest.py`) - Automated test project creation and execution
-    - Creates isolated test projects from templates in temporary directories
-    - Full framework initialization with registry, graph, and gateway setup
-    - Query execution with complete state management and artifact collection
-    - Working directory management for correct `_agent_data/` placement
-    - Root logger capture for comprehensive execution trace logging
-  - **Tutorial Tests** (`test_tutorials.py`) - Validates complete user workflows
-    - `test_bpm_timeseries_and_correlation_tutorial` - Full control assistant workflow (channel finding, archiver retrieval, plotting)
-    - `test_simple_query_smoke_test` - Quick infrastructure validation
-  - **CLI Options** - Flexible test execution and debugging
-    - `--e2e-verbose` - Real-time progress updates during test execution
-    - `--judge-verbose` - Detailed LLM judge reasoning and evaluation
-    - `--judge-provider` and `--judge-model` - Configurable judge AI model
-  - **Comprehensive Documentation** (`tests/e2e/README.md`) - Complete testing guide with examples
-  - **Belt and Suspenders Validation** - LLM judge + hard assertions for reliable testing
-- **CLI Provider/Model Configuration** - Added `--provider` and `--model` flags to `osprey init` command for configuring AI provider during project creation
-- **Unified Logging with Automatic Streaming**
-  - Added `BaseCapability.get_logger()` method providing single API for logging and streaming
-  - Enhanced `ComponentLogger` with automatic LangGraph streaming support
-  - New `status()` method for high-level progress updates
-  - Streaming behavior configurable per method with `stream` parameter
-  - Smart defaults: `status()`, `error()`, `success()`, `warning()` stream automatically to web UI
-  - Detailed logging methods (`info()`, `debug()`) remain CLI-only by default
-  - Lazy stream writer initialization with graceful degradation when LangGraph unavailable
-  - Custom metadata support via `**kwargs` on all logging methods
-  - Automatic step tracking integrated with existing TASK_PREPARATION_STEPS
-  - All infrastructure nodes, capabilities, service nodes, and templates migrated to unified pattern
-  - Comprehensive test coverage with 26 test cases in `tests/utils/test_logger.py`
-  - Backward compatible: existing `get_logger()` and `get_streamer()` patterns continue to work
+- **Flexible Hierarchical Database with Arbitrary Instance/Tree Mixing**
+  - Refactored `HierarchicalChannelDatabase` to support configurable level types (`tree` vs `expand_here`)
+  - Removed all hardcoded level names (`system`, `family`, `device`, `field`, `subfield`)
+  - Added `hierarchy_config` system for flexible structure definition with `type`, `structure`, and `allow_branching` properties
+  - Support arbitrary mixing of instance and category levels at any position in hierarchy
+  - Enable multiple consecutive instance levels (e.g., SECTOR→DEVICE, FLOOR→ROOM)
+  - Implement automatic backward compatibility with legacy databases via config inference
+  - Add comprehensive validation with actionable error messages for common configuration mistakes
+  - Update pipeline with dynamic branching logic based on level configuration
+  - Add fallback prompt guidance for arbitrary level names
+  - New example databases demonstrating real-world use cases:
+    - `mixed_hierarchy.json`: Building management (1,720 channels) - SECTOR[instances]→BUILDING[tree]→FLOOR[instances]→ROOM[instances]→EQUIPMENT[tree]
+    - `instance_first.json`: Manufacturing (85 channels) - LINE[instances]→STATION[tree]→PARAMETER[tree]
+    - `consecutive_instances.json`: Accelerator naming (4,996 channels) - SYSTEM[tree]→FAMILY[tree]→SECTOR[instances]→DEVICE[instances]→PROPERTY[tree]
+  - Comprehensive test suite with 34 unit tests and 7 integration tests (all passing)
+  - Support hierarchies from 1 to 15+ levels with any combination of types
+  - All existing hierarchical databases continue to work unchanged
 
-### Changed
-- **Capability Base Class** - Moved exception handling for classifier/orchestrator guide creation to base class properties with warning logs
-- **Capability Templates** - Cleaned up unused imports and logger usage in all capability templates (control_assistant, minimal)
+### Fixed
+- **Channel Finder CLI Documentation**
+  - Fixed documentation bug where CLI commands used module import syntax (`python -m my_control_assistant.services.channel_finder.cli`) which failed because generated projects are not installed packages
+  - Converted `cli.py` and `benchmarks/cli.py` to Jinja2 templates (`.j2`) to enable proper package name substitution
+  - Added `sys.path.insert()` pattern to both CLIs enabling them to run as standalone scripts
+  - Updated all documentation to use direct script execution: `python src/my_control_assistant/services/channel_finder/cli.py`
+  - Matches the working pattern already used by database tools (`validate_database.py`, `build_channel_database.py`, etc.)
+  - No dependency installation required - works immediately after `osprey init`
 
-## [0.9.2] - 2025-11-25
-
-### 🎉 Major Features
-
-#### Argo AI Provider (ANL Institutional Service)
-- **New provider adapter** for Argonne National Laboratory's Argo proxy service
-- **8 models supported**: Claude (Haiku 4.5, Sonnet 4.5, Sonnet 3.7, Opus 4.1), Gemini (2.5 Flash, 2.5 Pro), GPT-5, GPT-5 Mini
-- **OpenAI-compatible interface** with automatic structured output support
 - Uses `$USER` environment variable for ANL authentication
 - File: `src/osprey/models/providers/argo.py`
 - Added `ARGO_API_KEY` to all project templates

@@ -2,9 +2,13 @@
 Hierarchical Channel Database
 
 Loads and navigates hierarchical channel structures for iterative LLM-based refinement.
+Supports flexible hierarchy with arbitrary mixing of:
+- Tree levels (semantic categories)
+- Instance levels (numbered/patterned expansions)
 """
 
 import json
+import itertools
 from typing import List, Dict, Optional, Any
 from pathlib import Path
 from ..core.base_database import BaseDatabase
@@ -14,7 +18,9 @@ class HierarchicalChannelDatabase(BaseDatabase):
     """
     Database for hierarchical channel naming schemes.
 
-    Supports iterative navigation through levels: SYSTEM → FAMILY → DEVICE → FIELD → SUBFIELD
+    Supports flexible hierarchy with arbitrary mixing of:
+    - Tree levels (semantic categories)
+    - Instance levels (numbered/patterned expansions)
     """
 
     def __init__(self, db_path: str):
@@ -27,7 +33,7 @@ class HierarchicalChannelDatabase(BaseDatabase):
         super().__init__(db_path)
 
     def load_database(self):
-        """Load hierarchical database from JSON."""
+        """Load hierarchical database from JSON with flexible configuration."""
         with open(self.db_path, 'r') as f:
             data = json.load(f)
 
@@ -35,8 +41,326 @@ class HierarchicalChannelDatabase(BaseDatabase):
         self.naming_pattern = data['naming_pattern']
         self.tree = data['tree']
 
+        # Load or infer hierarchy configuration
+        if 'hierarchy_config' in data:
+            self.hierarchy_config = data['hierarchy_config']
+        else:
+            # Backward compatibility: infer from legacy structure
+            self.hierarchy_config = self._infer_legacy_config()
+
+        # Validate configuration
+        self._validate_hierarchy_config()
+
         # Build flat channel map for validation and lookup
         self.channel_map = self._build_channel_map()
+
+    def _infer_legacy_config(self) -> Dict:
+        """
+        Infer hierarchy configuration for legacy databases.
+
+        Assumes traditional accelerator pattern:
+        - First 2 levels: tree-based categories (system, family)
+        - Remaining levels: container-based instances (device, field, subfield)
+        - Branching on first 2 and last 2 levels
+        """
+        config = {"levels": {}}
+
+        # Map legacy container keys
+        legacy_container_keys = {
+            'device': 'devices',
+            'field': 'fields',
+            'subfield': 'subfields'
+        }
+
+        for i, level in enumerate(self.hierarchy_levels):
+            if i < 2:
+                # First two levels: tree-based categories
+                config["levels"][level] = {
+                    "type": "category",
+                    "structure": "tree",
+                    "allow_branching": True
+                }
+            else:
+                # Later levels: container-based (legacy style)
+                config["levels"][level] = {
+                    "type": "instance" if level in legacy_container_keys else "category",
+                    "structure": "container",  # Legacy mode
+                    "allow_branching": (i >= len(self.hierarchy_levels) - 2),
+                    "container_key": legacy_container_keys.get(level, f"{level}s")
+                }
+
+        return config
+
+    def _validate_hierarchy_config(self):
+        """
+        Validate hierarchy configuration structure with helpful error messages.
+
+        Checks:
+        1. Configuration structure is valid
+        2. All levels are configured
+        3. Each level has required fields
+        4. Field values are valid
+        5. Tree structure matches configuration
+        """
+        if "levels" not in self.hierarchy_config:
+            raise ValueError("hierarchy_config must contain 'levels' key")
+
+        # Check all levels are configured
+        for level in self.hierarchy_levels:
+            if level not in self.hierarchy_config["levels"]:
+                raise ValueError(
+                    f"Level '{level}' not found in hierarchy_config.\n"
+                    f"All levels from hierarchy_definition must be configured.\n"
+                    f"Expected levels: {self.hierarchy_levels}\n"
+                    f"Configured levels: {list(self.hierarchy_config['levels'].keys())}"
+                )
+
+        # Validate each level config
+        for level, config in self.hierarchy_config["levels"].items():
+            if "structure" not in config:
+                raise ValueError(
+                    f"Level '{level}' missing required 'structure' property.\n"
+                    f"Add: \"structure\": \"tree\" or \"expand_here\"\n"
+                    f"  - tree: Semantic categories with direct children\n"
+                    f"  - expand_here: Numbered/patterned instances"
+                )
+
+            if config["structure"] not in ["tree", "expand_here", "container"]:
+                raise ValueError(
+                    f"Level '{level}' has invalid structure: '{config['structure']}'.\n"
+                    f"Must be 'tree', 'expand_here', or 'container' (legacy).\n"
+                    f"Did you mean 'tree' or 'expand_here'?"
+                )
+
+        # Validate tree structure matches configuration
+        self._validate_tree_structure()
+
+    def _validate_tree_structure(self):
+        """
+        Validate tree structure matches hierarchy configuration.
+
+        Checks:
+        1. Instance levels have matching containers
+        2. Instance containers have _expansion definitions
+        3. Expansion definitions are valid
+        4. Consecutive instances are properly nested
+        """
+        for level_idx, level in enumerate(self.hierarchy_levels):
+            level_config = self.hierarchy_config["levels"][level]
+
+            # Validate instance levels
+            if level_config["structure"] == "expand_here":
+                self._validate_instance_level(level, level_idx)
+
+    def _validate_instance_level(self, level_name: str, level_idx: int):
+        """
+        Validate instance level has proper container and expansion.
+
+        Args:
+            level_name: Name of the level to validate
+            level_idx: Index in hierarchy_levels
+        """
+        # Find the container for this level
+        container = self._find_level_container(self.tree, level_name, level_idx)
+
+        if not container:
+            # Helpful error message with suggestions
+            raise ValueError(
+                f"Instance level '{level_name}' requires container named '{level_name.upper()}' in tree.\n\n"
+                f"Expected structure:\n"
+                f"  \"tree\": {{\n"
+                f"    \"{level_name.upper()}\": {{\n"
+                f"      \"_expansion\": {{...}},\n"
+                f"      ...(children for next level)\n"
+                f"    }}\n"
+                f"  }}\n\n"
+                f"Troubleshooting:\n"
+                f"  1. Check that container name matches level name (case-insensitive)\n"
+                f"  2. Verify container is at correct nesting depth\n"
+                f"  3. Ensure previous levels are properly configured"
+            )
+
+        # Validate expansion definition exists
+        if "_expansion" not in container:
+            # Get the path to this container for error message
+            path = self._get_container_path(level_name, level_idx)
+
+            raise ValueError(
+                f"Instance level '{level_name}' container missing '_expansion' definition.\n\n"
+                f"Found container at: {path}\n"
+                f"Missing: {path}['_expansion']\n\n"
+                f"Add expansion definition:\n"
+                f"  \"_expansion\": {{\n"
+                f"    \"_type\": \"range\",\n"
+                f"    \"_pattern\": \"{{:02d}}\",  // or \"{{}}\"\n"
+                f"    \"_range\": [1, 10]  // [start, end] inclusive\n"
+                f"  }}\n\n"
+                f"Or for list-based:\n"
+                f"  \"_expansion\": {{\n"
+                f"    \"_type\": \"list\",\n"
+                f"    \"_instances\": [\"A\", \"B\", \"C\"]\n"
+                f"  }}"
+            )
+
+        # Validate expansion definition format
+        expansion = container["_expansion"]
+        self._validate_expansion_definition(expansion, level_name)
+
+        # Check for consecutive instances that should be nested
+        if level_idx < len(self.hierarchy_levels) - 1:
+            next_level = self.hierarchy_levels[level_idx + 1]
+            next_config = self.hierarchy_config["levels"][next_level]
+
+            if next_config["structure"] == "expand_here":
+                # Next level is also instance - verify it's nested
+                if next_level.upper() not in container:
+                    raise ValueError(
+                        f"Consecutive instance levels '{level_name}' and '{next_level}' detected.\n\n"
+                        f"'{next_level.upper()}' container must be nested inside '{level_name.upper()}' container.\n\n"
+                        f"Current structure (incorrect):\n"
+                        f"  tree['{level_name.upper()}'] = {{...}}\n"
+                        f"  tree['{next_level.upper()}'] = {{...}}  ← siblings (wrong)\n\n"
+                        f"Expected structure (correct):\n"
+                        f"  tree['{level_name.upper()}'] = {{\n"
+                        f"    \"_expansion\": {{...}},\n"
+                        f"    \"{next_level.upper()}\": {{  ← nested inside {level_name.upper()}\n"
+                        f"      \"_expansion\": {{...}},\n"
+                        f"      ...\n"
+                        f"    }}\n"
+                        f"  }}\n\n"
+                        f"Why: Consecutive instance levels stay at the same tree position,\n"
+                        f"so they must be nested to maintain proper navigation."
+                    )
+
+    def _validate_expansion_definition(self, expansion: Dict, level_name: str):
+        """Validate expansion definition has required fields and valid values."""
+        if "_type" not in expansion:
+            raise ValueError(
+                f"Expansion for '{level_name}' missing '_type' field.\n"
+                f"Must be 'range' or 'list'."
+            )
+
+        exp_type = expansion["_type"]
+
+        if exp_type == "range":
+            if "_pattern" not in expansion:
+                raise ValueError(
+                    f"Range expansion for '{level_name}' requires '_pattern' field.\n"
+                    f"Example: \"_pattern\": \"{{:02d}}\" for zero-padded numbers (01, 02, ...)\n"
+                    f"Example: \"_pattern\": \"{{}}\" for plain numbers (1, 2, ...)\n"
+                    f"Example: \"_pattern\": \"B{{:02d}}\" for prefixed (B01, B02, ...)"
+                )
+
+            if "_range" not in expansion:
+                raise ValueError(
+                    f"Range expansion for '{level_name}' requires '_range' field.\n"
+                    f"Must be [start, end] list (inclusive).\n"
+                    f"Example: \"_range\": [1, 24] generates 1, 2, ..., 24"
+                )
+
+            # Validate range format
+            if not isinstance(expansion["_range"], list) or len(expansion["_range"]) != 2:
+                raise ValueError(
+                    f"Range expansion for '{level_name}' '_range' must be [start, end] list.\n"
+                    f"Got: {expansion['_range']}"
+                )
+
+            start, end = expansion["_range"]
+            if not isinstance(start, int) or not isinstance(end, int):
+                raise ValueError(
+                    f"Range expansion for '{level_name}' start and end must be integers.\n"
+                    f"Got: start={start} ({type(start).__name__}), end={end} ({type(end).__name__})"
+                )
+
+            if start > end:
+                raise ValueError(
+                    f"Range expansion for '{level_name}' start must be <= end.\n"
+                    f"Got: start={start}, end={end}"
+                )
+
+        elif exp_type == "list":
+            if "_instances" not in expansion:
+                raise ValueError(
+                    f"List expansion for '{level_name}' requires '_instances' field.\n"
+                    f"Must be a list of strings.\n"
+                    f"Example: \"_instances\": [\"MAIN\", \"BACKUP\", \"TEST\"]"
+                )
+
+            if not isinstance(expansion["_instances"], list):
+                raise ValueError(
+                    f"List expansion for '{level_name}' '_instances' must be a list.\n"
+                    f"Got: {type(expansion['_instances']).__name__}"
+                )
+
+            if len(expansion["_instances"]) == 0:
+                raise ValueError(
+                    f"List expansion for '{level_name}' '_instances' cannot be empty.\n"
+                    f"Provide at least one instance name."
+                )
+
+        else:
+            raise ValueError(
+                f"Expansion for '{level_name}' has invalid '_type': '{exp_type}'.\n"
+                f"Must be 'range' or 'list'."
+            )
+
+    def _find_level_container(self, tree: Dict, level_name: str, level_idx: int) -> Optional[Dict]:
+        """
+        Find the container for an instance level in the tree.
+
+        Args:
+            tree: Tree structure to search
+            level_name: Name of level to find
+            level_idx: Index in hierarchy
+
+        Returns:
+            Container dict if found, None otherwise
+        """
+        current_node = tree
+
+        # Navigate to the correct position based on previous tree levels
+        for prev_idx in range(level_idx):
+            prev_level = self.hierarchy_levels[prev_idx]
+            prev_config = self.hierarchy_config["levels"][prev_level]
+
+            # Only navigate for tree levels
+            if prev_config["structure"] == "tree":
+                # For validation, we can't navigate without selections
+                # Just find the first valid child
+                for key, value in current_node.items():
+                    if not key.startswith("_") and isinstance(value, dict):
+                        current_node = value
+                        break
+
+            elif prev_config["structure"] == "expand_here":
+                # Find the container and move into it
+                for key, value in current_node.items():
+                    if key.upper() == prev_level.upper() and isinstance(value, dict):
+                        current_node = value
+                        break
+
+        # Now look for the current level's container
+        for key, value in current_node.items():
+            if key.upper() == level_name.upper() and isinstance(value, dict):
+                return value
+
+        return None
+
+    def _get_container_path(self, level_name: str, level_idx: int) -> str:
+        """Get the path to a container for error messages."""
+        path_parts = ["tree"]
+
+        for prev_idx in range(level_idx):
+            prev_level = self.hierarchy_levels[prev_idx]
+            prev_config = self.hierarchy_config["levels"][prev_level]
+
+            if prev_config["structure"] == "tree":
+                path_parts.append("[CATEGORY]")
+            elif prev_config["structure"] == "expand_here":
+                path_parts.append(f"['{prev_level.upper()}']")
+
+        path_parts.append(f"['{level_name.upper()}']")
+        return "".join(path_parts)
 
     def get_hierarchy_definition(self) -> List[str]:
         """Get the hierarchy level names."""
@@ -51,164 +375,215 @@ class HierarchicalChannelDatabase(BaseDatabase):
         Get available options at a specific hierarchy level.
 
         Args:
-            level: Current level name (e.g., "system", "family", "device")
+            level: Current level name
             previous_selections: Dict mapping previous level names to selected values
 
         Returns:
-            List of options with name, description, and metadata
+            List of options with name and description
         """
-        # Navigate to current position in tree
+        # Navigate to current position in tree (skipping instance levels)
+        current_node = self._navigate_to_node(level, previous_selections)
+
+        if not current_node:
+            return []
+
+        # Get level configuration
+        level_config = self.hierarchy_config["levels"][level]
+        structure = level_config["structure"]
+
+        # Extract options based on structure type
+        if structure == "tree":
+            # Direct children of current node
+            return self._extract_tree_options(current_node)
+
+        elif structure == "expand_here":
+            # Find expansion definition for this level
+            return self._get_expansion_options(current_node, level)
+
+        elif structure == "container":
+            # Legacy container mode (backward compatibility)
+            return self._get_container_options(current_node, level, level_config, previous_selections)
+
+        return []
+
+    def _navigate_to_node(self, target_level: str, previous_selections: Dict[str, Any]) -> Optional[Dict]:
+        """
+        Navigate to current node in tree based on previous selections.
+
+        Key behavior: Instance levels (expand_here) do NOT change tree position
+        during selection, but we DO navigate INTO their containers to find children.
+
+        Args:
+            target_level: Level we're getting options for
+            previous_selections: Selections made at previous levels
+
+        Returns:
+            Current node in tree, or None if path invalid
+        """
         current_node = self.tree
 
-        # For each previous level, navigate down the tree
-        # NOTE: Tree structure is system -> family only
-        #       device, field, subfield are accessed via special keys, not direct children
+        # Navigate through previous levels
         for prev_level in self.hierarchy_levels:
-            if prev_level == level:
+            if prev_level == target_level:
                 break
 
-            # Only navigate for system and family levels
-            # (device, field, subfield are accessed differently)
-            if prev_level not in ['system', 'family']:
+            level_config = self.hierarchy_config["levels"][prev_level]
+
+            # Instance levels (expand_here): navigate INTO container but don't use selection
+            if level_config["structure"] == "expand_here":
+                # Find and enter the container for this instance level
+                for key, value in current_node.items():
+                    if key.upper() == prev_level.upper() and isinstance(value, dict):
+                        current_node = value
+                        break
                 continue
 
-            if prev_level in previous_selections:
-                selection = previous_selections[prev_level]
+            # Container levels (legacy) also need to navigate in
+            if level_config["structure"] == "container":
+                continue
 
-                # Handle list selections (take first for navigation)
-                if isinstance(selection, list):
-                    selection = selection[0] if selection else None
+            # Tree levels - navigate down using selection
+            if level_config["structure"] == "tree":
+                if prev_level in previous_selections:
+                    selection = self._get_single_value(previous_selections[prev_level])
 
-                if selection and selection in current_node:
-                    current_node = current_node[selection]
-                else:
-                    # Invalid path
-                    return []
+                    if selection and selection in current_node:
+                        current_node = current_node[selection]
+                    else:
+                        return None  # Invalid path
 
-        # Extract options at current level
+        return current_node
+
+    def _extract_tree_options(self, node: Dict) -> List[Dict[str, str]]:
+        """Extract options from tree-structured node."""
         options = []
-
-        if level == "system":
-            # Level 1: System level - list all top-level systems
-            for key, value in current_node.items():
-                if not key.startswith('_'):
-                    options.append({
-                        'name': key,
-                        'description': value.get('_description', '')
-                    })
-
-        elif level == "family":
-            # Level 2: Family level - list device families in selected system
-            for key, value in current_node.items():
+        for key, value in node.items():
                 if not key.startswith('_') and isinstance(value, dict):
                     options.append({
                         'name': key,
                         'description': value.get('_description', '')
                     })
+        return options
 
-        elif level == "device":
-            # Level 3: Device level - expand device instances
-            if 'devices' in current_node:
-                device_config = current_node['devices']
-                device_type = device_config.get('_type')
+    def _get_expansion_options(self, node: Dict, level: str) -> List[Dict[str, str]]:
+        """
+        Get options from expansion definition at current level.
 
-                if device_type == 'range':
-                    # Generate device list from range
-                    pattern = device_config.get('_pattern', '{}')
-                    start, end = device_config.get('_range', [1, 1])
+        Looks for a key matching the level name (case-insensitive) with _expansion definition.
 
-                    for i in range(start, end + 1):
-                        device_name = pattern.format(i)
-                        options.append({
-                            'name': device_name,
-                            'description': f"Instance {i}"
-                        })
+        Args:
+            node: Current node in tree
+            level: Level name to find expansion for
 
+        Returns:
+            List of expanded instance options
+        """
+        # Look for level name key with expansion
+        for key, value in node.items():
+            if key.upper() == level.upper() and isinstance(value, dict):
+                if "_expansion" in value:
+                    return self._expand_instances(value["_expansion"])
 
-                elif device_type == 'list':
-                    # Use explicit list
-                    instances = device_config.get('_instances', [])
-                    for instance in instances:
-                        options.append({
-                            'name': instance,
-                            'description': ''
-                        })
+        # If not found, return empty (will cause navigation to fail)
+        return []
 
-        elif level == "field":
-            # Level 4: Field level - list physical quantities
-            if 'fields' in current_node:
-                for key, value in current_node['fields'].items():
-                    if not key.startswith('_'):
-                        options.append({
-                            'name': key,
-                            'description': value.get('_description', '')
-                        })
+    def _expand_instances(self, expansion_def: Dict) -> List[Dict[str, str]]:
+        """
+        Expand instance definition into list of options.
 
-        elif level == "subfield":
-            # Level 5: Subfield level - list measurement types
-            # For single field, show its subfields directly
-            # (Multi-field handling is done at pipeline level with separate calls)
-            if 'fields' in current_node and 'field' in previous_selections:
-                field_selection = previous_selections['field']
+        Args:
+            expansion_def: Dictionary with _type, _pattern/_instances, _range
 
-                # Handle both single string and list (take first if list)
-                if isinstance(field_selection, list):
-                    field_selection = field_selection[0] if field_selection else None
+        Returns:
+            List of instance options
+        """
+        expansion_type = expansion_def.get('_type')
+        options = []
 
-                if field_selection and field_selection in current_node['fields']:
-                    field_node = current_node['fields'][field_selection]
-                    if 'subfields' in field_node:
-                        for key, value in field_node['subfields'].items():
-                            if not key.startswith('_'):
-                                options.append({
-                                    'name': key,
-                                    'description': value.get('_description', '')
-                                })
+        if expansion_type == 'range':
+            pattern = expansion_def.get('_pattern', '{}')
+            start, end = expansion_def.get('_range', [1, 1])
+
+            for i in range(start, end + 1):
+                instance_name = pattern.format(i)
+                options.append({
+                    'name': instance_name,
+                    'description': f"Instance {i}"
+                })
+
+        elif expansion_type == 'list':
+            instances = expansion_def.get('_instances', [])
+            for instance in instances:
+                options.append({
+                    'name': instance,
+                    'description': ''
+                })
 
         return options
 
-    def build_channels_from_selections(
+    def _get_container_options(
         self,
-        selections: Dict[str, Any]
-    ) -> List[str]:
+        node: Dict,
+        level: str,
+        level_config: Dict,
+        previous_selections: Dict
+    ) -> List[Dict[str, str]]:
+        """
+        Get options from legacy container structure.
+
+        For backward compatibility with existing databases.
+        """
+        container_key = level_config.get("container_key")
+
+        if not container_key or container_key not in node:
+            return []
+
+        container = node[container_key]
+
+        # Check if it's an instance definition or direct dictionary
+        if "_type" in container:
+            # Instance expansion (range or list)
+            return self._expand_instances(container)
+        else:
+            # Direct dictionary - need special handling for subfield
+            if level == "subfield" and "field" in previous_selections:
+                # Navigate to specific field first
+                field_selection = self._get_single_value(previous_selections["field"])
+                if field_selection and field_selection in container:
+                    field_node = container[field_selection]
+                    if "subfields" in field_node:
+                        return self._extract_tree_options(field_node["subfields"])
+            else:
+                # Regular container
+                return self._extract_tree_options(container)
+
+        return []
+
+    def build_channels_from_selections(self, selections: Dict[str, Any]) -> List[str]:
         """
         Build fully-qualified channel names from hierarchical selections.
 
-        With recursive branching, selections will contain single values at branch levels
-        (system/family/field) and lists only at device/subfield levels.
+        Works with any number of levels - uses Cartesian product.
 
         Args:
-            selections: Dict mapping level names to selected values
-                       - Single strings for branch levels (system, family, field)
-                       - Lists for device and subfield levels
+            selections: Dict mapping level names to selected values (strings or lists)
 
         Returns:
             List of complete channel names
         """
+        # Convert all selections to lists for uniform handling
+        selection_lists = []
+        for level in self.hierarchy_levels:
+            values = self._ensure_list(selections.get(level, []))
+            selection_lists.append(values)
+
+        # Generate Cartesian product of all selections
         channels = []
-
-        # Get selections at each level (convert to lists for uniform handling)
-        systems = self._ensure_list(selections.get('system', []))
-        families = self._ensure_list(selections.get('family', []))
-        devices = self._ensure_list(selections.get('device', []))
-        fields = self._ensure_list(selections.get('field', []))
-        subfields = self._ensure_list(selections.get('subfield', []))
-
-        # Build Cartesian product of all selections
-        for system in systems:
-            for family in families:
-                for device in devices:
-                    for field in fields:
-                        for subfield in subfields:
-                            # Build channel name using pattern
-                            channel = self.naming_pattern.format(
-                                system=system,
-                                family=family,
-                                device=device,
-                                field=field,
-                                subfield=subfield
-                            )
-                            channels.append(channel)
+        for combination in itertools.product(*selection_lists):
+            # Build channel name using naming pattern
+            params = dict(zip(self.hierarchy_levels, combination))
+            channel = self.naming_pattern.format(**params)
+            channels.append(channel)
 
         return channels
 
@@ -240,17 +615,18 @@ class HierarchicalChannelDatabase(BaseDatabase):
         """
         Expand hierarchical tree into flat channel map.
 
+        Works with flexible hierarchy configuration.
+
         Returns:
             Dict mapping channel names to channel info
         """
         channels = {}
 
-        def expand_tree(path: Dict[str, str], node: Dict):
-            """Recursively expand tree."""
-            current_level_idx = len(path)
-
-            if current_level_idx >= len(self.hierarchy_levels):
-                # Reached leaf - build channel
+        def expand_tree(path: Dict[str, str], node: Dict, level_idx: int):
+            """Recursively expand tree with flexible level handling."""
+            # Base case: processed all levels
+            if level_idx >= len(self.hierarchy_levels):
+                # Build channel from complete path
                 channel_name = self.naming_pattern.format(**path)
                 channels[channel_name] = {
                     'channel': channel_name,
@@ -258,49 +634,76 @@ class HierarchicalChannelDatabase(BaseDatabase):
                 }
                 return
 
-            current_level = self.hierarchy_levels[current_level_idx]
+            current_level = self.hierarchy_levels[level_idx]
+            level_config = self.hierarchy_config["levels"][current_level]
 
-            if current_level == "system":
+            # Handle based on structure type
+            if level_config["structure"] == "tree":
+                # Tree navigation: iterate direct children
+                children = {
+                    k: v for k, v in node.items()
+                    if not k.startswith('_') and isinstance(v, dict)
+                }
+
+                for child_name, child_node in children.items():
+                    expand_tree({**path, current_level: child_name}, child_node, level_idx + 1)
+
+            elif level_config["structure"] == "expand_here":
+                # Expansion: find expansion definition and generate instances
+                expansion_def = None
+                child_node = node  # Stay at same node
+
                 for key, value in node.items():
-                    if not key.startswith('_'):
-                        expand_tree({**path, 'system': key}, value)
+                    if key.upper() == current_level.upper() and isinstance(value, dict):
+                        if "_expansion" in value:
+                            expansion_def = value["_expansion"]
+                            # Navigate past the expansion container
+                            child_node = value
+                            break
 
-            elif current_level == "family":
-                for key, value in node.items():
-                    if not key.startswith('_') and isinstance(value, dict):
-                        expand_tree({**path, 'family': key}, value)
+                if expansion_def:
+                    instances = self._get_instance_names(expansion_def)
+                    for instance_name in instances:
+                        expand_tree({**path, current_level: instance_name}, child_node, level_idx + 1)
 
-            elif current_level == "device":
-                if 'devices' in node:
-                    device_config = node['devices']
-                    device_type = device_config.get('_type')
+            elif level_config["structure"] == "container":
+                # Legacy container mode
+                container_key = level_config.get("container_key")
 
-                    if device_type == 'range':
-                        pattern = device_config.get('_pattern', '{}')
-                        start, end = device_config.get('_range', [1, 1])
-                        for i in range(start, end + 1):
-                            device_name = pattern.format(i)
-                            expand_tree({**path, 'device': device_name}, node)
+                if container_key and container_key in node:
+                    container = node[container_key]
 
+                    if "_type" in container:
+                        # Instance expansion
+                        instances = self._get_instance_names(container)
+                        for instance_name in instances:
+                            expand_tree({**path, current_level: instance_name}, node, level_idx + 1)
+                    else:
+                        # Container with direct children
+                        children = {
+                            k: v for k, v in container.items()
+                            if not k.startswith('_') and isinstance(v, dict)
+                        }
 
-                    elif device_type == 'list':
-                        for instance in device_config.get('_instances', []):
-                            expand_tree({**path, 'device': instance}, node)
+                        for child_name, child_node in children.items():
+                            expand_tree({**path, current_level: child_name}, child_node, level_idx + 1)
 
-            elif current_level == "field":
-                if 'fields' in node:
-                    for key in node['fields'].keys():
-                        if not key.startswith('_'):
-                            expand_tree({**path, 'field': key}, node['fields'][key])
-
-            elif current_level == "subfield":
-                if 'subfields' in node:
-                    for key in node['subfields'].keys():
-                        if not key.startswith('_'):
-                            expand_tree({**path, 'subfield': key}, node['subfields'][key])
-
-        expand_tree({}, self.tree)
+        expand_tree({}, self.tree, 0)
         return channels
+
+    def _get_instance_names(self, expansion_def: Dict) -> List[str]:
+        """Get list of instance names from expansion definition."""
+        expansion_type = expansion_def.get('_type')
+
+        if expansion_type == 'range':
+            pattern = expansion_def.get('_pattern', '{}')
+            start, end = expansion_def.get('_range', [1, 1])
+            return [pattern.format(i) for i in range(start, end + 1)]
+
+        elif expansion_type == 'list':
+            return expansion_def.get('_instances', [])
+
+        return []
 
     def _ensure_list(self, value: Any) -> List:
         """Convert value to list if it isn't already."""
@@ -316,22 +719,35 @@ class HierarchicalChannelDatabase(BaseDatabase):
         stats = {
             'total_channels': len(self.channel_map),
             'hierarchy_levels': self.hierarchy_levels,
-            'systems': []
         }
 
-        # Count by system
-        for system_name in self.tree.keys():
-            if not system_name.startswith('_'):
-                system_channels = [
-                    ch for ch in self.channel_map.values()
-                    if ch['path'].get('system') == system_name
-                ]
-                stats['systems'].append({
-                    'name': system_name,
-                    'channel_count': len(system_channels)
-                })
+        # Count by first level (if it's a tree level)
+        first_level = self.hierarchy_levels[0] if self.hierarchy_levels else None
+        if first_level:
+            first_config = self.hierarchy_config["levels"].get(first_level, {})
+            if first_config.get("structure") == "tree":
+                stats['systems'] = []
+                for system_name in self.tree.keys():
+                    if not system_name.startswith('_'):
+                        system_channels = [
+                            ch for ch in self.channel_map.values()
+                            if ch['path'].get(first_level) == system_name
+                        ]
+                        stats['systems'].append({
+                            'name': system_name,
+                            'channel_count': len(system_channels)
+                        })
 
         return stats
+
+    def _ensure_list(self, value: Any) -> List:
+        """Convert value to list if it isn't already."""
+        if isinstance(value, list):
+            return value
+        elif value is None:
+            return []
+        else:
+            return [value]
 
     def _get_single_value(self, value):
         """Get single value from potentially list value."""

@@ -1533,7 +1533,7 @@ Troubleshooting
    1. Check database path in ``config.yml``
    2. Validate database: ``python -m my_control_assistant.data.tools.validate_database``
    3. Preview database presentation: ``python -m my_control_assistant.data.tools.preview_database``
-   4. Test with CLI: ``python -m my_control_assistant.services.channel_finder.cli``
+   4. Test with CLI: ``python src/my_control_assistant/services/channel_finder/cli.py``
    5. Enable debug mode: ``config.yml`` → ``development.prompts.print_all: true``
    6. Review saved prompts in ``_agent_data/prompts/``
 
