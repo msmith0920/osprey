@@ -5,6 +5,59 @@ All notable changes to the Osprey Framework will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Python Executor Service - Complete Modular Refactoring**
+  - **Modular Subdirectory Structure**: Reorganized python_executor service into focused subdirectories
+    - `analysis/` - Code analysis, pattern detection, and policy enforcement
+    - `approval/` - Human approval workflows
+    - `execution/` - Container management and code execution
+    - `generation/` - Pluggable code generator system
+    - Each subdirectory has proper `__init__.py` and dedicated README documentation
+
+  - **Pluggable Code Generator System**: New extensible architecture for code generation
+    - **Abstract Interface**: `CodeGenerator` protocol defining standard generator contract
+    - **Generator Factory**: Dynamic registration and instantiation with `GeneratorFactory`
+    - **Multiple Implementations**:
+      * `BasicGenerator` - Simple template-based generation for straightforward tasks
+      * `ClaudeCodeGenerator` - Advanced AI-powered generation with:
+        - Full conversation history management
+        - Result validation and error recovery
+        - Streaming support with callbacks
+        - Tool use integration
+        - Configurable via `execution.code_generator` and `execution.generators` settings
+      * `MockGenerator` - Deterministic generator for testing
+    - **Registry Integration**: Generator lifecycle managed through framework registry system
+    - **State Model Extensions**: `PythonExecutorState` enhanced to support generator configuration
+
+  - **Generator Configuration**: Explicit, flexible configuration structure
+    - New `execution.code_generator` setting specifies active generator
+    - Generator-specific config in `execution.generators` with model references or inline config
+    - Deprecation warnings for old `models.python_code_generator` approach (backward compatible)
+    - Updated project templates with examples for all generator types
+
+  - **Integration Enhancements**: Connected generator system to framework
+    - Python capability updated to support generator configuration
+    - Analysis node enhanced with generator-aware validation
+    - Execution pipeline improved for generator output handling
+    - Container engine with better error reporting
+
+  - **Comprehensive Test Suite**: Extensive test coverage for new system
+    - Unit tests for all generator implementations (BasicGenerator, ClaudeCodeGenerator, MockGenerator)
+    - Integration tests for generator-service interaction
+    - Pattern detection integration tests
+    - Result validation test suites
+    - State reducer tests
+    - Shared test fixtures and utilities in `tests/services/python_executor/`
+
+  - **CLI and Template Improvements**: Enhanced user experience
+    - Generator selection and configuration in interactive menu
+    - Template system with generator-specific configurations
+    - Claude generator config template (`claude_generator_config.yml.j2`)
+    - Example plotting scripts for common use cases (time series, multi-subplot, publication-quality)
+    - Improved README templates with generator setup instructions
+
 ## [0.9.4] - 2025-11-28
 
 ### Added
@@ -101,6 +154,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.2] - 2025-11-25
 
 ### 🎉 Major Features
+
+- **Complete Documentation**: Comprehensive docs for new architecture
+  - Main python_executor service documentation with architecture overview
+  - Per-subdirectory READMEs (analysis, approval, execution, generation)
+  - Detailed generator implementation guides:
+    * BasicGenerator usage and customization
+    * ClaudeCodeGenerator configuration and features
+    * MockGenerator for testing
+  - Updated developer guides with new modular architecture
+  - API reference documentation updates
+
+**Benefits of New Architecture**:
+- **Extensibility**: Easy to add new code generators (e.g., Claude Code SDK, GPT-4, custom generators)
+- **Testability**: MockGenerator enables deterministic testing without API calls
+- **Maintainability**: Clear separation of concerns with modular subdirectories
+- **Flexibility**: Swap generators without modifying core service logic
+- **Zero Breaking Changes**: Existing configurations continue to work with deprecation warnings
+
+### Fixed
+- **Interactive Menu Registry Contamination** ([#29](https://github.com/als-apg/osprey/issues/29))
+  - Fixed bug where creating multiple projects in the same interactive menu session caused capability contamination
+  - Global registry singleton now properly reset when switching between projects
+  - Added `reset_registry()` calls in `handle_chat_action()` before launching chat
+  - Prevents second project from inheriting capabilities from first project
+  - Added comprehensive test suite to verify registry isolation
 
 #### Argo AI Provider (ANL Institutional Service)
 - **New provider adapter** for Argonne National Laboratory's Argo proxy service
@@ -232,6 +310,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Single contexts still returned as objects for backward compatibility: `{"CURRENT_WEATHER": ctx_obj}`
   - Capabilities can check `isinstance(context, list)` to detect and handle multiple contexts
   - Added 17 comprehensive test cases covering all scenarios
+- **Interactive Menu Registry Contamination** ([#29](https://github.com/als-apg/osprey/issues/29))
+  - Fixed bug where creating multiple projects in the same interactive menu session caused capability contamination
+  - Global registry singleton now properly reset when switching between projects
+  - Added `reset_registry()` calls in `handle_chat_action()` before launching chat
+  - Prevents second project from inheriting capabilities from first project
+  - Added comprehensive test suite to verify registry isolation
 
 ### Breaking Changes
 - **BREAKING CHANGE**: `BaseCapabilityContext.get_access_details()` signature simplified
