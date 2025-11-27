@@ -1,6 +1,6 @@
 # Osprey Framework
 
-**🎉 Latest Release: v0.9.2** - Instance Method Pattern & Critical Fixes
+**🎉 Latest Release: v0.9.3** - LLM API Call Logging & E2E Testing
 
 > **🚧 Early Access Release**
 > This is an early access version of the Osprey Framework. While the core functionality is stable and ready for experimentation, documentation and APIs may still evolve. We welcome feedback and contributions!

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.3] - 2025-11-27
+
 ### Added
 - **LLM API Call Logging** - Comprehensive logging of all LLM API interactions for debugging and transparency
   - New `development.api_calls` configuration section with `save_all`, `latest_only`, and `include_stack_trace` options
