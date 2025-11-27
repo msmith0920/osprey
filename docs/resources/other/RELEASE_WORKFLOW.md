@@ -22,16 +22,38 @@ This document provides the **definitive workflow** for creating releases that en
    source venv/bin/activate
    ```
 
-2. **Run Full Test Suite**
+2. **Run Unit & Integration Tests**
    ```bash
-   pytest -v
+   # Run fast tests (excludes e2e which require API keys and cost money)
+   pytest -v -m "not e2e"
    ```
+   - **Any failures = STOP**: Fix issues before proceeding
+   - **Expected**: ~50-100 tests, completes in <2 minutes
+   - **Cost**: Free (no API calls)
 
-3. **Verify All Tests Pass**
-   - **9 failed tests = STOP**: Do not proceed with release
-   - **All tests pass = PROCEED**: Continue to Step 1
+3. **Run End-to-End Tutorial Tests**
+   ```bash
+   # Run e2e tests with verbose output to see execution progress
+   pytest tests/e2e/ -v -s --e2e-verbose
 
-4. **Fix Any Failing Tests**
+   # Optional: See detailed LLM judge reasoning
+   # pytest tests/e2e/ -v -s --e2e-verbose --judge-verbose
+   ```
+   - **Any failures = STOP**: These validate the core user experience
+   - **Expected**: 2-3 tests, completes in 2-5 minutes
+   - **Cost**: ~$0.10-$0.25 in API calls
+   - **What it tests**:
+     - Complete tutorial workflows (BPM analysis, etc.)
+     - Project creation from templates
+     - Multi-capability orchestration
+     - End-user experience
+
+4. **Verify All Tests Pass**
+   - Unit & Integration tests: ✅
+   - End-to-End tests: ✅
+   - **PROCEED**: Continue to Step 1
+
+5. **Fix Any Failing Tests**
    - If tests fail, fix issues first
    - Re-run tests until all pass
    - Commit fixes before proceeding
@@ -170,3 +192,42 @@ Before creating a release, ensure these files have the correct version. **All ve
   - `docs/source/getting-started/installation.rst`
   - `docs/source/getting-started/hello-world-tutorial.rst`
   - Any files with "New in v0.x.x" admonitions
+
+## 🧪 E2E Test Details
+
+End-to-end tests validate complete user workflows and are **mandatory** for releases but **optional** during development.
+
+### Test Suite Overview
+
+```bash
+# Run just e2e smoke tests (fastest e2e validation)
+pytest -v -m e2e_smoke
+
+# Run all e2e tests
+pytest -v -m e2e
+
+# Run with real-time progress (recommended for releases)
+pytest tests/e2e/ -v -s --e2e-verbose --judge-verbose
+```
+
+### Current E2E Test Coverage
+
+| Test | Duration | What It Validates |
+|------|----------|-------------------|
+| `test_simple_query_smoke_test` | ~10-20s | Basic framework initialization and query processing |
+| `test_bpm_timeseries_and_correlation_tutorial` | ~60-90s | Complete control assistant workflow: channel finding → archiver retrieval → Python plotting |
+
+### Why E2E Tests Matter for Releases
+
+- **User Experience Validation**: Tests exactly what users see in tutorials
+- **Multi-Component Integration**: Validates orchestration across capabilities
+- **Regression Detection**: Catches issues that unit tests miss
+- **LLM Judge Evaluation**: Flexible validation that adapts to reasonable variations
+
+### Cost & Performance
+
+- **Total runtime**: ~2-5 minutes for full e2e suite
+- **API cost**: ~$0.10-$0.25 per release
+- **Value**: Prevents broken tutorials and user-facing bugs
+
+See `tests/e2e/README.md` for complete documentation.

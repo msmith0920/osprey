@@ -8,6 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **End-to-End Test Infrastructure** - Complete LLM-based testing system for workflow validation
+  - New `tests/e2e/` directory with comprehensive e2e test framework
+  - **LLM Judge System** (`judge.py`) - AI-powered test evaluation with structured scoring
+    - Evaluates workflows against plain-text expectations for flexible validation
+    - Provides confidence scores (0.0-1.0) and detailed reasoning
+    - Identifies warnings and concerns even in passing tests
+  - **E2E Project Factory** (`conftest.py`) - Automated test project creation and execution
+    - Creates isolated test projects from templates in temporary directories
+    - Full framework initialization with registry, graph, and gateway setup
+    - Query execution with complete state management and artifact collection
+    - Working directory management for correct `_agent_data/` placement
+    - Root logger capture for comprehensive execution trace logging
+  - **Tutorial Tests** (`test_tutorials.py`) - Validates complete user workflows
+    - `test_bpm_timeseries_and_correlation_tutorial` - Full control assistant workflow (channel finding, archiver retrieval, plotting)
+    - `test_simple_query_smoke_test` - Quick infrastructure validation
+  - **CLI Options** - Flexible test execution and debugging
+    - `--e2e-verbose` - Real-time progress updates during test execution
+    - `--judge-verbose` - Detailed LLM judge reasoning and evaluation
+    - `--judge-provider` and `--judge-model` - Configurable judge AI model
+  - **Comprehensive Documentation** (`tests/e2e/README.md`) - Complete testing guide with examples
+  - **Belt and Suspenders Validation** - LLM judge + hard assertions for reliable testing
 - **Unified Logging with Automatic Streaming**
   - Added `BaseCapability.get_logger()` method providing single API for logging and streaming
   - Enhanced `ComponentLogger` with automatic LangGraph streaming support
@@ -22,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Comprehensive test coverage with 26 test cases in `tests/utils/test_logger.py`
   - Backward compatible: existing `get_logger()` and `get_streamer()` patterns continue to work
 
+### Changed
+- Moved exception handling for classifier/orchestrator guide creation to base class properties
+- Cleaned up unused imports and logger usage in capability templates
+
 ## [0.9.2] - 2025-11-25
 
 ### 🎉 Major Features
@@ -34,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - File: `src/osprey/models/providers/argo.py`
 - Added `ARGO_API_KEY` to all project templates
 
-#### Infrastructure Node Instance Method Migration ✅ COMPLETE
+#### Infrastructure Node Instance Method Migration
 - **All 7 infrastructure nodes** migrated from static method pattern to instance method pattern
 - Aligns infrastructure nodes with capability node implementation
 - **Decorator Enhancements**:
@@ -63,8 +88,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Python Capability Tests (3 tests): instance method pattern validation
 - TimeRangeParsing Capability Tests (5 tests): full end-to-end integration
 - All tests formatted with black and linted
-
-### 🎉 Major Features
 
 #### Instance Method Pattern for Capabilities
 - **New Recommended Pattern**: Capabilities can now use instance methods instead of static methods
@@ -137,6 +160,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Each BPM has unique, reproducible random characteristics based on PV name
   - Slow drift patterns simulate realistic beam position variations
   - Adjusted default noise level from 0.01 to 0.1 for more realistic data
+- **Template Updates**: All capability templates now use instance method pattern
+  - `hello_world_weather` template updated with new pattern and helper methods
+  - `control_assistant` templates (archiver_retrieval, channel_finding, channel_value_retrieval) updated
+  - `minimal` template updated to show recommended pattern
+  - All templates include proper `requires` field with cardinality constraints
 
 ### Fixed
 - **Interactive Menu Registry Contamination** ([#29](https://github.com/als-apg/osprey/issues/29))
@@ -154,7 +182,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Capabilities can check `isinstance(context, list)` to detect and handle multiple contexts
   - Added 17 comprehensive test cases covering all scenarios
 
-### Changed
+### Breaking Changes
 - **BREAKING CHANGE**: `BaseCapabilityContext.get_access_details()` signature simplified
   - **Old:** `get_access_details(self, key_name: Optional[str] = None)` with defensive fallback
   - **New:** `get_access_details(self, key: str)` - key parameter is required
@@ -172,11 +200,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Each summary dict already contains a `"type"` field for identification
   - More natural format for UI/LLM consumption
   - Updated 4 consumer files: `respond_node.py`, `clarify_node.py`, `memory.py`, `response_generation.py`
-- **Template Updates**: All capability templates now use instance method pattern
-  - `hello_world_weather` template updated with new pattern and helper methods
-  - `control_assistant` templates (archiver_retrieval, channel_finding, channel_value_retrieval) updated
-  - `minimal` template updated to show recommended pattern
-  - All templates include proper `requires` field with cardinality constraints
 
 ### Documentation
 - **Complete Documentation Overhaul**: Updated 20+ documentation files for new patterns
