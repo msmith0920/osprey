@@ -1,75 +1,60 @@
 # Osprey Framework - Latest Release (v0.9.4)
 
-🎉 **LLM API Call Logging & End-to-End Testing** - Enhanced Developer Experience & Quality Assurance
+🎉 **Flexible Hierarchical Database Schema & E2E Benchmarks** - Advanced Control System Organization & Testing
 
-## What's New in v0.9.3
+## What's New in v0.9.4
 
 ### 🚀 Major New Features
 
-#### LLM API Call Logging
-- **Complete transparency** into all LLM API interactions for debugging and optimization
-- **Rich metadata capture**: caller function, module, class, line number, model config, timestamps
-- **Context variable propagation** through async/thread boundaries using Python's `contextvars`
-- **Intelligent caller detection** that skips thread pool and asyncio internals to find actual business logic
-- **Capability-aware logging**: Classifier logs include capability name for parallel classification tasks
-- **Configurable options**:
-  - `save_all`: Save all API calls or just latest
-  - `latest_only`: Keep only most recent call per endpoint
-  - `include_stack_trace`: Add full stack trace for detailed debugging
-- **Organized output**: Files saved to `_agent_data/api_calls/` with descriptive naming
-- **Integration helpers**: `set_api_call_context()` function for classifier and orchestrator nodes
-- **Documentation**: Complete guide in prompt customization and configuration reference
+#### Flexible Hierarchical Database Schema
+- **Clean, flexible schema** for defining arbitrary control system hierarchies
+- **Single `hierarchy` section** combines level definitions and naming pattern with built-in validation
+- **Arbitrary mixing** of tree navigation (semantic categories) and instance expansion (numbered/patterned devices) at any level
+- **Advanced hierarchy patterns**:
+  - Multiple consecutive instance levels (e.g., SECTOR→DEVICE, FLOOR→ROOM)
+  - Instance-first hierarchies (instances at root level)
+  - Any tree/instance pattern combination
+- **Automatic validation** ensures level names and naming patterns stay in sync (catches errors at load time, not runtime)
+- **Level type specification**: Each level declares `name` and `type` (`tree` for semantic categories, `instances` for numbered expansions)
+- **Cleaner schema**: Removed redundant/confusing fields (eliminated `_structure` documentation field, consolidated three separate config fields into one)
+- **Comprehensive test suite**: 33 unit tests including 6 new naming pattern validation tests (all passing)
+- **Real-world example databases**:
+  - `hierarchical.json`: Accelerator control (1,048 channels) - SYSTEM[tree]→FAMILY[tree]→DEVICE[instances]→FIELD[tree]→SUBFIELD[tree]
+  - `mixed_hierarchy.json`: Building management (1,720 channels) - SECTOR[instances]→BUILDING[tree]→FLOOR[instances]→ROOM[instances]→EQUIPMENT[tree]
+  - `instance_first.json`: Manufacturing (85 channels) - LINE[instances]→STATION[tree]→PARAMETER[tree]
+  - `consecutive_instances.json`: Accelerator naming (4,996 channels) - SYSTEM[tree]→FAMILY[tree]→SECTOR[instances]→DEVICE[instances]→PROPERTY[tree]
+- **Backward compatibility**: Legacy databases with implicit configuration automatically converted with deprecation warnings
+- **Scalability**: Support hierarchies from 1 to 15+ levels with any combination of types
+- **Complete documentation**: Updated with clean schema examples and comprehensive guides
 
-#### End-to-End Test Infrastructure
-- **LLM Judge System** - AI-powered test evaluation with structured scoring
-  - Evaluates workflows against plain-text expectations for flexible validation
-  - Provides confidence scores (0.0-1.0) and detailed reasoning
-  - Identifies warnings and concerns even in passing tests
-- **E2E Project Factory** - Automated test project creation and execution
-  - Creates isolated test projects from templates in temporary directories
-  - Full framework initialization with registry, graph, and gateway setup
-  - Query execution with complete state management and artifact collection
-  - Working directory management for correct `_agent_data/` placement
-  - Root logger capture for comprehensive execution trace logging
-- **Tutorial Tests** - Validates complete user workflows
-  - `test_bpm_timeseries_and_correlation_tutorial`: Full control assistant workflow
-  - `test_simple_query_smoke_test`: Quick infrastructure validation
-- **CLI Test Options**:
-  - `--e2e-verbose`: Real-time progress updates during test execution
-  - `--judge-verbose`: Detailed LLM judge reasoning and evaluation
-  - `--judge-provider` and `--judge-model`: Configurable judge AI model
-- **Belt and Suspenders Validation**: LLM judge + hard assertions for reliable testing
-- **Comprehensive Documentation**: Complete testing guide at `tests/e2e/README.md`
+#### Channel Finder E2E Benchmarks
+- **New benchmark test suite** for hierarchical channel finder pipeline
+- **Comprehensive testing** across all hierarchy complexity levels
+- **Performance metrics**: navigation depth, branching factor, channel count
+- **Validation** of correct channel finding across diverse hierarchy patterns
+- **Example queries** testing system understanding and multi-level navigation
+- **Quality assurance** for production control system deployments
 
-#### Unified Logging with Automatic Streaming
-- **Single API**: `BaseCapability.get_logger()` provides unified logging and streaming
-- **Enhanced ComponentLogger** with automatic LangGraph streaming support
-- **New `status()` method** for high-level progress updates
-- **Configurable streaming**: Per-method control with `stream` parameter
-- **Smart defaults**:
-  - `status()`, `error()`, `success()`, `warning()` stream automatically to web UI
-  - `info()`, `debug()` remain CLI-only by default
-- **Lazy stream writer initialization** with graceful degradation
-- **Custom metadata support** via `**kwargs` on all logging methods
-- **Automatic step tracking** integrated with TASK_PREPARATION_STEPS
-- **Framework-wide migration**: All infrastructure nodes, capabilities, and templates updated
-- **26 comprehensive tests** in `tests/utils/test_logger.py`
-- **Backward compatible**: Existing patterns continue to work
-
-#### CLI Provider/Model Configuration
-- **New flags for `osprey init`**: `--provider` and `--model` options
-- **Streamlined setup**: Configure AI provider during project creation
-- **Better developer experience**: Skip manual configuration file editing
+#### Hello World Weather E2E Test
+- **Complete tutorial validation** - Tests entire Hello World workflow end-to-end
+- **Weather capability execution** - Validates mock API integration and capability framework
+- **Registry initialization** - Ensures clean framework setup for new users
+- **LLM judge evaluation** - Confirms beginner-friendly experience
+- **Template validation** - Verifies project generation and framework setup
 
 ### 📈 Enhanced Features
 
-- **Capability Base Class**: Moved exception handling for classifier/orchestrator guide creation to base class with warning logs
-- **Capability Templates**: Cleaned up unused imports and logger usage in all templates
+#### Test Infrastructure Improvements
+- **Fixed test isolation** between unit tests and e2e tests using `reset_registry()`
+- **Updated e2e tests** to use Claude Haiku (faster, more cost-effective)
+- **Separated test execution** to prevent registry mock contamination
+- **Updated channel finder tests** to use new unified database schema (`"type"` instead of `"structure"`)
+- **Enhanced documentation**: Updated `RELEASE_WORKFLOW.md` with clear instructions for running unit tests (`pytest tests/ --ignore=tests/e2e`) and e2e tests (`pytest tests/e2e/`) separately
 
 ### 📦 Installation
 
 ```bash
-pip install osprey-framework==0.9.3
+pip install osprey-framework==0.9.4
 ```
 
 Or upgrade from previous version:
@@ -78,59 +63,73 @@ Or upgrade from previous version:
 pip install --upgrade osprey-framework
 ```
 
-### 🎯 Quick Example: LLM API Call Logging
+### 🎯 Quick Example: Hierarchical Database Schema
 
-Enable comprehensive API call logging in your `config.yml`:
+Define a flexible control system hierarchy in your channel database JSON:
 
-```yaml
-development:
-  api_calls:
-    save_all: true           # Save all API calls
-    latest_only: false       # Keep historical logs
-    include_stack_trace: true  # Include full stack trace
+```json
+{
+  "hierarchy": [
+    {
+      "name": "SYSTEM",
+      "type": "tree",
+      "categories": ["DIAG", "VAC", "RF"]
+    },
+    {
+      "name": "DEVICE",
+      "type": "instances",
+      "expansion": {
+        "type": "range",
+        "start": 1,
+        "end": 10,
+        "format": "{:02d}"
+      }
+    },
+    {
+      "name": "FIELD",
+      "type": "tree",
+      "categories": ["POSITION", "CURRENT", "VOLTAGE"]
+    }
+  ],
+  "naming_pattern": "{SYSTEM}:{DEVICE}:{FIELD}",
+  "description": "Accelerator diagnostics with mixed tree/instance levels"
+}
 ```
 
-API call logs will be saved to `_agent_data/api_calls/` with files like:
-- `classification_node_CapabilityClassifier__perform_classification_channel_finding_latest.txt`
-- `orchestration_node_Orchestrator_create_execution_plan_latest.txt`
-- `respond_node_ResponseCapability_execute_latest.txt`
-
-Each log includes:
-- Complete request (system prompt, user message, model config)
-- Complete response (raw LLM output)
-- Metadata (caller info, timestamps, token counts)
-- Optional stack trace for deep debugging
+This creates channels like: `DIAG:01:POSITION`, `VAC:05:CURRENT`, etc.
 
 ### 🧪 Quick Example: Running E2E Tests
 
 ```bash
-# Run all e2e tests with progress updates
+# Run unit tests (fast, ~3 seconds)
+pytest tests/ --ignore=tests/e2e -v
+
+# Run e2e tests with progress updates (~2 minutes)
 pytest tests/e2e/ -v -s --e2e-verbose
 
 # Run with detailed LLM judge reasoning
 pytest tests/e2e/ -v -s --e2e-verbose --judge-verbose
-
-# Use specific model for judge
-pytest tests/e2e/ -v -s --e2e-verbose --judge-provider anthropic --judge-model claude-3-5-haiku-latest
 ```
 
 ### 📊 Testing
 
-- **336 Total Tests** (2 new e2e tests added)
-  - 334 unit/integration tests
-  - 2 end-to-end workflow tests
+- **379 Total Tests** (5 new e2e tests, 38 new unit tests)
+  - 374 unit/integration tests
+  - 5 end-to-end workflow tests
 - **All tests passing** ✅
 - **E2E test coverage**:
   - Complete control assistant workflow (channel finding → archiver → plotting)
+  - Hello World weather tutorial validation
+  - Channel finder benchmarks (in-context and hierarchical pipelines)
   - Basic infrastructure smoke test
-  - ~2-5 minutes total runtime
+  - ~2-3 minutes total runtime
   - ~$0.10-$0.25 in API costs
 
 ### 🔗 Links
 
 - **Documentation**: https://als-apg.github.io/osprey
 - **GitHub**: https://github.com/als-apg/osprey
-- **PyPI**: https://pypi.org/project/osprey-framework/0.9.3/
+- **PyPI**: https://pypi.org/project/osprey-framework/0.9.4/
 - **Changelog**: See CHANGELOG.md for complete details
 
 ### 🙏 Contributors
