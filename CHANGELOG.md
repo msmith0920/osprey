@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Claude Code Generator Configuration**: Removed 'workflow_mode' setting (use direct 'phases' list specification), removed 'planning_modes' abstraction (profiles specify phases directly), removed dead code (_generate_direct, _generate_phased, _build_phase_options, 7 duplicate prompt builders)
 
 ### Fixed
+- **Registry Import Timing**: Fixed module-level `get_registry()` calls that could cause initialization order issues. Moved registry access to runtime (function/method level) in python capability, time_range_parsing capability, generate_from_prompt, and hello_world_weather template
+- **Python Executor Logging**: Replaced deprecated `get_streamer` with unified `get_logger` API in code generator node for consistent streaming support
+- **MCP Generator Configuration**: Added proper model configuration validation with clear error messages when provider is not configured. Improved error handling with unused variable cleanup and better logging integration
 - **Documentation**: Updated all Claude Code generator documentation to reflect simplified configuration model. Restructured generator-claude.rst with improved UX using collapsible dropdowns and tabbed sections. Updated all examples to use 'fast' as default profile
 - **Tests**: Updated Claude Code generator tests to check 'profile_phases' instead of removed 'workflow_mode', removed tests for removed features, added tests for new phase-based configuration model
 

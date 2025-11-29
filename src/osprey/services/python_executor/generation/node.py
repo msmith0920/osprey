@@ -12,7 +12,6 @@ the same interface for the executor service.
 from typing import Any
 
 from osprey.utils.logger import get_logger
-from osprey.utils.streaming import get_streamer
 
 from ..models import ExecutionError, PythonExecutionState
 from .factory import create_code_generator
@@ -53,8 +52,8 @@ def create_generator_node():
         else:
             logger.error(f"NO REQUEST FOUND IN STATE! State content: {state}")
 
-        # Define streaming helper here for step awareness
-        streamer = get_streamer("python_generator", state)
+        # Use unified logging system with streaming support
+        streamer = get_logger("python_generator", state=state)
         streamer.status("Generating Python code...")
 
         # Create execution folder early if not already exists (for saving prompts)

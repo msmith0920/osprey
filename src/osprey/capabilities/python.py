@@ -65,9 +65,6 @@ from osprey.utils.logger import get_logger
 logger = get_logger("python")
 
 
-registry = get_registry()
-
-
 # ========================================================
 # Context Class
 # ========================================================
@@ -403,7 +400,8 @@ class PythonCapability(BaseCapability):
 
         logger.status("Initializing Python executor service...")
 
-        # Get Python executor service from registry
+        # Get Python executor service from registry (call get_registry() at runtime, not module import time)
+        registry = get_registry()
         python_service = registry.get_service("python_executor")
 
         if not python_service:

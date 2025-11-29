@@ -166,7 +166,7 @@ class MCPCapabilityGenerator(BaseCapabilityGenerator):
                 async with httpx.AsyncClient(timeout=2.0) as client:
                     try:
                         # Try a simple GET to the base URL
-                        response = await client.get(mcp_url)
+                        _ = await client.get(mcp_url)
                         # We expect this might fail, but at least we know server is responding
                     except httpx.ConnectError as e:
                         # Server is not reachable at all
@@ -431,6 +431,7 @@ from osprey.base.examples import OrchestratorGuide, OrchestratorExample, TaskCla
 from osprey.context import CapabilityContext
 from osprey.state import StateManager
 from osprey.registry import get_registry
+from osprey.utils.logger import get_logger
 
 # MCP and LangGraph imports
 try:
@@ -444,9 +445,6 @@ except ImportError:
 
 # Get model for ReAct agent
 from osprey.utils.config import get_model_config, get_provider_config
-
-
-registry = get_registry()
 
 
 # =============================================================================
@@ -546,6 +544,9 @@ class {class_name}(BaseCapability):
     async def _get_react_agent(cls):
         """Get or create ReAct agent with MCP tools (cached)."""
         if cls._react_agent is None:
+            # Get logger for initialization (classmethod doesn't have self)
+            logger = get_logger("{self.capability_name}")
+
             try:
                 # Initialize MCP client
                 if cls._mcp_client is None:
@@ -558,13 +559,20 @@ class {class_name}(BaseCapability):
 
                 # Get LLM instance for ReAct agent
                 # Try to use dedicated "{self.capability_name}_react" model first, fallback to "orchestrator"
-                try:
-                    model_config = get_model_config("{self.capability_name}_react")
-                except Exception:
+                model_config = get_model_config("{self.capability_name}_react")
+                if not model_config or not model_config.get("provider"):
+                    # Model config doesn't exist or is incomplete, fallback to orchestrator
                     model_config = get_model_config("orchestrator")
 
                 provider = model_config.get("provider")
                 model_id = model_config.get("model_id")
+
+                if not provider:
+                    raise ValueError(
+                        f"No provider configured for {{self.capability_name}}_react or orchestrator model. "
+                        f"Please configure a model in config.yml under models section."
+                    )
+
                 provider_config = get_provider_config(provider)
 
                 # Create LangChain ChatModel based on provider
