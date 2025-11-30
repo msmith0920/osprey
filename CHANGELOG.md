@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **CLI Approval Display**: Enhanced approval message presentation with heavy-bordered panel, bold title, and helpful subtitle for improved visibility and user experience
 - **Error Node**: Removed deprecated manual streaming code and progress tracking in favor of unified logger system with automatic streaming
 
 ## [0.9.5] - 2025-12-01
