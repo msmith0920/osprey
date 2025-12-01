@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **CLI Approval Display**: Enhanced approval message presentation with heavy-bordered panel, bold title, and helpful subtitle for improved visibility and user experience
 - **Error Node**: Removed deprecated manual streaming code and progress tracking in favor of unified logger system with automatic streaming
+- **Gateway Approval Detection**: Enhanced approval response detection with two-tier system - instant pattern matching for simple yes/no responses, with LLM-powered fallback for complex natural language
 
 ## [0.9.5] - 2025-12-01
 
