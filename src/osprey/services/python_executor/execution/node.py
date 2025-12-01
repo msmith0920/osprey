@@ -525,7 +525,26 @@ def create_executor_node():
 
         # Save context using ContextManager
         try:
+            from osprey.utils.config import get_config_value
+
             context_manager = ContextManager(state)
+
+            # Add execution config snapshot for reproducibility
+            execution_config = {}
+
+            # Snapshot control system config
+            control_system_config = get_config_value('control_system', {})
+            if control_system_config:
+                execution_config['control_system'] = control_system_config
+
+            # Snapshot Python executor config
+            python_executor_config = get_config_value('python_executor', {})
+            if python_executor_config:
+                execution_config['python_executor'] = python_executor_config
+
+            # Add execution config to context
+            context_manager.add_execution_config(execution_config)
+
             context_file_path = context_manager.save_context_to_file(execution_folder.folder_path)
             # Update execution context with the saved context file path
             execution_folder.context_file_path = context_file_path

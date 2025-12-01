@@ -708,6 +708,10 @@ class NotebookManager:
                 # Load execution context
                 from osprey.context import load_context
                 context = load_context('../context.json')
+
+                # Configure runtime utilities from context
+                from osprey.runtime import configure_from_context
+                configure_from_context(context)
                 """)
             cells.append(nbformat.v4.new_code_cell(context_code))
 
@@ -744,6 +748,10 @@ class NotebookManager:
                 # Load execution context
                 from osprey.context import load_context
                 context = load_context('context.json')
+
+                # Configure runtime utilities from context
+                from osprey.runtime import configure_from_context
+                configure_from_context(context)
                 """)
             cells.append(nbformat.v4.new_code_cell(context_code))
 

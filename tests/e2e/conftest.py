@@ -245,8 +245,8 @@ class E2EProject:
         agent_data_dir = self.project_dir / "_agent_data" / "executed_scripts"
 
         if agent_data_dir.exists():
-            # Find all figures and notebooks
-            for pattern in ["**/*.png", "**/*.jpg", "**/*.ipynb"]:
+            # Find all figures, notebooks, and Python code files
+            for pattern in ["**/*.png", "**/*.jpg", "**/*.ipynb", "**/*.py"]:
                 artifacts.extend(agent_data_dir.glob(pattern))
 
         return sorted(artifacts)

@@ -37,6 +37,10 @@ The Python Execution Service orchestrates code generation, security analysis, ap
 
 For detailed integration patterns, see :doc:`../03_python-execution-service/index`.
 
+.. admonition:: **Control System Operations in Generated Code**
+
+   Generated Python code interacts with control systems using ``osprey.runtime`` utilities (``read_channel()``, ``write_channel()``), not direct connector imports. The execution wrapper automatically configures these utilities from the execution context, ensuring generated code works with any control system (EPICS, Mock, LabVIEW, etc.) and that notebooks remain reproducible. See :doc:`../../../getting-started/control-assistant-part3-production` for details.
+
 Using the Service
 =================
 
