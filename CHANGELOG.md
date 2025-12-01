@@ -32,6 +32,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Positive and negative test cases for write operations
   - Calculation + write workflows (e.g., "set voltage to sqrt(4150)")
 
+- **Documentation Positioning**: Updated README and tutorials to emphasize production-ready control system focus
+  - Highlight plan-first orchestration and control system safety
+  - Emphasize protocol-agnostic integration (EPICS, LabVIEW, Tango)
+  - Note production deployment at major facilities (LBNL Advanced Light Source)
+  - Updated feature list for control system use cases
+  - Added comprehensive tutorial section on how generated code interacts with control systems using osprey.runtime
+
 ### Changed
 - **Python Execution Infrastructure**: Integrated runtime utilities with execution wrapper and notebooks
   - Execution wrapper automatically configures runtime from context snapshots

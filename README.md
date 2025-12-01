@@ -5,7 +5,7 @@
 > **🚧 Early Access Release**
 > This is an early access version of the Osprey Framework. While the core functionality is stable and ready for experimentation, documentation and APIs may still evolve. We welcome feedback and contributions!
 
-An open-source, domain-agnostic, capability-based architecture for building intelligent agents that can be adapted to any specific domain.
+A production-ready framework for deploying agentic AI in large-scale, safety-critical control system environments—particle accelerators, fusion experiments, beamlines, and complex scientific facilities.
 
 **📄 Research**
 This work was presented as a contributed oral presentation at [ICALEPCS'25](https://indico.jacow.org/event/86/overview) and will be featured at the [Machine Learning and the Physical Sciences Workshop](https://ml4physicalsciences.github.io/2025/) at NeurIPS 2025.
@@ -44,11 +44,11 @@ osprey chat
 
 ## Key Features
 
-- **Scalable Capability Management** - Efficiently scales to large sets of specialized agents
-- **Structured Orchestration** - Converts freeform inputs into clear, executable plans
-- **Modular Architecture** - Easily integrates new capabilities without disrupting workflows
-- **Human-in-the-Loop Ready** - Transparent execution plans for inspection and debugging
-- **Domain-Adaptable** - Designed for heterogeneous scientific infrastructure
+- **Plan-First Orchestration** - Complete execution plans with explicit dependencies before any hardware interaction
+- **Control-System Safety** - Pattern detection, PV boundary checking, and mandatory approval for hardware writes
+- **Protocol-Agnostic Integration** - Seamless connection to EPICS, LabVIEW, Tango, and mock environments
+- **Scalable Capability Management** - Dynamic classification prevents prompt explosion as toolsets grow
+- **Production-Proven** - Deployed at major facilities including LBNL's Advanced Light Source accelerator
 
 ---
 
