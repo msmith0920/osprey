@@ -185,6 +185,8 @@ For each capability to migrate:
    - [ ] Replace ``StateManager.get_current_step(state)`` → use helpers or ``self._step``
    - [ ] Replace ``StateManager.get_current_task(state)`` → ``self.get_task_objective()``
    - [ ] Replace ``step.get('parameters')`` → ``self.get_parameters()``
+   - [ ] Replace ``step.get('task_objective')`` → ``self.get_task_objective()``
+   - [ ] Replace ``step.get('inputs')`` → ``self.get_step_inputs()``
 
 4. **Context Storage:**
 
@@ -374,6 +376,21 @@ Helper Methods
    # With custom default
    task = self.get_task_objective(default="unknown task")
 
+**get_step_inputs()**
+
+.. code-block:: python
+
+   step_inputs = self.get_step_inputs()
+   # step_inputs is a list of {context_type: context_key} dicts
+
+   # Use with ContextManager for descriptions
+   from osprey.context import ContextManager
+   context_manager = ContextManager(self._state)
+   context_description = context_manager.get_context_access_description(step_inputs)
+
+   # With custom default
+   step_inputs = self.get_step_inputs(default=[])
+
 **store_output_context()**
 
 .. code-block:: python
@@ -410,6 +427,68 @@ Next Steps
    - Document team-specific migration patterns
    - Hold training sessions on new pattern
    - Update internal documentation
+
+Connector API Rename (v0.9.4+)
+==============================
+
+Control system connector methods and classes were renamed for clarity and control-system-agnostic terminology.
+
+Method Renames
+--------------
+
+**Before (v0.9.3 and earlier):**
+
+.. code-block:: python
+
+   # Read operations
+   value = await connector.read_pv("BEAM:CURRENT", timeout=5.0)
+
+   # Write operations
+   success = await connector.write_pv("BEAM:SETPOINT", 100.0)
+
+**After (v0.9.4+):**
+
+.. code-block:: python
+
+   # Read operations
+   value = await connector.read_channel("BEAM:CURRENT", timeout=5.0)
+
+   # Write operations - now returns ChannelWriteResult
+   result = await connector.write_channel("BEAM:SETPOINT", 100.0)
+
+   if result.success:
+       print(f"Write successful: {result.value_written}")
+
+Class Renames
+-------------
+
+**Before:**
+
+.. code-block:: python
+
+   from osprey.connectors.control_system.base import PVValue, PVMetadata
+
+**After:**
+
+.. code-block:: python
+
+   from osprey.connectors.control_system.base import ChannelValue, ChannelMetadata
+
+Backward Compatibility
+----------------------
+
+.. important::
+
+   **Old names still work!** Deprecated methods and classes emit ``DeprecationWarning`` at runtime.
+   They will be removed in v0.10.
+
+**Migration strategy:**
+
+1. Update new code to use ``read_channel()`` / ``write_channel()``
+2. Gradually update existing code during normal maintenance
+3. No rush - old API works until v0.10
+
+For complete details, see :doc:`05_production-systems/06_control-system-integration`.
 
 See Also
 ========

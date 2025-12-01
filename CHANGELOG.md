@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Error Node Logging**: Removed duplicate start/completion logging that occurred when combining decorator's automatic logging with manual status messages
 
 ### Changed
+- Control system connector API: Unified channel naming and comprehensive write verification
+  - Method rename: read_pv → read_channel, write_pv → write_channel (deprecated methods emit DeprecationWarning)
+  - Class rename: PVValue → ChannelValue, PVMetadata → ChannelMetadata (deprecated classes emit DeprecationWarning)
+  - Three-tier write verification: none/callback/readback with configurable tolerance
+  - Rich result objects: ChannelWriteResult and WriteVerification with detailed status
+  - Mock connector verification simulation for development testing
+  - All deprecated APIs will be removed in v0.10
+
 - **CLI Approval Display**: Enhanced approval message presentation with heavy-bordered panel, bold title, and helpful subtitle for improved visibility and user experience
 - **Error Node**: Removed deprecated manual streaming code and progress tracking in favor of unified logger system with automatic streaming
 - **Gateway Approval Detection**: Enhanced approval response detection with two-tier system - instant pattern matching for simple yes/no responses, with LLM-powered fallback for complex natural language

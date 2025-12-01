@@ -1,10 +1,12 @@
 """Tests for mock connector."""
 
-import pytest
 from datetime import datetime
+from unittest.mock import patch
 
-from osprey.connectors.control_system.mock_connector import MockConnector
+import pytest
+
 from osprey.connectors.archiver.mock_archiver_connector import MockArchiverConnector
+from osprey.connectors.control_system.mock_connector import MockConnector
 
 
 class TestMockConnector:
@@ -29,38 +31,40 @@ class TestMockConnector:
     @pytest.mark.asyncio
     async def test_read_pv_accepts_any_name(self):
         """Test that mock connector accepts any PV name."""
-        connector = MockConnector()
-        await connector.connect({'response_delay_ms': 0})
+        with patch('osprey.utils.config.get_config_value', return_value=True):
+            connector = MockConnector()
+            await connector.connect({'response_delay_ms': 0})
 
-        # Test with arbitrary PV names
-        result1 = await connector.read_pv('MADE:UP:CHANNEL')
-        assert result1.value is not None
-        assert isinstance(result1.value, float)
+            # Test with arbitrary PV names
+            result1 = await connector.read_channel('MADE:UP:CHANNEL')
+            assert result1.value is not None
+            assert isinstance(result1.value, float)
 
-        result2 = await connector.read_pv('ANY:RANDOM:NAME')
-        assert result2.value is not None
+            result2 = await connector.read_channel('ANY:RANDOM:NAME')
+            assert result2.value is not None
 
-        await connector.disconnect()
+            await connector.disconnect()
 
     @pytest.mark.asyncio
     async def test_read_pv_infers_units(self):
         """Test that connector infers units from PV names."""
-        connector = MockConnector()
-        await connector.connect({'response_delay_ms': 0})
+        with patch('osprey.utils.config.get_config_value', return_value=True):
+            connector = MockConnector()
+            await connector.connect({'response_delay_ms': 0})
 
-        # Test beam current units
-        beam_result = await connector.read_pv('BEAM:CURRENT')
-        assert 'mA' in beam_result.metadata.units or 'A' in beam_result.metadata.units
+            # Test beam current units
+            beam_result = await connector.read_channel('BEAM:CURRENT')
+            assert 'mA' in beam_result.metadata.units or 'A' in beam_result.metadata.units
 
-        # Test voltage units
-        voltage_result = await connector.read_pv('MAGNET:VOLTAGE')
-        assert 'V' in voltage_result.metadata.units
+            # Test voltage units
+            voltage_result = await connector.read_channel('MAGNET:VOLTAGE')
+            assert 'V' in voltage_result.metadata.units
 
-        # Test pressure units
-        pressure_result = await connector.read_pv('VACUUM:PRESSURE')
-        assert 'Torr' in pressure_result.metadata.units
+            # Test pressure units
+            pressure_result = await connector.read_channel('VACUUM:PRESSURE')
+            assert 'Torr' in pressure_result.metadata.units
 
-        await connector.disconnect()
+            await connector.disconnect()
 
     @pytest.mark.asyncio
     async def test_write_and_read_maintains_state(self):
@@ -75,11 +79,11 @@ class TestMockConnector:
         # Write a value
         pv_name = 'TEST:SETPOINT:SP'
         test_value = 123.45
-        success = await connector.write_pv(pv_name, test_value)
-        assert success is True
+        result = await connector.write_channel(pv_name, test_value)
+        assert result.success is True
 
         # Read it back
-        result = await connector.read_pv(pv_name)
+        result = await connector.read_channel(pv_name)
         assert abs(result.value - test_value) < 0.1  # Allow tiny variance
 
         await connector.disconnect()
@@ -99,10 +103,10 @@ class TestMockConnector:
         rb_name = 'MAGNET:CURRENT:RB'
         test_value = 100.0
 
-        await connector.write_pv(sp_name, test_value)
+        await connector.write_channel(sp_name, test_value)
 
         # Check that readback exists and is close
-        rb_result = await connector.read_pv(rb_name)
+        rb_result = await connector.read_channel(rb_name)
         assert abs(rb_result.value - test_value) < 1.0
 
         await connector.disconnect()
@@ -116,50 +120,53 @@ class TestMockConnector:
             'enable_writes': False
         })
 
-        success = await connector.write_pv('TEST:PV', 100.0)
-        assert success is False
+        result = await connector.write_channel('TEST:PV', 100.0)
+        assert result.success is False
 
         await connector.disconnect()
 
     @pytest.mark.asyncio
-    async def test_read_multiple_pvs(self):
+    async def test_read_multiple_channels(self):
         """Test reading multiple PVs concurrently."""
-        connector = MockConnector()
-        await connector.connect({'response_delay_ms': 0})
+        with patch('osprey.utils.config.get_config_value', return_value=True):
+            connector = MockConnector()
+            await connector.connect({'response_delay_ms': 0})
 
-        pv_names = ['PV:1', 'PV:2', 'PV:3', 'PV:4']
-        results = await connector.read_multiple_pvs(pv_names)
+            pv_names = ['PV:1', 'PV:2', 'PV:3', 'PV:4']
+            results = await connector.read_multiple_channels(pv_names)
 
-        assert len(results) == len(pv_names)
-        for pv_name in pv_names:
-            assert pv_name in results
-            assert results[pv_name].value is not None
+            assert len(results) == len(pv_names)
+            for pv_name in pv_names:
+                assert pv_name in results
+                assert results[pv_name].value is not None
 
-        await connector.disconnect()
+            await connector.disconnect()
 
     @pytest.mark.asyncio
     async def test_validate_pv_always_true(self):
         """Test that all PV names are valid in mock mode."""
-        connector = MockConnector()
-        await connector.connect({'response_delay_ms': 0})
+        with patch('osprey.utils.config.get_config_value', return_value=True):
+            connector = MockConnector()
+            await connector.connect({'response_delay_ms': 0})
 
-        assert await connector.validate_pv('ANY:PV:NAME') is True
-        assert await connector.validate_pv('RANDOM:CHANNEL') is True
+            assert await connector.validate_channel('ANY:PV:NAME') is True
+            assert await connector.validate_channel('RANDOM:CHANNEL') is True
 
-        await connector.disconnect()
+            await connector.disconnect()
 
     @pytest.mark.asyncio
     async def test_metadata(self):
         """Test getting PV metadata."""
-        connector = MockConnector()
-        await connector.connect({'response_delay_ms': 0})
+        with patch('osprey.utils.config.get_config_value', return_value=True):
+            connector = MockConnector()
+            await connector.connect({'response_delay_ms': 0})
 
-        metadata = await connector.get_metadata('BEAM:CURRENT')
-        assert metadata.units is not None
-        assert metadata.description is not None
-        assert 'Mock' in metadata.description
+            metadata = await connector.get_metadata('BEAM:CURRENT')
+            assert metadata.units is not None
+            assert metadata.description is not None
+            assert 'Mock' in metadata.description
 
-        await connector.disconnect()
+            await connector.disconnect()
 
 
 class TestMockArchiverConnector:

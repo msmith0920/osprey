@@ -13,7 +13,13 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
-from osprey.connectors.control_system.base import ControlSystemConnector, PVMetadata, PVValue
+from osprey.connectors.control_system.base import (
+    ChannelMetadata,
+    ChannelValue,
+    ChannelWriteResult,
+    ControlSystemConnector,
+    WriteVerification,
+)
 from osprey.utils.logger import get_logger
 
 logger = get_logger("epics_connector")
@@ -138,37 +144,37 @@ class EPICSConnector(ControlSystemConnector):
         self._connected = False
         logger.info("EPICS connector disconnected")
 
-    async def read_pv(
+    async def read_channel(
         self,
-        pv_address: str,
+        channel_address: str,
         timeout: float | None = None
-    ) -> PVValue:
+    ) -> ChannelValue:
         """
-        Read current value from EPICS PV.
+        Read current value from EPICS channel.
 
         Args:
-            pv_address: EPICS PV address (e.g., 'BEAM:CURRENT')
+            channel_address: EPICS channel address (e.g., 'BEAM:CURRENT')
             timeout: Timeout in seconds (uses default if None)
 
         Returns:
-            PVValue with current value, timestamp, and metadata
+            ChannelValue with current value, timestamp, and metadata
 
         Raises:
-            ConnectionError: If PV cannot be connected
+            ConnectionError: If channel cannot be connected
             TimeoutError: If operation times out
         """
         timeout = timeout or self._timeout
 
         # Use asyncio.to_thread for blocking EPICS operations
         pv_result = await asyncio.to_thread(
-            self._read_pv_sync,
-            pv_address,
+            self._read_channel_sync,
+            channel_address,
             timeout
         )
 
         return pv_result
 
-    def _read_pv_sync(self, pv_address: str, timeout: float) -> PVValue:
+    def _read_channel_sync(self, pv_address: str, timeout: float) -> ChannelValue:
         """Synchronous PV read (runs in thread pool)."""
         pv = self._epics.PV(pv_address)
         pv.wait_for_connection(timeout=timeout)
@@ -188,7 +194,7 @@ class EPICSConnector(ControlSystemConnector):
             timestamp = datetime.now()
 
         # Extract metadata
-        metadata = PVMetadata(
+        metadata = ChannelMetadata(
             units=getattr(pv, 'units', '') or '',
             precision=getattr(pv, 'precision', None),
             alarm_status=pv.status if hasattr(pv, 'status') else None,
@@ -200,73 +206,204 @@ class EPICSConnector(ControlSystemConnector):
             }
         )
 
-        return PVValue(
+        return ChannelValue(
             value=value,
             timestamp=timestamp,
             metadata=metadata
         )
 
-    async def write_pv(
+    async def write_channel(
         self,
-        pv_address: str,
+        channel_address: str,
         value: Any,
-        timeout: float | None = None
-    ) -> bool:
+        timeout: float | None = None,
+        verification_level: str = "callback",
+        tolerance: float | None = None
+    ) -> ChannelWriteResult:
         """
-        Write value to EPICS PV.
+        Write value to EPICS channel with configurable verification.
 
         Args:
-            pv_address: EPICS PV address
+            channel_address: EPICS channel address
             value: Value to write
             timeout: Timeout in seconds
+            verification_level: "none", "callback", or "readback"
+            tolerance: Absolute tolerance for readback verification
 
         Returns:
-            True if write was successful
+            ChannelWriteResult with write status and verification details
 
         Raises:
-            ConnectionError: If PV cannot be connected
+            ConnectionError: If channel cannot be connected
             TimeoutError: If operation times out
         """
         timeout = timeout or self._timeout
 
-        success = await asyncio.to_thread(
-            self._epics.caput,
-            pv_address,
-            value,
-            timeout
-        )
+        if verification_level == "none":
+            # Fast path - no verification, no wait for callback
+            success = await asyncio.to_thread(
+                self._epics.caput,
+                channel_address,
+                value,
+                wait=False,
+                timeout=timeout
+            )
 
-        if not success:
-            raise ConnectionError(f"Failed to write to PV '{pv_address}'")
+            if not success:
+                return ChannelWriteResult(
+                    channel_address=channel_address,
+                    value_written=value,
+                    success=False,
+                    verification=WriteVerification(
+                        level="none",
+                        verified=False,
+                        notes="Write command failed"
+                    ),
+                    error_message=f"Failed to write to channel '{channel_address}'"
+                )
 
-        logger.debug(f"EPICS write: {pv_address} = {value}")
-        return bool(success)
+            logger.debug(f"EPICS write (no verification): {channel_address} = {value}")
+            return ChannelWriteResult(
+                channel_address=channel_address,
+                value_written=value,
+                success=True,
+                verification=WriteVerification(
+                    level="none",
+                    verified=False,
+                    notes="No verification requested"
+                )
+            )
 
-    async def read_multiple_pvs(
+        elif verification_level == "callback":
+            # EPICS callback - wait for IOC to confirm processing
+            success = await asyncio.to_thread(
+                self._epics.caput,
+                channel_address,
+                value,
+                wait=True,  # Wait for IOC callback
+                timeout=timeout
+            )
+
+            if not success:
+                return ChannelWriteResult(
+                    channel_address=channel_address,
+                    value_written=value,
+                    success=False,
+                    verification=WriteVerification(
+                        level="callback",
+                        verified=False,
+                        notes="IOC callback failed or timeout"
+                    ),
+                    error_message=f"Failed to write to channel '{channel_address}'"
+                )
+
+            logger.debug(f"EPICS write (callback verified): {channel_address} = {value}")
+            return ChannelWriteResult(
+                channel_address=channel_address,
+                value_written=value,
+                success=True,
+                verification=WriteVerification(
+                    level="callback",
+                    verified=True,
+                    notes="IOC callback confirmed"
+                )
+            )
+
+        elif verification_level == "readback":
+            # Full verification - callback + readback
+            success = await asyncio.to_thread(
+                self._epics.caput,
+                channel_address,
+                value,
+                wait=True,
+                timeout=timeout
+            )
+
+            if not success:
+                return ChannelWriteResult(
+                    channel_address=channel_address,
+                    value_written=value,
+                    success=False,
+                    verification=WriteVerification(
+                        level="readback",
+                        verified=False,
+                        notes="Write command failed"
+                    ),
+                    error_message=f"Failed to write to channel '{channel_address}'"
+                )
+
+            # Read back to verify
+            try:
+                readback = await self.read_channel(channel_address, timeout=timeout)
+
+                # Check tolerance
+                diff = abs(float(readback.value) - float(value))
+                verified = diff <= (tolerance or 0.001)
+
+                logger.debug(
+                    f"EPICS write (readback verified={verified}): {channel_address} = {value}, "
+                    f"readback = {readback.value}, diff = {diff:.6f}, tolerance = {tolerance}"
+                )
+
+                return ChannelWriteResult(
+                    channel_address=channel_address,
+                    value_written=value,
+                    success=True,
+                    verification=WriteVerification(
+                        level="readback",
+                        verified=verified,
+                        readback_value=float(readback.value),
+                        tolerance_used=tolerance,
+                        notes=(
+                            f"Readback: {readback.value}, tolerance: ±{tolerance}, diff: {diff:.6f}"
+                            if verified else
+                            f"Readback mismatch: {readback.value} (expected {value}, diff: {diff:.6f} > tolerance {tolerance})"
+                        )
+                    )
+                )
+
+            except Exception as e:
+                logger.warning(f"EPICS readback failed for {channel_address}: {e}")
+                return ChannelWriteResult(
+                    channel_address=channel_address,
+                    value_written=value,
+                    success=True,  # Write succeeded, but readback failed
+                    verification=WriteVerification(
+                        level="readback",
+                        verified=False,
+                        notes=f"Readback failed: {str(e)}"
+                    ),
+                    error_message=f"Readback verification failed: {str(e)}"
+                )
+
+        else:
+            raise ValueError(f"Invalid verification_level: {verification_level}. Must be 'none', 'callback', or 'readback'")
+
+    async def read_multiple_channels(
         self,
-        pv_addresses: list[str],
+        channel_addresses: list[str],
         timeout: float | None = None
-    ) -> dict[str, PVValue]:
-        """Read multiple PVs concurrently."""
-        tasks = [self.read_pv(pv_addr, timeout) for pv_addr in pv_addresses]
+    ) -> dict[str, ChannelValue]:
+        """Read multiple channels concurrently."""
+        tasks = [self.read_channel(ch_addr, timeout) for ch_addr in channel_addresses]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         return {
-            pv_addr: result
-            for pv_addr, result in zip(pv_addresses, results)
+            ch_addr: result
+            for ch_addr, result in zip(channel_addresses, results)
             if not isinstance(result, Exception)
         }
 
     async def subscribe(
         self,
-        pv_address: str,
-        callback: Callable[[PVValue], None]
+        channel_address: str,
+        callback: Callable[[ChannelValue], None]
     ) -> str:
         """
-        Subscribe to PV value changes.
+        Subscribe to channel value changes.
 
         Args:
-            pv_address: EPICS PV address
+            channel_address: EPICS channel address
             callback: Function to call when value changes
 
         Returns:
@@ -276,10 +413,10 @@ class EPICSConnector(ControlSystemConnector):
 
         def epics_callback(pvname=None, value=None, timestamp=None, **kwargs):
             """Wrapper to convert EPICS callback to our format."""
-            pv_value = PVValue(
+            pv_value = ChannelValue(
                 value=value,
                 timestamp=datetime.fromtimestamp(timestamp) if timestamp else datetime.now(),
-                metadata=PVMetadata(
+                metadata=ChannelMetadata(
                     units=kwargs.get('units', ''),
                     alarm_status=kwargs.get('status')
                 )
@@ -288,10 +425,10 @@ class EPICSConnector(ControlSystemConnector):
             loop.call_soon_threadsafe(callback, pv_value)
 
         # Create PV and add callback
-        pv = self._epics.PV(pv_address, callback=epics_callback)
+        pv = self._epics.PV(channel_address, callback=epics_callback)
 
         # Generate subscription ID
-        sub_id = f"{pv_address}_{id(pv)}"
+        sub_id = f"{channel_address}_{id(pv)}"
         self._subscriptions[sub_id] = pv
 
         logger.debug(f"EPICS subscription created: {sub_id}")
@@ -305,25 +442,25 @@ class EPICSConnector(ControlSystemConnector):
             del self._subscriptions[subscription_id]
             logger.debug(f"EPICS subscription removed: {subscription_id}")
 
-    async def get_metadata(self, pv_address: str) -> PVMetadata:
-        """Get metadata for a PV."""
-        pv_value = await self.read_pv(pv_address)
-        return pv_value.metadata
+    async def get_metadata(self, channel_address: str) -> ChannelMetadata:
+        """Get metadata for a channel."""
+        channel_value = await self.read_channel(channel_address)
+        return channel_value.metadata
 
-    async def validate_pv(self, pv_address: str) -> bool:
+    async def validate_channel(self, channel_address: str) -> bool:
         """
-        Check if PV exists and is accessible.
+        Check if channel exists and is accessible.
 
         Args:
-            pv_address: EPICS PV address
+            channel_address: EPICS channel address
 
         Returns:
-            True if PV can be accessed
+            True if channel can be accessed
         """
         try:
-            await self.read_pv(pv_address, timeout=2.0)
+            await self.read_channel(channel_address, timeout=2.0)
             return True
         except Exception as e:
-            logger.debug(f"PV validation failed for {pv_address}: {e}")
+            logger.debug(f"Channel validation failed for {channel_address}: {e}")
             return False
 

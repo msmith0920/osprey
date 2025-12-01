@@ -125,19 +125,19 @@ class TestConnectorFactory:
                 pass
             async def disconnect(self):
                 pass
-            async def read_pv(self, pv_address, timeout=None):
+            async def read_channel(self, channel_address, timeout=None):
                 pass
-            async def write_pv(self, pv_address, value, timeout=None):
+            async def write_channel(self, channel_address, value, timeout=None, verification_level="callback", tolerance=None):
                 pass
-            async def read_multiple_pvs(self, pv_addresses, timeout=None):
+            async def read_multiple_channels(self, channel_addresses, timeout=None):
                 pass
-            async def subscribe(self, pv_address, callback):
+            async def subscribe(self, channel_address, callback):
                 pass
             async def unsubscribe(self, subscription_id):
                 pass
-            async def get_metadata(self, pv_address):
+            async def get_metadata(self, channel_address):
                 pass
-            async def validate_pv(self, pv_address):
+            async def validate_channel(self, channel_address):
                 pass
 
         # Register it
@@ -149,20 +149,32 @@ class TestConnectorFactory:
     @pytest.mark.asyncio
     async def test_switch_between_connectors(self):
         """Test switching between different connector types."""
-        # Create mock connector
-        mock_config = {
-            'type': 'mock',
-            'connector': {'mock': {'response_delay_ms': 0}}
-        }
-        mock_connector = await ConnectorFactory.create_control_system_connector(mock_config)
-        assert isinstance(mock_connector, MockConnector)
+        from unittest.mock import patch
 
-        # Test it works
-        result = await mock_connector.read_pv('TEST:PV')
-        assert result.value is not None
+        # Mock config access since test runs without config.yml
+        with patch('osprey.utils.config.get_config_value') as mock_config_value:
+            # Return True for writes_enabled, None for others
+            def config_side_effect(key, default=None):
+                if key == 'execution_control.epics.writes_enabled':
+                    return True
+                return default
 
-        await mock_connector.disconnect()
+            mock_config_value.side_effect = config_side_effect
 
-        # This demonstrates how easy it is to switch connector types
-        # Just change the config!
+            # Create mock connector
+            mock_config = {
+                'type': 'mock',
+                'connector': {'mock': {'response_delay_ms': 0}}
+            }
+            mock_connector = await ConnectorFactory.create_control_system_connector(mock_config)
+            assert isinstance(mock_connector, MockConnector)
+
+            # Test it works
+            result = await mock_connector.read_channel('TEST:PV')
+            assert result.value is not None
+
+            await mock_connector.disconnect()
+
+            # This demonstrates how easy it is to switch connector types
+            # Just change the config!
 
