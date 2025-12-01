@@ -1,280 +1,371 @@
-# Testing Guide - Flexible Hierarchical Database Feature
+# Testing Guide - Runtime Utilities for Control System Operations
 
-**Branch**: `feat/hierarchical-flexibility`  
+**Branch**: `feat/pv-boundary-checking`  
 **Requirements**: Python 3.11+
 
 ## Overview
 
-This branch introduces a flexible hierarchical database system that supports arbitrary mixing of tree navigation and instance expansion at any level, plus fixes CLI documentation to use direct script execution instead of module imports.
+This branch introduces the `osprey.runtime` module - control-system-agnostic utilities that enable LLMs to interact with control systems through a simple synchronous API. The feature includes execution wrapper integration, custom prompt builders, and comprehensive safety integration with channel limits validation.
 
 ## Quick Setup
 
 ```bash
 # 1. Checkout the branch
-git checkout feat/hierarchical-flexibility
+git checkout feat/pv-boundary-checking
 
-# 2. Create virtual environment (if not already created)
-python -m venv venv
+# 2. Activate virtual environment
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
-# 3. Install Osprey in development mode
+# 3. Install dependencies (if needed)
 pip install -e "."
 
 # 4. Run the test suite
-pytest tests/services/channel_finder/ -v
+pytest tests/runtime/ tests/e2e/test_runtime_utilities.py -v
 ```
 
 ## What Changed
 
 ### Core Implementation
-- **Flexible `hierarchy_config`**: Explicit level-by-level configuration with `type`, `structure`, and `allow_branching` properties
-- **Arbitrary level mixing**: Support any combination of tree (semantic categories) and instance (numbered expansions) levels
-- **Consecutive instances**: Enable multiple instance levels in sequence (e.g., SECTOR→DEVICE, FLOOR→ROOM)
-- **Comprehensive validation**: Actionable error messages with troubleshooting guidance
-- **Dynamic branching**: Pipeline logic adapts based on level configuration
-- **Backward compatibility**: Legacy databases automatically inferred from structure
+- **`osprey.runtime` module**: Synchronous API (`write_channel`, `read_channel`, `write_channels`) that handles async internally
+- **Automatic configuration**: Uses execution context snapshots for reproducible notebooks
+- **Protocol-agnostic**: Works with EPICS, Mock, LabVIEW, Tango - any registered connector
+- **Resource management**: Proper cleanup in finally blocks with graceful degradation
+- **Fallback chain**: Context config → global config → clear error
 
-### Example Databases
-- **`mixed_hierarchy.json`** - Building management (1,720 channels)
-- **`instance_first.json`** - Manufacturing line (85 channels)
-- **`consecutive_instances.json`** - Accelerator naming (4,996 channels)
-- **`hierarchical_legacy.json`** - Legacy format reference
+### Integration
+- **Execution wrapper**: Automatically configures runtime from context after load
+- **Context manager**: Preserves control system config via `add_execution_config()`
+- **Notebooks**: Include runtime configuration cells for standalone execution
+- **Cleanup**: `cleanup_runtime()` called in finally blocks for resource safety
 
-### CLI Fix
-- Converted `cli.py` → `cli.py.j2` with `sys.path.insert()` pattern
-- Updated documentation from `python -m module` to `python src/path/to/cli.py`
-- Enables standalone script execution without package installation
+### Prompt System
+- **ControlSystemPythonPromptBuilder**: Custom prompt builder teaching LLMs the runtime API
+- **Framework prompt integration**: Automatic injection of domain-specific instructions
+- **Enhanced classifier**: Examples for control system operations with Python
+- **Graceful fallback**: Works without custom prompts if unavailable
+
+### Documentation
+- **API Reference**: Usage examples in generated code
+- **Developer Guide**: Integration with Python execution service
+- **Part 3 Tutorial**: Detailed explanation of runtime utilities
+- **Part 4 Tutorial**: Framework prompt customization guide
 
 ## Testing Focus Areas
 
-### 1. Automated Tests
+### 1. Unit Tests (236 lines)
 
 ```bash
-# Run all hierarchical database tests (41 tests total)
-pytest tests/services/channel_finder/ -v
-
-# Run unit tests only (34 tests)
-pytest tests/services/channel_finder/test_hierarchical_flexible.py -v
-
-# Run integration tests only (7 tests)
-pytest tests/services/channel_finder/test_example_databases.py -v
-
-# Run all tests to verify no regressions
-pytest tests/ -v
+# Run runtime module unit tests
+pytest tests/runtime/test_runtime.py -v
 ```
 
-### 2. Test Coverage
+**Coverage**:
+- ✅ Configuration from context snapshots
+- ✅ Configuration fallback to global config
+- ✅ Error handling when config unavailable
+- ✅ Write channel operations (success and failure)
+- ✅ Read channel operations
+- ✅ Bulk write operations
+- ✅ Connector lifecycle (create, reuse, cleanup)
+- ✅ Cleanup and reconnection
 
-#### Unit Tests (`test_hierarchical_flexible.py`)
-- ✅ Backward compatibility with legacy format
-- ✅ Mixed instance/tree patterns
-- ✅ Consecutive instance levels (proper nesting validation)
-- ✅ Instance-first level (at root position)
-- ✅ Cartesian product channel generation
-- ✅ Tree navigation skips instance levels correctly
-- ✅ Range and list expansion types
-- ✅ Comprehensive validation with error messages
-- ✅ Edge cases: all-instance, all-tree, single-level, deep hierarchies (8 levels)
-
-#### Integration Tests (`test_example_databases.py`)
-- ✅ All example databases load correctly
-- ✅ Navigation through each pattern works
-- ✅ Channel generation produces correct counts
-- ✅ Backward compatibility with existing `hierarchical.json`
-- ✅ Statistics gathering works with flexible system
-
-### 3. Manual Testing - New Database Format
-
-Create a test database with the new format:
-
-```json
-{
-  "hierarchy_definition": ["line", "station", "parameter"],
-  "naming_pattern": "LINE{line}:{station}:{parameter}",
-  "hierarchy_config": {
-    "levels": {
-      "line": {
-        "type": "instance",
-        "structure": "expand_here",
-        "allow_branching": false
-      },
-      "station": {
-        "type": "category",
-        "structure": "tree",
-        "allow_branching": true
-      },
-      "parameter": {
-        "type": "category",
-        "structure": "tree",
-        "allow_branching": true
-      }
-    }
-  },
-  "tree": {
-    "LINE": {
-      "_expansion": {
-        "_type": "range",
-        "_pattern": "{}",
-        "_range": [1, 5]
-      },
-      "ASSEMBLY": {
-        "SPEED": {"_description": "Line speed"},
-        "STATUS": {"_description": "Status"}
-      }
-    }
-  }
-}
-```
-
-Test with validation tool:
-```bash
-cd my-control-assistant
-python src/my_control_assistant/data/tools/validate_database.py \
-  --database src/my_control_assistant/data/channel_databases/hierarchical.json
-```
-
-### 4. CLI Testing
-
-Test the fixed CLI invocation pattern:
+### 2. Integration Tests (285 lines)
 
 ```bash
-# After osprey init my-control-assistant --template control_assistant
-cd my-control-assistant
-
-# Test CLI works immediately (no package install needed)
-python src/my_control_assistant/services/channel_finder/cli.py
-
-# Test benchmarks work
-python src/my_control_assistant/services/channel_finder/benchmarks/cli.py
-
-# Verify the old pattern fails (as expected)
-python -m my_control_assistant.services.channel_finder.cli
-# Should fail with ModuleNotFoundError (because project isn't installed)
+# Run integration tests with Mock connector
+pytest tests/runtime/test_runtime_integration.py -v
 ```
 
-### 5. Example Databases
+**Coverage**:
+- ✅ Write and read with Mock connector
+- ✅ Bulk channel writes
+- ✅ Cleanup and reconnect workflows
+- ✅ Context snapshot reproducibility
+- ✅ Error handling for invalid channels
+- ✅ Connector reuse across operations
+- ✅ Kwargs passthrough to connector
+- ✅ Fallback to global config
 
-Test all example patterns:
+### 3. End-to-End Tests (482 lines)
 
 ```bash
-cd my-control-assistant
-
-# Test instance-first pattern (simplest)
-python src/my_control_assistant/data/tools/validate_database.py \
-  --database src/my_control_assistant/data/channel_databases/examples/instance_first.json
-
-# Test consecutive instances pattern
-python src/my_control_assistant/data/tools/validate_database.py \
-  --database src/my_control_assistant/data/channel_databases/examples/consecutive_instances.json
-
-# Test mixed hierarchy pattern
-python src/my_control_assistant/data/tools/validate_database.py \
-  --database src/my_control_assistant/data/channel_databases/examples/mixed_hierarchy.json
-
-# Test legacy format still works
-python src/my_control_assistant/data/tools/validate_database.py \
-  --database src/my_control_assistant/data/channel_databases/examples/hierarchical_legacy.json
+# Run E2E tests (requires CBORG API key)
+pytest tests/e2e/test_runtime_utilities.py -v -m "e2e and requires_cborg"
 ```
 
-### 6. Backward Compatibility
+**Coverage**:
+- ✅ LLM learns `osprey.runtime` API from prompts
+- ✅ Generated code uses `write_channel()` correctly
+- ✅ **CRITICAL SAFETY**: Runtime respects channel limits
+- ✅ Valid writes within limits succeed
+- ✅ Calculation + write workflows (e.g., `sqrt(4150)`)
+- ✅ Context snapshot preservation in notebooks
+- ✅ Notebook includes runtime configuration
 
-Verify existing databases continue to work without modification:
+### 4. Runtime Limits E2E Tests (522 lines)
 
 ```bash
-# The main hierarchical.json has been updated to new format
-# But test that old-style databases still load via auto-inference
-
-cd my-control-assistant
-
-# Use the legacy example
-cp src/my_control_assistant/data/channel_databases/examples/hierarchical_legacy.json \
-   src/my_control_assistant/data/channel_databases/test_legacy.json
-
-# Update config.yml to point to test_legacy.json
-# Run channel finder - should work without errors
-python src/my_control_assistant/services/channel_finder/cli.py
+# Run comprehensive limits safety tests
+pytest tests/services/python_executor/test_runtime_limits_e2e.py -v -m "e2e"
 ```
 
-### 7. Documentation
+**Coverage**:
+- ✅ Simple writes respect limits
+- ✅ Calculated values checked against limits
+- ✅ Bulk writes validated
+- ✅ Mixed read/write operations
+- ✅ Complex workflows with limits integration
 
-Verify documentation builds correctly:
+### 5. Prompt Builder Tests
 
 ```bash
-cd docs
-pip install -r requirements.txt
-python launch_docs.py
-# Visit: http://localhost:8082
+# Run prompt builder integration tests
+pytest tests/capabilities/test_python_capability.py -v -k "prompt"
 ```
 
-Check that:
-- Channel Finder guide shows new format examples
-- Dropdown explanations for tree vs instance levels
-- CLI commands use `python src/.../cli.py` pattern (not `python -m`)
-- Example databases are referenced correctly
-- Production troubleshooting guide updated
+**Coverage**:
+- ✅ Prompt builder integration in PythonCapability
+- ✅ Domain-specific instructions injected
+- ✅ Graceful fallback if prompts unavailable
+- ✅ Custom classifier examples
 
 ## Expected Behavior
 
-### Database Loading
-- **New format**: Validates `hierarchy_config` with helpful error messages
-- **Legacy format**: Automatically infers configuration from structure
-- **Validation**: Catches common mistakes with actionable guidance
+### Runtime Module
 
-### Level Types
-- **`structure: "tree"`**: Navigate through named semantic choices
-- **`structure: "expand_here"`**: Expand across numbered/named instances
-- **`structure: "container"`**: Legacy mode (auto-inferred only)
+#### Configuration
+```python
+from osprey.runtime import configure_from_context, write_channel, read_channel
 
-### Consecutive Instances
-- Multiple instance levels must be properly nested
-- Example: `FLOOR` container contains `ROOM` container (not siblings)
-- Validation catches incorrect nesting with clear error messages
-
-### CLI Invocation
-- **New pattern**: `python src/my_control_assistant/services/channel_finder/cli.py`
-- **Old pattern**: `python -m my_control_assistant.services.channel_finder.cli` (should fail)
-- **Works immediately**: No `pip install -e .` required
-
-## Common Test Scenarios
-
-### Scenario 1: Create New Database with Instance-First Pattern
-
-```bash
-# Copy example template
-cp src/my_control_assistant/data/channel_databases/examples/instance_first.json \
-   src/my_control_assistant/data/channel_databases/my_database.json
-
-# Edit to match your system
-# Validate
-python src/my_control_assistant/data/tools/validate_database.py \
-  --database src/my_control_assistant/data/channel_databases/my_database.json
-
-# Update config.yml
-# Test with CLI
-python src/my_control_assistant/services/channel_finder/cli.py
+# Automatically configured by execution wrapper
+# Uses context snapshot for reproducibility
+write_channel("TEST:VOLTAGE", 75.5)
+value = read_channel("BEAM:CURRENT")
 ```
 
-### Scenario 2: Migrate Legacy Database to New Format
+#### Synchronous API
+- Functions appear synchronous (no `await` needed)
+- Async handled internally via `_run_async()`
+- Works in both subprocess and Jupyter contexts
+- Avoids event loop conflicts
 
-```bash
-# Start with legacy database
-# Add hierarchy_config section following examples
-# Rename containers (devices → DEVICE with _expansion)
-# Flatten nested structure (fields/subfields → direct children)
-# Validate
-python src/my_control_assistant/data/tools/validate_database.py
+#### Cleanup
+```python
+from osprey.runtime import cleanup_runtime
+
+# Called automatically in execution wrapper finally block
+await cleanup_runtime()
 ```
 
-### Scenario 3: Test Consecutive Instance Levels
+### Generated Code
 
-Use `consecutive_instances.json` as reference for proper nesting:
-- SECTOR and DEVICE are both instance levels
-- DEVICE container is nested inside SECTOR container (not siblings)
-- Validation will catch incorrect nesting
+LLMs should generate code like:
+```python
+from osprey.runtime import write_channel
+import math
+
+# Calculate value
+voltage = math.sqrt(4150)
+
+# Write to control system
+write_channel("TerminalVoltageSetPoint", voltage)
+
+# Store results
+results = {"voltage_set": voltage}
+```
+
+**NOT** like:
+```python
+import epics  # ❌ Direct EPICS import
+
+epics.caput("TerminalVoltageSetPoint", voltage)  # ❌ Bypasses safety
+```
+
+### Safety Integration
+
+Runtime utilities **must** respect channel limits:
+
+```python
+# If limits file defines TEST:VOLTAGE max = 100V
+write_channel("TEST:VOLTAGE", 150)  # ❌ Should raise ChannelLimitsViolationError
+
+write_channel("TEST:VOLTAGE", 75)   # ✅ Should succeed
+```
+
+## Manual Testing Scenarios
+
+### Scenario 1: Basic Runtime Usage
+
+```bash
+# Create test project
+osprey init test-runtime --template control_assistant
+
+cd test-runtime
+
+# Configure Mock connector
+# Edit config.yml:
+#   control_system:
+#     type: mock
+#     writes_enabled: true
+
+# Start assistant
+osprey chat
+
+# Test query:
+# "Write a Python script to set TEST:VOLTAGE to 75.5 volts"
+
+# Verify:
+# 1. Generated code uses osprey.runtime
+# 2. Code executes successfully
+# 3. Notebook includes runtime configuration cell
+```
+
+### Scenario 2: Safety Integration
+
+```bash
+cd test-runtime
+
+# Add limits file
+cat > data/channel_limits.json << EOF
+{
+  "TEST:VOLTAGE": {
+    "min_value": 0.0,
+    "max_value": 100.0,
+    "writable": true
+  }
+}
+EOF
+
+# Enable limits in config.yml:
+#   control_system:
+#     limits_checking:
+#       enabled: true
+#       limits_file: "data/channel_limits.json"
+#       policy:
+#         allow_unlisted_channels: false
+#         on_violation: "error"
+
+# Test query:
+# "Write Python code to set TEST:VOLTAGE to 150 volts"
+
+# Expected result:
+# - Code generates correctly
+# - Execution fails with ChannelLimitsViolationError
+# - Error message shows violation details
+```
+
+### Scenario 3: Context Reproducibility
+
+```bash
+cd test-runtime
+
+# Generate code that uses runtime
+osprey chat
+# Query: "Set TEST:VOLTAGE to 50"
+
+# Find generated notebook in _agent_data/executed_scripts/
+
+# Re-run notebook standalone
+jupyter notebook _agent_data/executed_scripts/<execution_folder>/notebook.ipynb
+
+# Verify:
+# 1. Runtime configuration cell present
+# 2. Uses same control system config as generation time
+# 3. Executes without errors
+```
+
+### Scenario 4: Prompt Builder Customization
+
+```bash
+cd test-runtime
+
+# Inspect custom prompt builder
+cat src/test_runtime/framework_prompts/python.py
+
+# Verify:
+# 1. Extends DefaultPythonPromptBuilder
+# 2. Adds osprey.runtime guidance
+# 3. Includes classifier examples
+# 4. Registered in registry.py
+
+# Test that LLM learns API
+osprey chat
+# Query: "Write code to read BEAM:CURRENT"
+
+# Generated code should use:
+# from osprey.runtime import read_channel
+```
+
+## Verification Checklist
+
+### Code Quality
+- [ ] All unit tests pass (336 tests)
+- [ ] All integration tests pass (285 tests)
+- [ ] E2E tests pass (requires API key)
+- [ ] No linter errors
+- [ ] Type hints correct
+
+### Functionality
+- [ ] Runtime module configures from context
+- [ ] Fallback to global config works
+- [ ] Cleanup happens in finally blocks
+- [ ] Notebooks include runtime configuration
+- [ ] Prompt builder teaches LLMs correctly
+
+### Safety
+- [ ] **CRITICAL**: Runtime respects channel limits
+- [ ] Violations raise ChannelLimitsViolationError
+- [ ] Valid writes succeed
+- [ ] Safety layer not bypassed
+
+### Documentation
+- [ ] API reference updated
+- [ ] Developer guide updated
+- [ ] Part 3 tutorial explains runtime
+- [ ] Part 4 tutorial shows customization
+- [ ] CHANGELOG entries complete
+
+### Integration
+- [ ] Works with Mock connector
+- [ ] Works with EPICS (if available)
+- [ ] Template includes prompt builder
+- [ ] Registry configuration correct
+
+## Running Full Test Suite
+
+```bash
+# Run all runtime-related tests
+pytest tests/runtime/ \
+       tests/e2e/test_runtime_utilities.py \
+       tests/services/python_executor/test_runtime_limits_e2e.py \
+       tests/capabilities/test_python_capability.py::test_python_capability_with_custom_prompts \
+       -v
+
+# Expected: ~1600+ tests pass (including existing tests)
+```
 
 ## Known Issues
 
 None - all tests passing ✅
+
+## Commits on This Branch
+
+1. **feat**: Add runtime utilities for control system operations (989 insertions)
+2. **feat**: Integrate runtime utilities with execution infrastructure (112 insertions)
+3. **feat**: Add prompt builder system for control system operations (411 insertions, 86 deletions)
+4. **test**: Add E2E tests for runtime utilities and safety (1010 insertions)
+5. **docs**: Update positioning for control system focus and runtime utilities (70 insertions, 6 deletions)
+
+**Total**: 2,592 insertions(+), 148 deletions(-)
+
+## Publishing Checklist
+
+- [x] All commits created
+- [x] CHANGELOG updated
+- [x] Documentation complete
+- [ ] Testing guide updated
+- [ ] All tests pass locally
+- [ ] Ready to push
 
 ## Reporting Issues
 
@@ -282,6 +373,8 @@ Found a bug or have suggestions? https://github.com/als-apg/osprey/issues
 
 ## Additional Resources
 
-- **Example README**: `src/osprey/templates/apps/control_assistant/data/channel_databases/examples/README.md`
-- **Channel Finder Guide**: `docs/source/getting-started/control-assistant-part2-channel-finder.rst`
-- **Pull Request**: https://github.com/als-apg/osprey/pull/35
+- **Runtime Module**: `src/osprey/runtime/__init__.py`
+- **Prompt Builder**: `src/osprey/templates/apps/control_assistant/framework_prompts/python.py.j2`
+- **API Reference**: `docs/source/api_reference/03_production_systems/06_control-system-connectors.rst`
+- **Tutorial Part 3**: `docs/source/getting-started/control-assistant-part3-production.rst`
+- **Tutorial Part 4**: `docs/source/getting-started/control-assistant-part4-customization.rst`
