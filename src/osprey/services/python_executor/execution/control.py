@@ -257,6 +257,8 @@ def get_execution_control_config() -> ExecutionControlConfig:
     Get execution control configuration from global config.
 
     This is the single entry point for getting execution control configuration.
+    Supports both the new location (control_system.writes_enabled) and the
+    deprecated location (execution_control.epics.writes_enabled) for backward compatibility.
 
     Returns:
         ExecutionControlConfig instance with type-safe configuration
@@ -265,12 +267,35 @@ def get_execution_control_config() -> ExecutionControlConfig:
         # Import here to avoid circular imports
         from osprey.utils.config import get_config_value
 
-        # Load from config.yml
+        # Try new location first (control_system.writes_enabled)
+        control_system_config = get_config_value("control_system", {})
+        writes_enabled_new = control_system_config.get("writes_enabled")
+
+        # Try deprecated location (execution_control.epics.writes_enabled)
         exec_config = get_config_value("execution_control", {})
+        writes_enabled_old = exec_config.get("epics", {}).get("writes_enabled")
+
+        # Determine which value to use (new location takes precedence)
+        if writes_enabled_new is not None:
+            writes_enabled = writes_enabled_new
+            if writes_enabled_old is not None and writes_enabled_old != writes_enabled_new:
+                logger.warning("⚠️  Both 'control_system.writes_enabled' and 'execution_control.epics.writes_enabled' are set with different values!")
+                logger.warning(f"   Using NEW location value: control_system.writes_enabled = {writes_enabled_new}")
+        elif writes_enabled_old is not None:
+            writes_enabled = writes_enabled_old
+            logger.warning("⚠️  DEPRECATED: 'execution_control.epics.writes_enabled' is deprecated.")
+            logger.warning("   Please move this setting to 'control_system.writes_enabled' in your config.yml")
+        else:
+            writes_enabled = False  # Safe default
+
+        # Get control system type for proper configuration
+        control_system_type = control_system_config.get("type", "epics")
 
         # Build typed config with defaults
         execution_control = ExecutionControlConfig(
-            epics_writes_enabled=exec_config.get("epics", {}).get("writes_enabled", False)
+            epics_writes_enabled=writes_enabled,  # Kept for backward compat
+            control_system_writes_enabled=writes_enabled,
+            control_system_type=control_system_type
         )
 
         # Validate configuration and log warnings
@@ -279,7 +304,7 @@ def get_execution_control_config() -> ExecutionControlConfig:
             for warning in warnings:
                 logger.warning(f"Execution control config: {warning}")
 
-        logger.debug(f"Loaded execution control config: writes_enabled={execution_control.epics_writes_enabled}")
+        logger.debug(f"Loaded execution control config: writes_enabled={execution_control.control_system_writes_enabled}, type={control_system_type}")
 
         return execution_control
 
@@ -288,5 +313,6 @@ def get_execution_control_config() -> ExecutionControlConfig:
 
         # Return safe defaults
         return ExecutionControlConfig(
-            epics_writes_enabled=False
+            epics_writes_enabled=False,
+            control_system_writes_enabled=False
         )

@@ -512,25 +512,25 @@ Add well-documented example scripts:
 
 .. code-block:: python
 
-  # _agent_data/example_scripts/epics/read_pv_example.py
+  # _agent_data/example_scripts/epics/read_channel_example.py
   """
-  Example: Reading EPICS PV values with error handling.
+  Example: Reading EPICS channel values with error handling.
   Standard pattern for EPICS operations.
   """
   from epics import caget
 
-  def read_pv_with_timeout(pv_name, timeout=5.0):
-      """Read PV value with timeout handling."""
+  def read_channel_with_timeout(channel_name, timeout=5.0):
+      """Read channel value with timeout handling."""
       try:
-          value = caget(pv_name, timeout=timeout)
+          value = caget(channel_name, timeout=timeout)
           if value is None:
-              raise ValueError(f"Failed to read PV: {pv_name}")
+              raise ValueError(f"Failed to read channel: {channel_name}")
           return value
       except Exception as e:
-          print(f"Error reading {pv_name}: {e}")
+          print(f"Error reading {channel_name}: {e}")
           return None
 
-  beam_current = read_pv_with_timeout('BEAM:CURRENT')
+  beam_current = read_channel_with_timeout('BEAM:CURRENT')
   results = {'beam_current': beam_current}
 
 Claude will find and learn from examples like this when generating code. Adding a README file in each directory (e.g., ``_agent_data/example_scripts/epics/README.md``) is also helpful - Claude naturally discovers these files and can learn generic patterns and conventions from them.

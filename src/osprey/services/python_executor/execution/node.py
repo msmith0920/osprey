@@ -45,9 +45,12 @@ class LocalCodeExecutor:
 
         logger.info(f"LOCAL EXECUTION: Running code in {execution_mode.value} mode")
 
+        # Get limits validator from config
+        limits_validator = self.executor_config.limits_validator
+
         # Create unified wrapper for local execution
         from .wrapper import ExecutionWrapper
-        wrapper = ExecutionWrapper(execution_mode="local")
+        wrapper = ExecutionWrapper(execution_mode="local", limits_validator=limits_validator)
         wrapped_code = wrapper.create_wrapper(code, execution_folder)
 
         # Execute with automatic Python environment detection
@@ -352,7 +355,8 @@ class ContainerCodeExecutor:
                 code=code,
                 endpoint=endpoint,
                 execution_folder=execution_folder,
-                timeout=self.executor_config.execution_timeout_seconds
+                timeout=self.executor_config.execution_timeout_seconds,
+                executor_config=self.executor_config
             )
 
             if not result.success:

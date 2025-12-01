@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - JSON-based limits database with embedded defaults support
   - New exception: ChannelLimitsViolationError with detailed violation context
 
+- Python executor limits checking integration: Automatic runtime validation of all epics.caput() calls
+  - Transparent monkeypatching of epics.caput() and PV.put() methods
+  - Embedded validator configuration in wrapper for container isolation
+  - Graceful degradation if pyepics unavailable
+  - Clear operator feedback with safety status messages
+
 - **Channel Write Capability**: New dedicated capability for writing values to control system channels
   - **Simple Write Operations**: Direct value assignment to channels ("Set X to 50")
   - **Multiple Channel Writes**: Support for writing multiple channels in one operation

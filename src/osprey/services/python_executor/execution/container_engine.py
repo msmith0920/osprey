@@ -806,12 +806,14 @@ class ContainerExecutor:
         self,
         endpoint: ContainerEndpoint,
         execution_folder: Path | None = None,
-        timeout: int = 300
+        timeout: int = 300,
+        executor_config: 'PythonExecutorConfig | None' = None
     ):
         """Initialize with endpoint and execution parameters."""
         self.endpoint = endpoint
         self.execution_folder = execution_folder
         self.timeout = timeout
+        self.executor_config = executor_config
 
         # Initialize components directly
         self.session_manager = JupyterSessionManager(endpoint)
@@ -830,15 +832,21 @@ class ContainerExecutor:
             # 1. Ensure we have a working session
             session = await self.session_manager.ensure_session()
 
-            # 2. Execute the wrapped code using unified wrapper
+            # 2. Get limits validator from config
+            limits_validator = (
+                self.executor_config.limits_validator
+                if self.executor_config else None
+            )
+
+            # 3. Execute the wrapped code using unified wrapper with validator
             from .wrapper import ExecutionWrapper
-            wrapper = ExecutionWrapper(execution_mode="container")
+            wrapper = ExecutionWrapper(execution_mode="container", limits_validator=limits_validator)
             wrapped_code = wrapper.create_wrapper(code, self.execution_folder)
 
-            # 3. Execute the wrapped code using the execution engine
+            # 4. Execute the wrapped code using the execution engine
             await self.execution_engine.execute_code(wrapped_code, session)
 
-            # 4. Collect results from files using the result collector
+            # 5. Collect results from files using the result collector
             result = await self.result_collector.collect_results(start_time)
 
             return result
@@ -869,7 +877,8 @@ async def execute_python_code_in_container(
     endpoint: ContainerEndpoint,
     figures_dir: Path | None = None,  # Legacy parameter, not used
     timeout: int = 300,
-    execution_folder: Path | None = None
+    execution_folder: Path | None = None,
+    executor_config: 'PythonExecutorConfig | None' = None
 ) -> PythonExecutionEngineResult:
     """
     Execute Python code in container using file-based result communication.
@@ -883,6 +892,7 @@ async def execute_python_code_in_container(
         figures_dir: Legacy parameter, not used
         timeout: Execution timeout in seconds
         execution_folder: Host execution folder that maps to container workspace
+        executor_config: Executor configuration (for limits validation)
 
     Returns:
         PythonExecutionEngineResult with all captured data from files
@@ -895,6 +905,7 @@ async def execute_python_code_in_container(
     executor = ContainerExecutor(
         endpoint=endpoint,
         execution_folder=execution_folder,
-        timeout=timeout
+        timeout=timeout,
+        executor_config=executor_config
     )
     return await executor.execute_code(code)
