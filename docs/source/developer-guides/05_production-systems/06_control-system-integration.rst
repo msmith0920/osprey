@@ -79,6 +79,17 @@ The Control System Integration system provides a **two-layer abstraction** for w
       Need to integrate with other control systems (LabVIEW, Tango, custom facility systems)?
       See `Advanced: Implementing Custom Connectors`_ below for guidance on creating your own connectors.
 
+.. note::
+   **API Update (v0.9.4):** Connector methods renamed for clarity and control-system-agnostic terminology:
+
+   - ``read_pv()`` → ``read_channel()``
+   - ``write_pv()`` → ``write_channel()``
+   - ``PVValue`` → ``ChannelValue``
+   - ``PVMetadata`` → ``ChannelMetadata``
+
+   **Old names still work** with deprecation warnings (removed in v0.10).
+   See :doc:`../migration-guide-instance-methods` for migration examples.
+
 
 Quick Start: Using Connectors
 =============================
@@ -103,9 +114,9 @@ The mock connector works without any hardware access - ideal for R&D, firewalled
        }
    })
 
-   # Use it - accepts any PV name!
-   pv_value = await connector.read_pv('ANY:MADE:UP:NAME')
-   print(f"Value: {pv_value.value} {pv_value.metadata.units}")
+   # Use it - accepts any channel name!
+   channel_value = await connector.read_channel('ANY:MADE:UP:NAME')
+   print(f"Value: {channel_value.value} {channel_value.metadata.units}")
 
    await connector.disconnect()
 
@@ -132,8 +143,8 @@ Switch to real hardware by changing the ``type`` field:
    })
 
    # Same API as mock connector!
-   pv_value = await connector.read_pv('REAL:BEAM:CURRENT')
-   print(f"Beam current: {pv_value.value} {pv_value.metadata.units}")
+   channel_value = await connector.read_channel('REAL:BEAM:CURRENT')
+   print(f"Beam current: {channel_value.value} {channel_value.metadata.units}")
 
    await connector.disconnect()
 
@@ -160,11 +171,11 @@ Capabilities should use ``ConnectorFactory`` to create connectors from global co
    from osprey.state import AgentState, StateManager
 
    @capability_node
-   class ChannelValueRetrievalCapability(BaseCapability):
-       """Retrieve current values from control system."""
+   class ChannelReadCapability(BaseCapability):
+       """Read current values from control system."""
 
-       name = "channel_value_retrieval"
-       description = "Retrieve current channel values"
+       name = "channel_read"
+       description = "Read current channel values"
        provides = ["CHANNEL_VALUES"]
        requires = [("CHANNEL_ADDRESSES", "single")]
 
@@ -183,11 +194,11 @@ Capabilities should use ``ConnectorFactory`` to create connectors from global co
                # Read all channel values
                channel_values = {}
                for channel in channel_context.channels:
-                   pv_result = await connector.read_pv(channel)
+                   channel_result = await connector.read_channel(channel)
                    channel_values[channel] = {
-                       'value': pv_result.value,
-                       'units': pv_result.metadata.units,
-                       'timestamp': pv_result.timestamp
+                       'value': channel_result.value,
+                       'units': channel_result.metadata.units,
+                       'timestamp': channel_result.timestamp
                    }
 
                # Store results in context
@@ -277,6 +288,125 @@ Pattern detection enables the approval system to identify control system operati
    print(f"Has reads: {result['has_reads']}")    # True
 
 This enables the approval system to require human review for code that performs writes.
+
+
+Write Verification
+==================
+
+Verify that channel writes succeeded using callback or readback confirmation.
+
+.. tab-set::
+
+   .. tab-item:: Quick Start
+
+      Write with automatic verification:
+
+      .. code-block:: python
+
+         from osprey.connectors.factory import ConnectorFactory
+
+         connector = await ConnectorFactory.create_control_system_connector()
+
+         # Callback verification (fast, confirms CA callback)
+         result = await connector.write_channel(
+             "BEAM:CURRENT",
+             100.0,
+             verification_level="callback"
+         )
+
+         # Readback verification (full confirmation)
+         result = await connector.write_channel(
+             "MOTOR:POSITION",
+             50.0,
+             verification_level="readback",
+             tolerance=0.1  # Allow 0.1 units difference
+         )
+
+         # Check result
+         if result.verification.verified:
+             print("✅ Write confirmed")
+         else:
+             print(f"⚠️ Verification failed: {result.verification.notes}")
+
+   .. tab-item:: Configuration
+
+      **Global default verification level:**
+
+      .. code-block:: yaml
+
+         control_system:
+           write_verification:
+             default_level: "callback"  # none, callback, or readback
+             default_tolerance_percent: 0.1  # For readback verification
+
+      **Per-channel configuration** (in limits database):
+
+      .. code-block:: json
+
+         {
+           "MOTOR:POSITION": {
+             "min_value": -100.0,
+             "max_value": 100.0,
+             "verification": {
+               "level": "readback",
+               "tolerance_absolute": 0.1
+             }
+           }
+         }
+
+      Per-channel settings override global defaults.
+
+   .. tab-item:: Verification Levels
+
+      .. list-table::
+         :header-rows: 1
+         :widths: 20 15 15 50
+
+         * - Level
+           - Speed
+           - Confidence
+           - When to Use
+         * - ``none``
+           - Instant
+           - Low
+           - Development, non-critical writes
+         * - ``callback``
+           - Fast (~1-10ms)
+           - Medium
+           - Most production writes (default)
+         * - ``readback``
+           - Slow (~50-100ms)
+           - High
+           - Critical setpoints, safety-critical operations
+
+      **Callback verification**: Confirms EPICS Channel Access callback received
+
+      **Readback verification**: Performs actual ``caget()`` and compares to written value
+
+**Return Value:**
+
+All ``write_channel()`` calls return :class:`~osprey.connectors.control_system.base.ChannelWriteResult`:
+
+.. code-block:: python
+
+   result = await connector.write_channel("BEAM:CURRENT", 100.0)
+
+   print(f"Success: {result.success}")
+   print(f"Channel: {result.channel_address}")
+   print(f"Value written: {result.value_written}")
+
+   if result.verification:
+       print(f"Verification level: {result.verification.level}")
+       print(f"Verified: {result.verification.verified}")
+       print(f"Readback value: {result.verification.readback_value}")
+
+.. seealso::
+
+   :class:`~osprey.connectors.control_system.base.WriteVerification`
+       Verification result data model
+
+   :class:`~osprey.connectors.control_system.base.ChannelWriteResult`
+       Complete write operation result
 
 
 Advanced: Implementing Custom Connectors
@@ -397,16 +527,16 @@ Implementing Custom Connectors
                     self._subscriptions.clear()
                     self._connected = False
 
-                async def read_pv(
+                async def read_channel(
                     self,
-                    pv_address: str,
+                    channel_address: str,
                     timeout: Optional[float] = None
                 ) -> PVValue:
                     """
                     Read a LabVIEW variable or VI output.
 
                     Args:
-                        pv_address: Variable path (e.g., 'System/Temperature/Sensor1')
+                        channel_address: Variable path (e.g., 'System/Temperature/Sensor1')
                         timeout: Optional timeout override
                     """
                     if not self._connected:
@@ -415,7 +545,7 @@ Implementing Custom Connectors
                     try:
                         # Call LabVIEW Web Service endpoint to read variable
                         response = await self._client.get(
-                            f'/api/variables/{pv_address}',
+                            f'/api/variables/{channel_address}',
                             timeout=timeout
                         )
                         response.raise_for_status()
@@ -447,24 +577,28 @@ Implementing Custom Connectors
 
                     except httpx.HTTPStatusError as e:
                         if e.response.status_code == 404:
-                            raise ValueError(f"Variable not found: {pv_address}")
-                        raise RuntimeError(f"Failed to read {pv_address}: {e}")
+                            raise ValueError(f"Variable not found: {channel_address}")
+                        raise RuntimeError(f"Failed to read {channel_address}: {e}")
                     except Exception as e:
-                        raise RuntimeError(f"Failed to read {pv_address}: {e}")
+                        raise RuntimeError(f"Failed to read {channel_address}: {e}")
 
-                async def write_pv(
+                async def write_channel(
                     self,
-                    pv_address: str,
+                    channel_address: str,
                     value: Any,
-                    timeout: Optional[float] = None
-                ) -> bool:
+                    timeout: Optional[float] = None,
+                    verification_level: str = 'none',
+                    tolerance: float = 0.01
+                ) -> ChannelWriteResult:
                     """
                     Write a value to a LabVIEW variable.
 
                     Args:
-                        pv_address: Variable path
+                        channel_address: Variable path
                         value: Value to write
                         timeout: Optional timeout override
+                        verification_level: Verification level ('none', 'callback', 'readback')
+                        tolerance: Tolerance for readback verification
                     """
                     if not self._connected:
                         raise ConnectionError("Not connected to LabVIEW")
@@ -472,30 +606,40 @@ Implementing Custom Connectors
                     try:
                         # Call LabVIEW Web Service endpoint to write variable
                         response = await self._client.put(
-                            f'/api/variables/{pv_address}',
+                            f'/api/variables/{channel_address}',
                             json={'value': value},
                             timeout=timeout
                         )
                         response.raise_for_status()
-                        return True
+
+                        # Return write result with verification
+                        verification = WriteVerification(
+                            verification_level=verification_level,
+                            verified=(verification_level == 'none')
+                        )
+                        return ChannelWriteResult(
+                            success=True,
+                            written_value=value,
+                            verification=verification
+                        )
 
                     except httpx.HTTPStatusError as e:
                         if e.response.status_code == 403:
-                            raise PermissionError(f"Write access denied for {pv_address}")
+                            raise PermissionError(f"Write access denied for {channel_address}")
                         elif e.response.status_code == 400:
-                            raise ValueError(f"Invalid value for {pv_address}: {value}")
-                        raise RuntimeError(f"Failed to write {pv_address}: {e}")
+                            raise ValueError(f"Invalid value for {channel_address}: {value}")
+                        raise RuntimeError(f"Failed to write {channel_address}: {e}")
                     except Exception as e:
-                        raise RuntimeError(f"Failed to write {pv_address}: {e}")
+                        raise RuntimeError(f"Failed to write {channel_address}: {e}")
 
-                async def get_metadata(self, pv_address: str) -> PVMetadata:
+                async def get_metadata(self, channel_address: str) -> PVMetadata:
                     """Get metadata about a LabVIEW variable."""
                     if not self._connected:
                         raise ConnectionError("Not connected to LabVIEW")
 
                     try:
                         response = await self._client.get(
-                            f'/api/variables/{pv_address}/metadata'
+                            f'/api/variables/{channel_address}/metadata'
                         )
                         response.raise_for_status()
                         data = response.json()
@@ -510,11 +654,11 @@ Implementing Custom Connectors
                         )
 
                     except Exception as e:
-                        raise RuntimeError(f"Failed to get metadata for {pv_address}: {e}")
+                        raise RuntimeError(f"Failed to get metadata for {channel_address}: {e}")
 
-                async def read_multiple_pvs(
+                async def read_multiple_channels(
                     self,
-                    pv_addresses: List[str],
+                    channel_addresses: List[str],
                     timeout: Optional[float] = None
                 ) -> Dict[str, PVValue]:
                     """
@@ -529,7 +673,7 @@ Implementing Custom Connectors
                         # Try batch endpoint first (if LabVIEW Web Service supports it)
                         response = await self._client.post(
                             '/api/variables/batch/read',
-                            json={'variables': pv_addresses},
+                            json={'variables': channel_addresses},
                             timeout=timeout
                         )
 
@@ -557,19 +701,19 @@ Implementing Custom Connectors
 
                         # Fall back to sequential reads
                         results = {}
-                        for pv in pv_addresses:
+                        for channel in channel_addresses:
                             try:
-                                results[pv] = await self.read_pv(pv, timeout)
+                                results[channel] = await self.read_channel(channel, timeout)
                             except Exception as e:
-                                logger.warning(f"Failed to read {pv}: {e}")
+                                logger.warning(f"Failed to read {channel}: {e}")
                         return results
 
                     except Exception as e:
-                        raise RuntimeError(f"Failed to read multiple PVs: {e}")
+                        raise RuntimeError(f"Failed to read multiple channels: {e}")
 
                 async def subscribe(
                     self,
-                    pv_address: str,
+                    channel_address: str,
                     callback: Callable[[PVValue], None]
                 ) -> str:
                     """
@@ -584,14 +728,14 @@ Implementing Custom Connectors
 
                     subscription_id = str(uuid.uuid4())
                     self._subscriptions[subscription_id] = {
-                        'pv_address': pv_address,
+                        'channel_address': channel_address,
                         'callback': callback,
                         'last_value': None
                     }
 
                     # In production, implement actual subscription mechanism
                     # (WebSocket, SSE, or polling task)
-                    logger.info(f"Subscribed to {pv_address} (subscription: {subscription_id})")
+                    logger.info(f"Subscribed to {channel_address} (subscription: {subscription_id})")
 
                     return subscription_id
 
@@ -600,14 +744,14 @@ Implementing Custom Connectors
                     if subscription_id in self._subscriptions:
                         del self._subscriptions[subscription_id]
 
-                async def validate_pv(self, pv_address: str) -> bool:
+                async def validate_channel(self, channel_address: str) -> bool:
                     """Check if LabVIEW variable exists and is accessible."""
                     if not self._connected:
                         raise ConnectionError("Not connected to LabVIEW")
 
                     try:
                         response = await self._client.head(
-                            f'/api/variables/{pv_address}'
+                            f'/api/variables/{channel_address}'
                         )
                         return response.status_code == 200
                     except Exception:
@@ -749,7 +893,7 @@ Implementing Custom Connectors
                 })
 
                 try:
-                    result = await connector.read_pv('BEAM:CURRENT')
+                    result = await connector.read_channel('BEAM:CURRENT')
                     assert result.value is not None
                     assert result.metadata.units is not None
                 finally:
@@ -774,9 +918,9 @@ Implementing Custom Connectors
                 await connector.disconnect()
 
             @pytest.mark.asyncio
-            async def test_read_pv_structure(tango_connector):
+            async def test_read_channel_structure(tango_connector):
                 """Verify interface contract."""
-                result = await tango_connector.read_pv('sys/tg_test/1/double_scalar')
+                result = await tango_connector.read_channel('sys/tg_test/1/double_scalar')
                 assert result.value is not None
                 assert result.timestamp is not None
 
@@ -795,7 +939,7 @@ Implementing Custom Connectors
                 })
 
                 try:
-                    result = await connector.read_pv('domain/family/member/current')
+                    result = await connector.read_channel('domain/family/member/current')
                     assert 0 <= result.value <= 500  # Expected range
                 finally:
                     await connector.disconnect()

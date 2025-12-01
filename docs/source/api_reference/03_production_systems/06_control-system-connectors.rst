@@ -84,17 +84,98 @@ Abstract base class defining the contract for all control system connectors (EPI
 Data Models
 -----------
 
-.. autoclass:: osprey.connectors.control_system.base.PVValue
+Read Operation Models
+~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: osprey.connectors.control_system.base.ChannelValue
    :members:
    :show-inheritance:
 
-Result container for process variable reads with value, timestamp, and metadata.
+Result container for channel reads with value, timestamp, and metadata.
 
-.. autoclass:: osprey.connectors.control_system.base.PVMetadata
+.. autoclass:: osprey.connectors.control_system.base.ChannelMetadata
    :members:
    :show-inheritance:
 
-Metadata about a process variable (units, precision, alarms, limits, etc.).
+Metadata about a control system channel (units, precision, alarms, limits, etc.).
+
+**Backward Compatibility:**
+
+.. deprecated:: 0.9.5
+   The classes ``PVValue`` and ``PVMetadata`` are deprecated and aliased to ``ChannelValue``
+   and ``ChannelMetadata`` respectively. The "PV" terminology is EPICS-specific; "channel"
+   is control-system agnostic and supports any control system (EPICS, Tango, LabVIEW, etc.).
+
+Write Operation Models
+~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: osprey.connectors.control_system.base.ChannelWriteResult
+   :members:
+   :show-inheritance:
+
+Result container for channel write operations with success status, written value, and optional verification.
+
+**Fields:**
+
+- ``success`` (bool): Whether the write operation succeeded
+- ``written_value`` (Any): The value that was written to the channel
+- ``verification`` (Optional[WriteVerification]): Verification result if verification was requested
+
+**Example:**
+
+.. code-block:: python
+
+   result = await connector.write_channel(
+       'BEAM:SETPOINT',
+       450.0,
+       verification_level='readback',
+       tolerance=0.01
+   )
+
+   if result.success and result.verification.verified:
+       print(f"Write verified: {result.written_value}")
+   elif result.success:
+       print(f"Write succeeded but not verified")
+   else:
+       print(f"Write failed")
+
+.. autoclass:: osprey.connectors.control_system.base.WriteVerification
+   :members:
+   :show-inheritance:
+
+Verification result for channel write operations.
+
+**Fields:**
+
+- ``verification_level`` (str): Level of verification performed ('none', 'callback', 'readback')
+- ``verified`` (bool): Whether the write was successfully verified
+- ``readback_value`` (Optional[Any]): The value read back from the channel (readback mode only)
+- ``tolerance_check`` (Optional[bool]): Whether readback matched within tolerance (readback mode only)
+
+**Verification Levels:**
+
+1. **'none'**: No verification performed (``verified=False``)
+2. **'callback'**: Uses Channel Access callback to confirm write (EPICS only)
+3. **'readback'**: Reads back the value and compares with tolerance
+
+**Example:**
+
+.. code-block:: python
+
+   # Readback verification
+   result = await connector.write_channel(
+       'BEAM:CURRENT',
+       400.0,
+       verification_level='readback',
+       tolerance=0.01,
+       timeout=2.0
+   )
+
+   if result.verification.verified:
+       print(f"Readback: {result.verification.readback_value}")
+       print(f"Within tolerance: {result.verification.tolerance_check}")
+   else:
+       print("Verification failed")
 
 Built-in Implementations
 ------------------------
@@ -296,12 +377,12 @@ Create and use a connector from global configuration:
    connector = await ConnectorFactory.create_control_system_connector()
 
    try:
-       # Read a PV
-       result = await connector.read_pv('BEAM:CURRENT')
+       # Read a channel
+       result = await connector.read_channel('BEAM:CURRENT')
        print(f"Current: {result.value} {result.metadata.units}")
 
-       # Read multiple PVs
-       results = await connector.read_multiple_pvs([
+       # Read multiple channels
+       results = await connector.read_multiple_channels([
            'BEAM:CURRENT',
            'BEAM:LIFETIME',
            'BEAM:ENERGY'
