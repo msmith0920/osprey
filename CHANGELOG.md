@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Pattern detection updated with new read_channel/write_channel patterns
   - Registry and utility updates for new context types
 
+- Documentation structure: Refactored Python execution service documentation for improved organization
+  - Removed obsolete standalone 03_python-execution-service.rst file
+  - Streamlined service-overview.rst (793 → 452 lines, 40% reduction)
+  - Focused content on generator extensibility for developers
+  - Updated all cross-references to use directory structure
+  - Improved navigation and reduced redundancy
+
 - **CLI Approval Display**: Enhanced approval message presentation with heavy-bordered panel, bold title, and helpful subtitle for improved visibility and user experience
 - **Error Node**: Removed deprecated manual streaming code and progress tracking in favor of unified logger system with automatic streaming
 - **Gateway Approval Detection**: Enhanced approval response detection with two-tier system - instant pattern matching for simple yes/no responses, with LLM-powered fallback for complex natural language

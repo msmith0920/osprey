@@ -45,7 +45,7 @@ The framework provides:
 
 * **Capability-Based Architecture**: :doc:`Modular agent construction <developer-guides/02_quick-start-patterns/01_building-your-first-capability>` with selective capability activation based on task requirements
 * **Orchestrator-First Design**: :doc:`Complete execution planning <developer-guides/04_infrastructure-components/04_orchestrator-planning>` prior to capability invocation, eliminating iterative tool-calling patterns
-* **Secure Python Execution**: :doc:`Containerized code generation and execution <developer-guides/05_production-systems/03_python-execution-service>` with static analysis, human approval, and flexible deployment environments
+* **Secure Python Execution**: :doc:`Containerized code generation and execution <developer-guides/05_production-systems/03_python-execution-service/index>` with static analysis, human approval, and flexible deployment environments
 * **Registry-Based Discovery**: :doc:`Convention-driven component loading <developer-guides/01_understanding-the-framework/02_convention-over-configuration>` enables seamless integration of capabilities, data sources, and services across applications
 * **Control System Abstraction**: :doc:`Pluggable connectors for control systems <developer-guides/05_production-systems/06_control-system-integration>` (EPICS, LabVIEW, Tango, Mock) enable development without hardware and seamless migration to production through configuration
 * **External Data Integration**: :doc:`Automatic retrieval from databases and knowledge bases <developer-guides/05_production-systems/02_data-source-integration>` during task understanding and capability execution for data-driven responses
