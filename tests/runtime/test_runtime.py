@@ -141,8 +141,7 @@ def test_configure_error_handling(clear_runtime_state):
             configure_from_context(None)
 
 
-@pytest.mark.asyncio
-async def test_write_channel_success(mock_context_with_config, clear_runtime_state):
+def test_write_channel_success(mock_context_with_config, clear_runtime_state):
     """Test write_channel with successful write."""
     import osprey.runtime as runtime
 
@@ -156,8 +155,8 @@ async def test_write_channel_success(mock_context_with_config, clear_runtime_sta
     with patch('osprey.connectors.factory.ConnectorFactory.create_control_system_connector') as mock_factory:
         mock_factory.return_value = mock_connector
 
-        # Write channel
-        await write_channel("TEST:PV", 42.0)
+        # Write channel (synchronous API)
+        write_channel("TEST:PV", 42.0)
 
         # Verify write was called
         assert len(mock_connector.write_calls) == 1
@@ -165,8 +164,7 @@ async def test_write_channel_success(mock_context_with_config, clear_runtime_sta
         assert mock_connector.write_calls[0][1] == 42.0
 
 
-@pytest.mark.asyncio
-async def test_write_channel_failure(mock_context_with_config, clear_runtime_state):
+def test_write_channel_failure(mock_context_with_config, clear_runtime_state):
     """Test write_channel with failed write."""
     import osprey.runtime as runtime
 
@@ -188,13 +186,12 @@ async def test_write_channel_failure(mock_context_with_config, clear_runtime_sta
     with patch('osprey.connectors.factory.ConnectorFactory.create_control_system_connector') as mock_factory:
         mock_factory.return_value = mock_connector
 
-        # Write should raise RuntimeError
+        # Write should raise RuntimeError (synchronous API)
         with pytest.raises(RuntimeError, match="Write failed"):
-            await write_channel("TEST:PV", 42.0)
+            write_channel("TEST:PV", 42.0)
 
 
-@pytest.mark.asyncio
-async def test_read_channel_success(mock_context_with_config, clear_runtime_state):
+def test_read_channel_success(mock_context_with_config, clear_runtime_state):
     """Test read_channel with successful read."""
     import osprey.runtime as runtime
 
@@ -208,8 +205,8 @@ async def test_read_channel_success(mock_context_with_config, clear_runtime_stat
     with patch('osprey.connectors.factory.ConnectorFactory.create_control_system_connector') as mock_factory:
         mock_factory.return_value = mock_connector
 
-        # Read channel
-        value = await read_channel("TEST:PV")
+        # Read channel (synchronous API)
+        value = read_channel("TEST:PV")
 
         # Verify read was called and value returned
         assert len(mock_connector.read_calls) == 1
@@ -217,8 +214,7 @@ async def test_read_channel_success(mock_context_with_config, clear_runtime_stat
         assert value == 42.0
 
 
-@pytest.mark.asyncio
-async def test_write_channels_bulk(mock_context_with_config, clear_runtime_state):
+def test_write_channels_bulk(mock_context_with_config, clear_runtime_state):
     """Test write_channels bulk operation."""
     import osprey.runtime as runtime
 
@@ -232,8 +228,8 @@ async def test_write_channels_bulk(mock_context_with_config, clear_runtime_state
     with patch('osprey.connectors.factory.ConnectorFactory.create_control_system_connector') as mock_factory:
         mock_factory.return_value = mock_connector
 
-        # Write multiple channels
-        await write_channels({
+        # Write multiple channels (synchronous API)
+        write_channels({
             "PV1": 1.0,
             "PV2": 2.0,
             "PV3": 3.0
@@ -261,13 +257,13 @@ async def test_cleanup_runtime(mock_context_with_config, clear_runtime_state):
     with patch('osprey.connectors.factory.ConnectorFactory.create_control_system_connector') as mock_factory:
         mock_factory.return_value = mock_connector
 
-        # Create connector by writing
-        await write_channel("TEST:PV", 42.0)
+        # Create connector by writing (synchronous API)
+        write_channel("TEST:PV", 42.0)
 
         # Verify connector exists
         assert runtime._runtime_connector is not None
 
-        # Cleanup
+        # Cleanup (async function - still needs await)
         await cleanup_runtime()
 
         # Verify cleanup was called
@@ -275,8 +271,7 @@ async def test_cleanup_runtime(mock_context_with_config, clear_runtime_state):
         assert runtime._runtime_connector is None
 
 
-@pytest.mark.asyncio
-async def test_connector_reuse(mock_context_with_config, clear_runtime_state):
+def test_connector_reuse(mock_context_with_config, clear_runtime_state):
     """Test that connector is created once and reused."""
     import osprey.runtime as runtime
 
@@ -290,10 +285,10 @@ async def test_connector_reuse(mock_context_with_config, clear_runtime_state):
     with patch('osprey.connectors.factory.ConnectorFactory.create_control_system_connector') as mock_factory:
         mock_factory.return_value = mock_connector
 
-        # Write multiple times
-        await write_channel("TEST:PV1", 1.0)
-        await write_channel("TEST:PV2", 2.0)
-        await read_channel("TEST:PV3")
+        # Write multiple times (synchronous API)
+        write_channel("TEST:PV1", 1.0)
+        write_channel("TEST:PV2", 2.0)
+        read_channel("TEST:PV3")
 
         # Factory should only be called once
         mock_factory.assert_called_once()
@@ -319,15 +314,15 @@ async def test_connector_recreated_after_cleanup(mock_context_with_config, clear
     with patch('osprey.connectors.factory.ConnectorFactory.create_control_system_connector') as mock_factory:
         mock_factory.side_effect = [mock_connector1, mock_connector2]
 
-        # First write
-        await write_channel("TEST:PV", 1.0)
+        # First write (synchronous API)
+        write_channel("TEST:PV", 1.0)
         assert len(mock_connector1.write_calls) == 1
 
-        # Cleanup
+        # Cleanup (async function - still needs await)
         await cleanup_runtime()
 
-        # Second write should create new connector
-        await write_channel("TEST:PV", 2.0)
+        # Second write should create new connector (synchronous API)
+        write_channel("TEST:PV", 2.0)
         assert len(mock_connector2.write_calls) == 1
 
         # Factory should be called twice
