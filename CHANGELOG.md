@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Complete unit and integration test coverage
   - API reference documentation with usage examples
 
+### Changed
+- **Python Execution Infrastructure**: Integrated runtime utilities with execution wrapper and notebooks
+  - Execution wrapper automatically configures runtime from context snapshots
+  - Context manager preserves control system config for reproducible execution
+  - Notebooks include runtime configuration cell for standalone execution
+  - Proper cleanup in finally block ensures resource release
+  - E2E test artifacts now include generated Python code files
+  - Developer guide documentation with integration details
+
 - **Runtime Channel Limits Validation**: Comprehensive safety system for validating writes against configured boundaries
   - Synchronous validation engine with min/max/step/writable constraints
   - Failsafe design blocks all unlisted channels by default

@@ -320,6 +320,15 @@ print(f"Container working directory: {{Path.cwd()}}")
                     print(f"Context available with {{len([k for k in dir(context) if not k.startswith('_')])}} context categories")
                     available_types = [k for k in dir(context) if not k.startswith('_')]
                     print(f"Available context types: {{available_types}}")
+
+                    # Configure runtime from context
+                    try:
+                        from osprey.runtime import configure_from_context
+                        configure_from_context(context)
+                    except ImportError:
+                        print("⚠️  osprey.runtime not available - control system operations disabled")
+                    except Exception as e:
+                        print(f"⚠️  Failed to configure runtime: {{e}}")
                 else:
                     print("⚠️ No execution context available")
                     context = None
@@ -331,6 +340,22 @@ print(f"Container working directory: {{Path.cwd()}}")
                 execution_metadata["error_type"] = "INFRASTRUCTURE_ERROR"
                 execution_metadata["infrastructure_error"] = f"Context loading failed: {{str(e)}}"
                 context = None
+        """).strip()
+
+    def _get_cleanup_code(self) -> str:
+        """Get runtime cleanup code.
+
+        This should be called in the finally block of the execution wrapper
+        to ensure cleanup happens even if user code raises an exception.
+        """
+        return textwrap.dedent("""
+            # Cleanup runtime resources
+            try:
+                import asyncio
+                from osprey.runtime import cleanup_runtime
+                asyncio.run(cleanup_runtime())
+            except Exception as e:
+                print(f"⚠️  Cleanup warning: {{e}}")
         """).strip()
 
     def _get_output_capture_start(self) -> str:
@@ -349,16 +374,31 @@ print(f"Container working directory: {{Path.cwd()}}")
         """).strip()
 
     def _wrap_user_code(self, user_code: str) -> str:
-        """Wrap user code with proper indentation."""
-        indented_code = "\n".join("    " + line for line in user_code.split("\n"))
+        """Execute user code directly (synchronous).
+
+        User code is expected to be synchronous - osprey.runtime utilities
+        handle async internally so generated code can be simple and straightforward.
+        """
+        # Indent user code (8 spaces = 2 levels, inside try block)
+        indented_code = "\n".join("        " + line if line.strip() else line for line in user_code.split("\n"))
+
         return f"""
     # Execute user code
+    try:
 {indented_code}
 
-    # Mark successful execution
-    execution_metadata["success"] = True
-    execution_metadata["error_type"] = None
-    execution_metadata["end_time"] = _datetime.now().isoformat()
+        # Mark successful execution
+        execution_metadata["success"] = True
+        execution_metadata["error_type"] = None
+        execution_metadata["end_time"] = _datetime.now().isoformat()
+
+    except Exception as user_code_error:
+        # Capture user code errors
+        execution_metadata["success"] = False
+        execution_metadata["error_type"] = type(user_code_error).__name__
+        execution_metadata["error_message"] = str(user_code_error)
+        execution_metadata["end_time"] = _datetime.now().isoformat()
+        raise
 """
 
     def _get_cleanup_and_export(self) -> str:
@@ -419,6 +459,15 @@ print(f"Container working directory: {{Path.cwd()}}")
                 execution_metadata["stdout"] = stdout_capture.getvalue()
                 execution_metadata["stderr"] = stderr_capture.getvalue()
                 execution_metadata["end_time"] = _datetime.now().isoformat()
+
+                # Cleanup runtime resources
+                try:
+                    import asyncio
+                    from osprey.runtime import cleanup_runtime
+                    # We're in a subprocess with no running event loop
+                    asyncio.run(cleanup_runtime())
+                except Exception as e:
+                    print(f"⚠️  Cleanup warning: {{e}}")
         """).strip()
 
         file_persistence_section = textwrap.dedent("""

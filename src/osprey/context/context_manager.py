@@ -357,6 +357,21 @@ class ContextManager:
 
         return summaries
 
+    def add_execution_config(self, config: dict) -> None:
+        """Add execution configuration to context data.
+
+        This config is saved alongside capability contexts and can be
+        accessed by runtime utilities for reproducible execution.
+
+        Args:
+            config: Execution configuration dictionary
+        """
+        # Store in special _execution_config key
+        if '_execution_config' not in self._data:
+            self._data['_execution_config'] = {}
+
+        self._data['_execution_config'] = config
+
     def get_raw_data(self) -> dict[str, dict[str, dict[str, Any]]]:
         """Get the raw dictionary data for state updates.
 
