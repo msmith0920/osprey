@@ -544,6 +544,63 @@ With the execution plan complete, the framework executes each planned step in se
 
       The Python capability automatically determined this was a safe read-only visualization task requiring no approval.
 
+      .. dropdown:: 🔍 **How Generated Code Interacts with Control Systems**
+         :color: info
+
+         The control assistant template includes a **custom Python prompt builder** that teaches the LLM to use ``osprey.runtime`` utilities for control system operations. This is an example of **framework prompt customization** (covered in :ref:`Part 4 <part4-framework-prompt-customization>`).
+
+         **What is osprey.runtime?**
+
+         ``osprey.runtime`` is a control-system-agnostic module that provides simple synchronous functions for reading and writing to any configured control system (EPICS, Mock, LabVIEW, etc.). When the Python capability generates code that needs to interact with control systems, it's taught to use these utilities:
+
+         .. code-block:: python
+
+            from osprey.runtime import write_channel, read_channel
+
+            # Read from control system (works like EPICS caget)
+            current = read_channel("BEAM:CURRENT")
+            print(f"Current: {current} mA")
+
+            # Write to control system (works like EPICS caput)
+            write_channel("MAGNET:SETPOINT", 5.0)
+
+         **Why Use osprey.runtime Instead of Direct Control System Libraries?**
+
+         1. **Control-System Agnostic**: Same code works with EPICS, Mock, or any other configured connector
+         2. **Automatic Configuration**: Uses the control system settings from when the code was generated (reproducible notebooks)
+         3. **Safety Integration**: All boundary checking, limits validation, and approval workflows happen automatically
+         4. **Simple API**: Synchronous functions (no async/await needed in generated code)
+
+         **How It Works:**
+
+         The control assistant template extends the framework's default Python prompt builder with control system-specific guidance:
+
+         .. code-block:: python
+
+            # src/my_control_assistant/framework_prompts/python.py
+            class ControlSystemPythonPromptBuilder(DefaultPythonPromptBuilder):
+                def get_instructions(self) -> str:
+                    base_instructions = super().get_instructions()
+
+                    control_system_guidance = '''
+                    === CONTROL SYSTEM OPERATIONS ===
+                    For reading/writing to control systems, use osprey.runtime utilities:
+
+                    from osprey.runtime import write_channel, read_channel
+
+                    These utilities work with ANY control system (EPICS, Mock, etc.)
+                    '''
+
+                    return base_instructions + control_system_guidance
+
+         This custom prompt builder is registered in ``registry.py`` and automatically used whenever the Python capability generates code.
+
+         **Where to Learn More:**
+
+         - :ref:`Part 4, Step 10: Framework Prompt Customization <part4-framework-prompt-customization>` - Complete guide to customizing framework prompts
+         - :doc:`../developer-guides/03_core-framework-systems/04_prompt-customization` - Advanced prompt customization patterns
+         - :doc:`../api_reference/03_production_systems/06_control-system-connectors` - Control system connector API reference
+
       .. dropdown:: 🖥️  **View Terminal Output**
 
          .. code-block:: text
