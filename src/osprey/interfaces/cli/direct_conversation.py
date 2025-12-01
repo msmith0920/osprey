@@ -16,12 +16,7 @@ import os
 import uuid
 from typing import Any
 
-# Load environment variables before any other imports
 from dotenv import load_dotenv
-
-load_dotenv()
-
-
 from langgraph.checkpoint.memory import MemorySaver
 
 # Modern CLI dependencies
@@ -34,6 +29,7 @@ from prompt_toolkit.shortcuts import clear
 from prompt_toolkit.styles import Style
 from rich.box import HEAVY
 from rich.panel import Panel
+
 # Centralized styles
 from osprey.cli.styles import OspreyColors, Styles, console
 
@@ -45,6 +41,9 @@ from osprey.infrastructure.gateway import Gateway
 from osprey.registry import get_registry, initialize_registry
 from osprey.utils.config import get_full_configuration
 from osprey.utils.logger import get_logger
+
+# Load environment variables after imports
+load_dotenv()
 
 logger = get_logger("cli")
 

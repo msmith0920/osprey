@@ -11,22 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Error Node Logging**: Removed duplicate start/completion logging that occurred when combining decorator's automatic logging with manual status messages
 
 ### Changed
-- Control system connector API: Unified channel naming and comprehensive write verification
+- **Control System Connector API**: Unified channel naming and comprehensive write verification
   - Method rename: read_pv → read_channel, write_pv → write_channel (deprecated methods emit DeprecationWarning)
   - Class rename: PVValue → ChannelValue, PVMetadata → ChannelMetadata (deprecated classes emit DeprecationWarning)
   - Three-tier write verification: none/callback/readback with configurable tolerance
   - Rich result objects: ChannelWriteResult and WriteVerification with detailed status
   - Mock connector verification simulation for development testing
   - All deprecated APIs will be removed in v0.10
-
-- Template configuration: Updated minimal template and project config for control system safety features
+- **Template Configuration**: Updated minimal template and project config for control system safety features
   - Added control_system section with writes_enabled, limits_checking, write_verification
   - Updated integration guides for new connector API
   - Framework capabilities updated for connector method rename
   - Pattern detection updated with new read_channel/write_channel patterns
   - Registry and utility updates for new context types
 
-- Documentation structure: Refactored Python execution service documentation for improved organization
+- **Documentation Structure**: Refactored Python execution service documentation for improved organization
   - Removed obsolete standalone 03_python-execution-service.rst file
   - Streamlined service-overview.rst (793 → 452 lines, 40% reduction)
   - Focused content on generator extensibility for developers
@@ -40,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.5] - 2025-12-01
 
 ### Added
-- Runtime channel limits validation: Comprehensive safety system for validating writes against configured boundaries
+- **Runtime Channel Limits Validation**: Comprehensive safety system for validating writes against configured boundaries
   - Synchronous validation engine with min/max/step/writable constraints
   - Failsafe design blocks all unlisted channels by default
   - Optional max_step checking with I/O overhead warnings
@@ -48,27 +47,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - JSON-based limits database with embedded defaults support
   - New exception: ChannelLimitsViolationError with detailed violation context
 
-- Python executor limits checking integration: Automatic runtime validation of all epics.caput() calls
+- **Python Executor Limits Checking Integration**: Automatic runtime validation of all epics.caput() calls
   - Transparent monkeypatching of epics.caput() and PV.put() methods
   - Embedded validator configuration in wrapper for container isolation
   - Graceful degradation if pyepics unavailable
   - Clear operator feedback with safety status messages
 
-- Channel write approval workflow: Human-in-the-loop approval for direct control system writes
+- **Channel Write Approval Workflow**: Human-in-the-loop approval for direct control system writes
   - Structured interrupt with operation summary and safety concerns
   - Integration with existing approval_manager and evaluator system
   - Clear approval prompts with channel addresses and target values
   - Resume payload includes complete operation context
 
-- BaseCapability helper method: get_step_inputs() for accessing orchestrator-provided input contexts
+- **BaseCapability Helper Method**: get_step_inputs() for accessing orchestrator-provided input contexts
   - Simplifies access to step inputs list from within execute()
   - Handles None values gracefully with configurable defaults
   - Comprehensive tests for various edge cases
 
-- Control Assistant channel capabilities: Production-ready read/write with comprehensive safety
+- **Control Assistant Channel Capabilities**: Production-ready read/write with comprehensive safety
   - channel_read: Current value retrieval with connector abstraction
   - channel_write: LLM-based value parsing with three-tier safety (writes_enabled/limits/approval)
   - Write verification, example channel limits database, and comprehensive safety tests
+
+- **Developer Documentation**: Commit organization workflow guide for managing complex Git changes
 
 - **Channel Write Capability**: New dedicated capability for writing values to control system channels
   - **Simple Write Operations**: Direct value assignment to channels ("Set X to 50")
