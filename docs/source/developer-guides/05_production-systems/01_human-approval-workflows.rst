@@ -59,12 +59,12 @@ Configure your approval system in ``config.yml`` with global modes and capabilit
    # Global approval configuration
    approval:
      global_mode: "selective"  # disabled, selective, all_capabilities
-     capabilities:
-       python_execution:
-         enabled: true
-         mode: "epics_writes"  # disabled, all_code, epics_writes
-       memory:
-         enabled: false
+   capabilities:
+     python_execution:
+       enabled: true
+       mode: "control_writes"  # disabled, all_code, control_writes
+     memory:
+       enabled: false
 
 **Configuration Modes:**
 
@@ -87,7 +87,11 @@ Configure your approval system in ``config.yml`` with global modes and capabilit
 
 - ``disabled``: No approval required for Python code
 - ``all_code``: Approve all Python code execution
-- ``epics_writes``: Approve only code that writes to EPICS control systems
+- ``control_writes``: Approve only code that writes to control systems (EPICS, Tango, etc.)
+
+.. note::
+   The old mode name ``epics_writes`` is deprecated but still supported for backward compatibility.
+   It is automatically mapped to ``control_writes``.
 
 Implementation Patterns
 =======================
@@ -258,6 +262,82 @@ Different approval requirements based on context:
        else:
            return 'full_approval'
 
+Channel Write Approval
+======================
+
+Require human approval before executing control system channel writes.
+
+**Use Case:** Production environments where direct hardware writes require operator approval before execution.
+
+**Pattern:**
+
+.. code-block:: python
+
+   from osprey.approval import create_channel_write_approval_interrupt
+   from osprey.approval import get_approval_resume_data
+   from langgraph.types import interrupt
+
+   async def execute_channel_write(self, state: AgentState) -> dict:
+       """Execute channel writes with approval workflow."""
+
+       # Check if we're resuming from an approval interrupt
+       has_approval_resume, approved_payload = get_approval_resume_data(
+           state,
+           "channel_write"
+       )
+
+       if has_approval_resume:
+           if not approved_payload:
+               raise ChannelWriteAccessError("Write operation cancelled by user")
+           # User approved - continue with execution
+           logger.info("Resuming approved write operation")
+       else:
+           # First time execution - check if approval is needed
+           approval_evaluator = get_python_execution_evaluator()
+           decision = approval_evaluator.evaluate(has_epics_writes=True)
+
+           if decision.needs_approval:
+               # Create approval interrupt
+               interrupt_data = create_channel_write_approval_interrupt(
+                   operations=write_operations,  # List of WriteOperation objects
+                   analysis_details={
+                       'operation_count': len(write_operations),
+                       'safety_level': 'high',
+                   },
+                   safety_concerns=[
+                       f"Direct hardware write: {op.channel_address} = {op.value}"
+                       for op in write_operations
+                   ],
+                   step_objective="Set beam current to target value"
+               )
+
+               # Pause for approval
+               interrupt(interrupt_data)
+
+       # Execute writes (after approval or if no approval needed)
+       results = await self._execute_writes(write_operations)
+       return {"write_results": results}
+
+**Configuration:**
+
+.. code-block:: yaml
+
+   approval:
+     capabilities:
+       python_execution:
+         mode: "epics_writes"  # Triggers approval for channel writes
+
+**Interrupt Data Structure:**
+
+The channel write approval interrupt includes:
+
+- **operations**: List of pending write operations with channel addresses and values
+- **analysis_details**: Safety analysis and operation metadata
+- **safety_concerns**: Human-readable list of safety concerns
+- **step_objective**: Description of what the write operation accomplishes
+
+See the Control Assistant template for a complete implementation example.
+
 Testing and Validation
 ======================
 
@@ -328,7 +408,7 @@ Troubleshooting
    :doc:`02_data-source-integration`
        Integrate approval with data source providers
 
-   :doc:`03_python-execution-service`
+   :doc:`03_python-execution-service/index`
        Advanced Python execution with approval
 
    :doc:`../../api_reference/03_production_systems/01_human-approval`

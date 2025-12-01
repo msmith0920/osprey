@@ -40,6 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Graceful degradation if pyepics unavailable
   - Clear operator feedback with safety status messages
 
+- Channel write approval workflow: Human-in-the-loop approval for direct control system writes
+  - Structured interrupt with operation summary and safety concerns
+  - Integration with existing approval_manager and evaluator system
+  - Clear approval prompts with channel addresses and target values
+  - Resume payload includes complete operation context
+
 - **Channel Write Capability**: New dedicated capability for writing values to control system channels
   - **Simple Write Operations**: Direct value assignment to channels ("Set X to 50")
   - **Multiple Channel Writes**: Support for writing multiple channels in one operation

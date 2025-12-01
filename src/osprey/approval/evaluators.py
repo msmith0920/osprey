@@ -218,16 +218,17 @@ class PythonExecutionApprovalEvaluator:
                 reasoning="Approval mode is disabled"
             )
 
-        elif self.config.mode == ApprovalMode.EPICS_WRITES:
+        elif self.config.mode in (ApprovalMode.CONTROL_WRITES, ApprovalMode.EPICS_WRITES):
+            # Support both new and deprecated modes
             if has_epics_writes:
                 return ApprovalDecision(
                     needs_approval=True,
-                    reasoning="Code contains EPICS write operations"
+                    reasoning="Code contains control system write operations"
                 )
             else:
                 return ApprovalDecision(
                     needs_approval=False,
-                    reasoning="Code contains no EPICS writes (read-only or pure Python)"
+                    reasoning="Code contains no control system writes (read-only or pure Python)"
                 )
 
         elif self.config.mode == ApprovalMode.ALL_CODE:

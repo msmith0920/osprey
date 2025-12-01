@@ -78,18 +78,19 @@ class ApprovalMode(Enum):
 
     Available Modes:
         DISABLED: No approval required for any operations
-        EPICS_WRITES: Approval required only for operations that write to EPICS
+        CONTROL_WRITES: Approval required only for operations that write to control systems
+        EPICS_WRITES: (Deprecated) Alias for CONTROL_WRITES - kept for backward compatibility
         ALL_CODE: Approval required for all code execution operations
 
     Examples:
         Use in configuration::\n
-            >>> mode = ApprovalMode.EPICS_WRITES
+            >>> mode = ApprovalMode.CONTROL_WRITES
             >>> print(f"Mode value: {mode.value}")
             >>> print(f"Mode name: {mode.name}")
 
         Validate mode from string::\n
             >>> try:
-            ...     mode = ApprovalMode("epics_writes")
+            ...     mode = ApprovalMode("control_writes")
             ...     print(f"Valid mode: {mode}")
             ... except ValueError:
             ...     print("Invalid mode string")
@@ -98,13 +99,17 @@ class ApprovalMode(Enum):
        These modes are primarily used for Python execution approval but the
        pattern can be extended to other capabilities as needed.
 
+    .. deprecated:: 0.9.5
+       EPICS_WRITES is deprecated. Use CONTROL_WRITES instead for control-system-agnostic configuration.
+
     .. seealso::
        :class:`PythonExecutionApprovalConfig` : Configuration class that uses this enum
        :class:`PythonExecutionApprovalEvaluator` : Evaluator that processes these modes
        :class:`GlobalApprovalConfig` : Global configuration that can override mode settings
     """
     DISABLED = "disabled"
-    EPICS_WRITES = "epics_writes"
+    CONTROL_WRITES = "control_writes"
+    EPICS_WRITES = "epics_writes"  # Deprecated - kept for backward compatibility
     ALL_CODE = "all_code"
 
 
@@ -211,13 +216,20 @@ class PythonExecutionApprovalConfig:
 
         # Default to most restrictive mode for security compliance
         if 'mode' not in data:
-            logger.warning("⚠️  Python execution approval 'mode' not specified in config, defaulting to 'all_code'. Consider setting to 'epics_writes' for better performance.")
+            logger.warning("⚠️  Python execution approval 'mode' not specified in config, defaulting to 'all_code'. Consider setting to 'control_writes' for better performance.")
         mode_str = data.get('mode', 'all_code')
+
+        # Backward compatibility: map old mode names to new ones
+        if mode_str == 'epics_writes':
+            logger.warning("⚠️  DEPRECATED: approval mode 'epics_writes' is deprecated. Please use 'control_writes' instead for control-system-agnostic configuration.")
+            logger.info("   Automatically mapping 'epics_writes' → 'control_writes'")
+            mode_str = 'control_writes'
+
         try:
             mode = ApprovalMode(mode_str)
-        except ValueError:
-            valid_modes = [m.value for m in ApprovalMode]
-            raise ValueError(f"Invalid approval mode '{mode_str}'. Valid modes: {valid_modes}")
+        except ValueError as e:
+            valid_modes = [m.value for m in ApprovalMode if m != ApprovalMode.EPICS_WRITES]  # Hide deprecated mode
+            raise ValueError(f"Invalid approval mode '{mode_str}'. Valid modes: {valid_modes}") from e
 
         return cls(enabled=enabled, mode=mode)
 

@@ -286,6 +286,80 @@ Memory save operation requires human approval
     }
 
 
+def create_channel_write_approval_interrupt(
+    operations: list,
+    analysis_details: dict[str, Any],
+    safety_concerns: list[str] = None,
+    step_objective: str = "Write values to control system channels"
+) -> dict[str, Any]:
+    """Create structured interrupt data for channel write operation approval.
+
+    Generates LangGraph-compatible interrupt data for channel write operations that
+    require human approval before execution. The interrupt provides comprehensive
+    context including channel addresses, target values, verification levels, and
+    clear approval instructions.
+
+    :param operations: List of WriteOperation objects to be approved
+    :type operations: list
+    :param analysis_details: Analysis details including operation count and channels
+    :type analysis_details: Dict[str, Any]
+    :param safety_concerns: List of identified safety concerns or risks
+    :type safety_concerns: List[str], optional
+    :param step_objective: High-level objective description for user context
+    :type step_objective: str
+    :return: Dictionary containing user_message and resume_payload for LangGraph
+    :rtype: Dict[str, Any]
+    """
+    if safety_concerns is None:
+        safety_concerns = []
+
+    # Build operation summary
+    operations_text = ""
+    for i, (channel, value) in enumerate(analysis_details.get('values', []), 1):
+        operations_text += f"**{i}.** {channel} = {value}\n"
+
+    # Build safety concerns section
+    safety_section = ""
+    if safety_concerns:
+        safety_section = "\n**⚠️  Safety Concerns:**\n"
+        for concern in safety_concerns:
+            safety_section += f"- {concern}\n"
+
+    user_message = f"""
+⚠️ **HUMAN APPROVAL REQUIRED** ⚠️
+
+**Task:** {step_objective}
+
+Channel write operation requires human approval
+
+**Channels to write ({analysis_details.get('operation_count', 0)} total):**
+{operations_text}{safety_section}
+
+**To proceed, respond with:**
+- **`yes`** to approve and execute the write operations
+- **`no`** to cancel this operation
+""".strip()
+
+    return {
+        "user_message": user_message,
+        "resume_payload": {
+            "approval_type": create_approval_type("channel_write"),
+            "step_objective": step_objective,
+            "operations": [
+                {
+                    "channel_address": op.channel_address,
+                    "value": op.value,
+                    "units": op.units,
+                    "notes": op.notes
+                }
+                for op in operations
+            ],
+            "analysis_details": analysis_details,
+            "safety_concerns": safety_concerns
+        }
+    }
+
+
 def create_code_approval_interrupt(
     code: str,
     analysis_details: dict[str, Any],

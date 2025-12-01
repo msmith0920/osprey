@@ -131,7 +131,7 @@ class ApprovalManager:
         :raises ValueError: If configuration is invalid or missing required fields
         """
         try:
-            logger.info(f"🔍 Loading approval configuration from raw config: {approval_config}")
+            logger.debug(f"🔍 Loading approval configuration from raw config")
             self.config = GlobalApprovalConfig.from_dict(approval_config)
 
             # Log configuration summary for security audit trail
