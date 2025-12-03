@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **EPICS Gateway Presets**: Built-in configurations for APS and ALS facilities
+  - APS: pvgatemain1.aps4.anl.gov:5064 (read-only and write-access)
+  - ALS: cagw-alsdmz.als.lbl.gov:5064 (read-only), :5084 (write-access)
+  - Custom facility support with interactive configuration
+- **Configuration Management API**: Programmatic control system and EPICS gateway configuration
+  - `get_control_system_type()`, `set_control_system_type()` for runtime connector switching
+  - `get_epics_gateway_config()`, `set_epics_gateway_config()` for gateway management
+  - `validate_facility_config()` for preset validation
+  - Comprehensive test coverage for all configuration operations
+
 ### Fixed
 - **Test Configuration Pattern Detection**: Removed pattern overrides from test fixtures to use framework defaults
   - Test configs now use complete default patterns from `pattern_detection.py`
