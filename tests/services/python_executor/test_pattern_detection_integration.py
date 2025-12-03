@@ -330,13 +330,15 @@ class TestPatternDetectionDirect:
 
         # Patterns should work the same regardless of control_system_type
         code = "write_channel('PV', 42)"
-        
+
         result_epics = detect_control_system_operations(code, control_system_type='epics')
         result_mock = detect_control_system_operations(code, control_system_type='mock')
-        
+
         # Should detect writes regardless of control system type
         assert result_epics['has_writes'] is True
         assert result_mock['has_writes'] is True
-        assert len(result['detected_patterns']['writes']) == 0
-        assert len(result['detected_patterns']['reads']) == 0
+
+        # Both should have detected write patterns
+        assert len(result_epics['detected_patterns']['writes']) > 0
+        assert len(result_mock['detected_patterns']['writes']) > 0
 
