@@ -1,6 +1,8 @@
-"""Config auto-update helper for MCP capability generation.
+"""Config auto-update helper for configuration management.
 
-Automatically adds mcp_react model configuration to config.yml with user confirmation.
+Provides utilities for updating config.yml programmatically:
+- MCP capability react model configuration
+- EPICS gateway configuration for production deployment
 """
 
 import re
@@ -227,6 +229,234 @@ def get_capability_react_config(config_path: Path, capability_name: str) -> dict
             return config['models'][model_key]
     except Exception:
         pass
+
+    return None
+
+
+# ============================================================================
+# Control System Type Configuration
+# ============================================================================
+
+
+def get_control_system_type(config_path: Path, key: str = 'control_system.type') -> str | None:
+    """Get control system or archiver type from config.yml.
+
+    Args:
+        config_path: Path to config.yml
+        key: Config key to read (e.g., 'control_system.type' or 'archiver.type')
+
+    Returns:
+        Type string or None if not found
+    """
+    try:
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+
+        # Navigate nested keys
+        keys = key.split('.')
+        value = config
+        for k in keys:
+            value = value.get(k)
+            if value is None:
+                return None
+
+        return value
+    except Exception:
+        pass
+
+    return None
+
+
+def set_control_system_type(
+    config_path: Path,
+    control_type: str,
+    archiver_type: str | None = None
+) -> tuple[str, str]:
+    """Update control system and optionally archiver type in config.yml.
+
+    Args:
+        config_path: Path to config.yml
+        control_type: 'mock' or 'epics'
+        archiver_type: Optional archiver type ('mock_archiver', 'epics_archiver')
+
+    Returns:
+        Tuple of (new_content, preview)
+    """
+    content = config_path.read_text()
+
+    # Update control_system.type
+    control_pattern = r'(control_system:\s*\n\s*type:\s*)\w+'
+    control_replacement = rf'\1{control_type}'
+    new_content = re.sub(control_pattern, control_replacement, content, flags=re.MULTILINE)
+
+    # Update archiver.type if specified
+    if archiver_type:
+        archiver_pattern = r'(archiver:\s*\n(?:.*\n)*?\s*type:\s*)\w+'
+        archiver_replacement = rf'\1{archiver_type}'
+        new_content = re.sub(archiver_pattern, archiver_replacement, new_content, flags=re.MULTILINE)
+
+    # Create preview
+    preview_lines = [
+        "[bold]Control System Configuration[/bold]\n",
+        f"control_system.type: {control_type}"
+    ]
+
+    if archiver_type:
+        preview_lines.append(f"archiver.type: {archiver_type}")
+
+    preview_lines.append("\n[dim]This will update your config.yml[/dim]")
+
+    preview = "\n".join(preview_lines)
+
+    return new_content, preview
+
+
+# ============================================================================
+# EPICS Gateway Configuration
+# ============================================================================
+
+
+def set_epics_gateway_config(
+    config_path: Path,
+    facility: str,
+    custom_config: dict | None = None
+) -> tuple[str, str]:
+    """Update EPICS gateway configuration in config.yml.
+
+    Updates the control_system.connector.epics.gateways section with
+    facility-specific or custom gateway settings.
+
+    Args:
+        config_path: Path to config.yml
+        facility: 'aps', 'als', or 'custom'
+        custom_config: For 'custom', dict with 'read_only' and 'write_access' gateways
+
+    Returns:
+        Tuple of (new_content, preview) where preview shows what will be changed
+
+    Example:
+        >>> new_content, preview = set_epics_gateway_config(config_path, 'aps')
+        >>> config_path.write_text(new_content)
+    """
+    from osprey.templates.data import get_facility_config
+
+    if facility == 'custom':
+        if not custom_config:
+            raise ValueError("custom_config required when facility='custom'")
+        gateway_config = custom_config
+        facility_name = "Custom"
+    else:
+        preset = get_facility_config(facility)
+        if not preset:
+            raise ValueError(f"Unknown facility: {facility}")
+        gateway_config = preset['gateways']
+        facility_name = preset['name']
+
+    content = config_path.read_text()
+
+    # Build replacement gateway section
+    gateway_yaml = _format_gateway_yaml(gateway_config)
+
+    # Find and replace the gateways section within control_system.connector.epics
+    # Pattern: Look for the gateways: section under epics:
+    pattern = r'(epics:\s*\n\s*timeout:.*?\n\s*gateways:\s*\n)((?:\s+\w+:\s*\n(?:\s+.*\n)*)*)'
+
+    def replace_gateways(match):
+        header = match.group(1)  # Keep "epics:\n  timeout: X\n  gateways:\n"
+        return header + gateway_yaml
+
+    new_content = re.sub(pattern, replace_gateways, content, flags=re.MULTILINE)
+
+    # Create preview
+    preview = f"""
+[bold]EPICS Gateway Configuration - {facility_name}[/bold]
+
+{gateway_yaml.rstrip()}
+
+[dim]This will update control_system.connector.epics.gateways in config.yml[/dim]
+"""
+
+    return new_content, preview
+
+
+def _format_gateway_yaml(gateway_config: dict) -> str:
+    """Format gateway configuration as YAML string.
+
+    Args:
+        gateway_config: Dict with 'read_only' and 'write_access' gateway configs
+
+    Returns:
+        Formatted YAML string with proper indentation
+    """
+    lines = []
+
+    for gateway_type in ['read_only', 'write_access']:
+        if gateway_type in gateway_config:
+            gw = gateway_config[gateway_type]
+            lines.append(f"        {gateway_type}:")
+            lines.append(f"          address: {gw['address']}")
+            lines.append(f"          port: {gw['port']}")
+            lines.append(f"          use_name_server: {str(gw.get('use_name_server', False)).lower()}")
+
+    return '\n'.join(lines) + '\n'
+
+
+def get_epics_gateway_config(config_path: Path) -> dict | None:
+    """Get current EPICS gateway configuration from config.yml.
+
+    Args:
+        config_path: Path to config.yml
+
+    Returns:
+        Dict with gateway configuration or None if not found
+    """
+    try:
+        with open(config_path) as f:
+            config = yaml.safe_load(f)
+
+        gateways = config.get('control_system', {}).get('connector', {}).get('epics', {}).get('gateways')
+        return gateways
+    except Exception:
+        pass
+
+    return None
+
+
+def get_facility_from_gateway_config(config_path: Path) -> str | None:
+    """Detect which facility preset is configured (if any).
+
+    Compares current gateway configuration against known facility presets.
+
+    Args:
+        config_path: Path to config.yml
+
+    Returns:
+        Facility name ('APS', 'ALS', 'Custom') or None if using defaults
+    """
+    from osprey.templates.data import FACILITY_PRESETS
+
+    current_gateways = get_epics_gateway_config(config_path)
+    if not current_gateways:
+        return None
+
+    # Check if current config matches any preset
+    for facility_id, preset in FACILITY_PRESETS.items():
+        preset_gateways = preset['gateways']
+
+        # Compare read_only gateway
+        if 'read_only' in current_gateways and 'read_only' in preset_gateways:
+            current_read = current_gateways['read_only']
+            preset_read = preset_gateways['read_only']
+
+            if (current_read.get('address') == preset_read['address'] and
+                current_read.get('port') == preset_read['port']):
+                return preset['name']
+
+    # Check if it looks like a custom configuration (not default ALS)
+    if 'read_only' in current_gateways:
+        read_addr = current_gateways['read_only'].get('address', '')
+        if read_addr and read_addr != 'cagw-alsdmz.als.lbl.gov':
+            return 'Custom'
 
     return None
 
