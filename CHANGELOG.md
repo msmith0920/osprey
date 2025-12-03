@@ -61,6 +61,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Corrected config field name from `limits_file` to `database_path`
   - Fixed `_disable_capabilities` helper to properly comment out multi-line capability registrations
 
+- **Limits validator**: Properly exclude metadata fields (description, source) from unknown field warnings
+
 ### Added
 - **Connector Auto-Verification**: Connectors automatically determine verification level and tolerance from configuration
   - Per-channel verification config from limits database (highest priority)

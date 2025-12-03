@@ -162,7 +162,7 @@ class LimitsValidator:
             ValueError: If configuration is invalid with descriptive error message
         """
         valid_fields = {'min_value', 'max_value', 'max_step', 'writable', 'verification'}
-        unknown_fields = set(config_dict.keys()) - valid_fields
+        unknown_fields = set(config_dict.keys()) - valid_fields - METADATA_FIELDS
 
         if unknown_fields:
             logger.warning(
@@ -197,7 +197,7 @@ class LimitsValidator:
 
             # Validate verification fields
             valid_verif_fields = {'level', 'tolerance_absolute', 'tolerance_percent'}
-            unknown_verif = set(verification.keys()) - valid_verif_fields
+            unknown_verif = set(verification.keys()) - valid_verif_fields - METADATA_FIELDS
             if unknown_verif:
                 logger.warning(
                     f"Channel '{channel_name}' verification has unknown fields: {unknown_verif}"
