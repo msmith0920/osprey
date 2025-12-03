@@ -35,7 +35,8 @@ class LazyGroup(click.Group):
             'init': 'osprey.cli.init_cmd',
             'deploy': 'osprey.cli.deploy_cmd',
             'chat': 'osprey.cli.chat_cmd',
-            'export-config': 'osprey.cli.export_config_cmd',
+            'config': 'osprey.cli.config_cmd',
+            'export-config': 'osprey.cli.export_config_cmd',  # DEPRECATED: kept for backward compat
             'health': 'osprey.cli.health_cmd',
             'generate': 'osprey.cli.generate_cmd',
             'remove': 'osprey.cli.remove_cmd',
@@ -50,7 +51,10 @@ class LazyGroup(click.Group):
 
         # Get the command function from the module
         # Convention: module name without _cmd suffix
-        if cmd_name == 'export-config':
+        if cmd_name == 'config':
+            cmd_func = mod.config
+        elif cmd_name == 'export-config':
+            # DEPRECATED: Show warning and redirect to new command
             cmd_func = mod.export_config
         else:
             cmd_func = getattr(mod, cmd_name)
@@ -59,7 +63,7 @@ class LazyGroup(click.Group):
 
     def list_commands(self, ctx):
         """Return list of available commands (for --help)."""
-        return ['init', 'deploy', 'chat', 'export-config', 'generate', 'remove', 'health']
+        return ['init', 'config', 'deploy', 'chat', 'generate', 'remove', 'health']
 
 
 @click.group(cls=LazyGroup, invoke_without_command=True)
@@ -78,13 +82,13 @@ def cli(ctx):
     \b
       osprey                          Launch interactive menu
       osprey init my-project          Create new project
+      osprey config                   Manage configuration (show, export, set)
       osprey generate capability ...  Generate capability from MCP server
       osprey generate mcp-server      Generate demo MCP server
       osprey remove capability ...    Remove capability from project
       osprey deploy up                Start services
       osprey chat                     Interactive conversation
       osprey health                   Check system health
-      osprey export-config            View osprey defaults
     """
     # Initialize theme from config if available (best-effort, silent failure)
     try:

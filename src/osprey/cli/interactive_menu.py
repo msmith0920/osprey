@@ -571,7 +571,7 @@ def get_project_menu_choices(exit_action: str = 'exit') -> list[Choice]:
         Choice("[>] deploy      - Manage services (web UIs)", value='deploy'),
         Choice("[>] health      - Run system health check", value='health'),
         Choice("[>] generate    - Generate components", value='generate'),
-        Choice("[>] config      - Show configuration", value='config'),
+        Choice("[>] config      - Configuration settings", value='config'),
         Choice("[>] registry    - Show registry contents", value='registry'),
         Choice("─" * 60, value=None, disabled=True),
         Choice("[+] init        - Create new project", value='init_interactive'),
@@ -1565,7 +1565,7 @@ def handle_project_selection(project_path: Path):
                 except (OSError, PermissionError):
                     pass
         elif action == 'config':
-            handle_export_action(project_path=project_path)
+            handle_config_action(project_path=project_path)
         elif action == 'registry':
             from osprey.cli.registry_cmd import handle_registry_action
             handle_registry_action(project_path=project_path)
@@ -2072,7 +2072,7 @@ def handle_export_action(project_path: Path | None = None):
                     word_wrap=True
                 )
                 console.print(syntax)
-                console.print(f"\n[dim]Tip: Use {Messages.command('osprey export-config --output file.yml')} to save to file[/dim]")
+                console.print(f"\n[dim]Tip: Use {Messages.command('osprey config export --output file.yml')} to save to file[/dim]")
 
     except Exception as e:
         console.print(f"\n{Messages.error(str(e))}")
@@ -2247,6 +2247,32 @@ def show_generate_help():
     input("Press ENTER to continue...")
 
 
+def show_config_menu() -> str | None:
+    """Show config submenu.
+
+    Returns:
+        Selected config action, or None if user cancels/goes back
+    """
+    if not questionary:
+        return None
+
+    console.print(f"\n{Messages.header('Configuration')}")
+    console.print("[dim]Manage project configuration settings[/dim]\n")
+
+    return questionary.select(
+        "What would you like to do?",
+        choices=[
+            Choice("[→] show               - Display current configuration", value='show'),
+            Choice("[→] export             - Export framework default configuration", value='export'),
+            Choice("[→] set-control-system - Switch between Mock/EPICS connectors", value='set_control_system'),
+            Choice("[→] set-epics-gateway  - Configure EPICS gateway (APS, ALS, custom)", value='set_epics_gateway'),
+            Choice("─" * 60, value=None, disabled=True),
+            Choice("[←] back               - Return to main menu", value='back')
+        ],
+        style=custom_style
+    ).ask()
+
+
 def show_generate_menu() -> str | None:
     """Show generate submenu.
 
@@ -2271,6 +2297,247 @@ def show_generate_menu() -> str | None:
         ],
         style=custom_style
     ).ask()
+
+
+def handle_config_action(project_path: Path | None = None):
+    """Handle config menu and its subcommands."""
+    while True:
+        action = show_config_menu()
+
+        if action is None or action == 'back':
+            return  # Return to main menu
+
+        if action == 'show':
+            handle_export_action(project_path)
+            input("\nPress ENTER to continue...")
+        elif action == 'export':
+            # Export framework defaults (works from anywhere)
+            import click
+
+            from osprey.cli.config_cmd import export as export_cmd
+
+            try:
+                ctx = click.Context(export_cmd)
+                ctx.invoke(export_cmd, output=None, format='yaml')
+            except click.Abort:
+                pass
+            input("\nPress ENTER to continue...")
+        elif action == 'set_control_system':
+            handle_set_control_system(project_path)
+        elif action == 'set_epics_gateway':
+            handle_set_epics_gateway(project_path)
+
+
+def handle_set_control_system(project_path: Path | None = None):
+    """Handle interactive control system type configuration."""
+    from osprey.generators.config_updater import (
+        find_config_file,
+        get_control_system_type,
+        set_control_system_type,
+    )
+
+    console.clear()
+    console.print(f"\n{Messages.header('Configure Control System')}\n")
+
+    # Find config file
+    if project_path:
+        config_path = project_path / 'config.yml'
+    else:
+        config_path = find_config_file()
+
+    if not config_path or not config_path.exists():
+        console.print(f"{Messages.error('No config.yml found in current directory')}")
+        input("\nPress ENTER to continue...")
+        return
+
+    # Show current configuration
+    current_type = get_control_system_type(config_path)
+    current_archiver = get_control_system_type(config_path, key='archiver.type')
+
+    console.print(f"[dim]Current control system: {current_type or 'mock'}[/dim]")
+    console.print(f"[dim]Current archiver: {current_archiver or 'mock_archiver'}[/dim]\n")
+
+    # Show choices
+    choices = [
+        Choice("Mock - Tutorial/Development mode (safe, no hardware)", value='mock'),
+        Choice("EPICS - Production mode (connects to real control system)", value='epics'),
+        Choice("─" * 60, value=None, disabled=True),
+        Choice("[←] Back - Return to config menu", value='back')
+    ]
+
+    control_type = questionary.select(
+        "Select control system type:",
+        choices=choices,
+        style=custom_style
+    ).ask()
+
+    if control_type is None or control_type == 'back':
+        return
+
+    # Ask about archiver too
+    if control_type == 'epics':
+        console.print("\n[bold]Archiver Configuration[/bold]\n")
+        archiver_type = questionary.select(
+            "Also switch archiver to EPICS?",
+            choices=[
+                Choice("Yes - Use EPICS Archiver Appliance", value='epics_archiver'),
+                Choice("No - Keep mock archiver", value='mock_archiver'),
+            ],
+            style=custom_style
+        ).ask()
+    else:
+        archiver_type = 'mock_archiver'
+
+    # Update configuration
+    new_content, preview = set_control_system_type(
+        config_path,
+        control_type,
+        archiver_type
+    )
+
+    # Show preview
+    console.print("\n" + preview)
+
+    # Confirm
+    if questionary.confirm(
+        "\nUpdate config.yml with this configuration?",
+        default=True,
+        style=custom_style
+    ).ask():
+        config_path.write_text(new_content)
+        console.print(f"\n{Messages.success('✓ Control system configuration updated!')}")
+
+        if control_type == 'epics':
+            console.print("\n[dim]💡 Next steps:[/dim]")
+            console.print("[dim]   1. Configure EPICS gateway: config → set-epics-gateway[/dim]")
+            console.print("[dim]   2. Verify EPICS connection settings[/dim]")
+        else:
+            console.print("\n[dim]You're now in Mock mode - safe for development and testing[/dim]")
+    else:
+        console.print(f"\n{Messages.warning('✗ Configuration not changed')}")
+
+    input("\nPress ENTER to continue...")
+
+
+def handle_set_epics_gateway(project_path: Path | None = None):
+    """Handle interactive EPICS gateway configuration."""
+    from osprey.generators.config_updater import (
+        find_config_file,
+        get_facility_from_gateway_config,
+        set_epics_gateway_config,
+    )
+    from osprey.templates.data import FACILITY_PRESETS
+
+    console.clear()
+    console.print(f"\n{Messages.header('Configure EPICS Gateway')}\n")
+
+    # Find config file
+    if project_path:
+        config_path = project_path / 'config.yml'
+    else:
+        config_path = find_config_file()
+
+    if not config_path or not config_path.exists():
+        console.print(f"{Messages.error('No config.yml found in current directory')}")
+        input("\nPress ENTER to continue...")
+        return
+
+    # Show current configuration
+    current_facility = get_facility_from_gateway_config(config_path)
+    if current_facility:
+        console.print(f"[dim]Current configuration: {current_facility}[/dim]\n")
+    else:
+        console.print("[dim]Current configuration: Default (Mock mode)[/dim]\n")
+
+    # Show facility choices
+    choices = []
+    for facility_id, preset in FACILITY_PRESETS.items():
+        display_name = f"{preset['name']} - {preset['description']}"
+        choices.append(Choice(display_name, value=facility_id))
+
+    choices.extend([
+        Choice("Custom - Manual configuration", value='custom'),
+        Choice("─" * 60, value=None, disabled=True),
+        Choice("[←] Back - Return to config menu", value='back')
+    ])
+
+    facility = questionary.select(
+        "Select EPICS facility:",
+        choices=choices,
+        style=custom_style
+    ).ask()
+
+    if facility is None or facility == 'back':
+        return
+
+    if facility == 'custom':
+        # Interactive prompts for custom gateway
+        console.print("\n[bold]Custom EPICS Gateway Configuration[/bold]\n")
+
+        read_address = questionary.text(
+            "Read gateway address:",
+            default="your-gateway.facility.edu"
+        ).ask()
+
+        if not read_address:
+            return
+
+        read_port = questionary.text(
+            "Read gateway port:",
+            default="5064"
+        ).ask()
+
+        write_address = questionary.text(
+            "Write gateway address (or same as read):",
+            default=read_address
+        ).ask()
+
+        write_port = questionary.text(
+            "Write gateway port:",
+            default="5084"
+        ).ask()
+
+        use_name_server = questionary.confirm(
+            "Use name server mode? (for SSH tunnels)",
+            default=False
+        ).ask()
+
+        custom_config = {
+            'read_only': {
+                'address': read_address,
+                'port': int(read_port),
+                'use_name_server': use_name_server
+            },
+            'write_access': {
+                'address': write_address,
+                'port': int(write_port),
+                'use_name_server': use_name_server
+            }
+        }
+
+        new_content, preview = set_epics_gateway_config(
+            config_path, 'custom', custom_config
+        )
+    else:
+        # Use preset
+        new_content, preview = set_epics_gateway_config(config_path, facility)
+
+    # Show preview
+    console.print("\n" + preview)
+
+    # Confirm
+    if questionary.confirm(
+        "\nUpdate config.yml with this configuration?",
+        default=True,
+        style=custom_style
+    ).ask():
+        config_path.write_text(new_content)
+        console.print(f"\n{Messages.success('✓ EPICS gateway configuration updated!')}")
+        console.print("\n[dim]Remember to also set control_system.type to 'epics' for production use[/dim]")
+    else:
+        console.print(f"\n{Messages.warning('✗ Configuration not changed')}")
+
+    input("\nPress ENTER to continue...")
 
 
 def handle_generate_action():
@@ -2689,7 +2956,7 @@ def navigation_loop():
         elif action == 'generate':
             handle_generate_action()
         elif action == 'config':
-            handle_export_action()
+            handle_config_action()
         elif action == 'registry':
             from osprey.cli.registry_cmd import handle_registry_action
             handle_registry_action()

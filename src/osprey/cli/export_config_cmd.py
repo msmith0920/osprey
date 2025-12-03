@@ -35,6 +35,10 @@ from osprey.cli.styles import Styles, console
 def export_config(project: str, output: str, format: str):
     """Export osprey default configuration template.
 
+    .. deprecated::
+       Use 'osprey config export' instead. This command is kept for backward
+       compatibility but will be removed in a future version.
+
     Displays the osprey's default configuration template that is used
     when creating new projects with 'osprey init'. This is useful for:
 
@@ -59,6 +63,16 @@ def export_config(project: str, output: str, format: str):
       # Export as JSON
       $ osprey export-config --format json -o osprey-defaults.json
     """
+    # Show deprecation warning
+    console.print(
+        "⚠️  [yellow]DEPRECATED:[/yellow] 'osprey export-config' is deprecated.",
+        style=Styles.WARNING
+    )
+    console.print(
+        "   Use [bold cyan]osprey config export[/bold cyan] instead.\n",
+        style=Styles.DIM
+    )
+    
     try:
         # Load osprey's configuration template (known location in osprey structure)
         template_path = Path(__file__).parent.parent / "templates" / "project" / "config.yml.j2"
