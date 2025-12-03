@@ -17,6 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `get_epics_gateway_config()`, `set_epics_gateway_config()` for gateway management
   - `validate_facility_config()` for preset validation
   - Comprehensive test coverage for all configuration operations
+- **Unified Configuration Command**: `osprey config` command group following industry standards
+  - `osprey config show` - Display current project configuration
+  - `osprey config export` - Export framework default configuration
+  - `osprey config set-control-system` - Switch between Mock/EPICS connectors
+  - `osprey config set-epics-gateway` - Configure EPICS gateway (APS, ALS, custom)
+  - Interactive menu integration for guided configuration workflows
+
+### Changed
+- **CLI Organization**: Deprecated `osprey export-config` in favor of `osprey config export`
+  - Backward compatibility maintained with deprecation notice
+  - All configuration operations now unified under `osprey config` namespace
 
 ### Fixed
 - **Test Configuration Pattern Detection**: Removed pattern overrides from test fixtures to use framework defaults
