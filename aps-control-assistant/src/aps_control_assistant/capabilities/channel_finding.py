@@ -10,8 +10,10 @@ Based on ALS Assistant's PV Address Finding capability pattern.
 from __future__ import annotations
 
 import logging
+import re
 import textwrap
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from osprey.state import AgentState
@@ -31,6 +33,10 @@ from osprey.registry import get_registry
 
 from ..context_classes import ChannelAddressesContext
 from ..services.channel_finder.service import ChannelFinderService
+from ..data.tools.pv_catalog import PVEntry, get_pv_catalog
+
+
+PV_CATALOG_PATH = Path(__file__).resolve().parent.parent / "data" / "channel_databases" / "PVs.mon"
 
 
 
@@ -78,6 +84,52 @@ class ChannelFindingCapability(BaseCapability):
     provides = ["CHANNEL_ADDRESSES"]
     requires = []  # No dependencies - extracts from task objective
 
+    def _find_with_pv_catalog(self, search_query: str, logger: logging.Logger) -> List[PVEntry]:
+        """
+        Resolve PVs locally using the PV catalog (PVs.mon) aliases.
+        """
+        try:
+            catalog = get_pv_catalog(str(PV_CATALOG_PATH))
+        except Exception as exc:
+            logger.warning(f"PV catalog unavailable at {PV_CATALOG_PATH}: {exc}")
+            return []
+
+        # Try to extract explicit PV-like tokens (e.g., "S10A:Q1") and search by prefix
+        pv_tokens = [
+            tok.lower()
+            for tok in re.findall(r"[A-Za-z0-9:_-]+", search_query)
+            if ":" in tok
+        ]
+
+        prefix_matches: List[PVEntry] = []
+        if pv_tokens:
+            seen = set()
+            for entry in catalog.entries:
+                name_lower = entry.pv_name.lower()
+                if any(name_lower.startswith(tok) for tok in pv_tokens):
+                    if entry.pv_name not in seen:
+                        prefix_matches.append(entry)
+                        seen.add(entry.pv_name)
+                if len(prefix_matches) >= 100:
+                    break  # avoid huge result sets
+            if prefix_matches:
+                logger.info(f"Found {len(prefix_matches)} PV(s) via PV prefix match ({', '.join(set(pv_tokens))})")
+                return prefix_matches
+
+        # Fallback to alias-based fuzzy matching
+        matches = catalog.match_all(search_query)
+        if not matches:
+            fallback = catalog.match_query(search_query)
+            if fallback:
+                matches = [fallback]
+
+        if matches:
+            logger.info(f"Found {len(matches)} PV(s) via local PV catalog")
+        else:
+            logger.debug("No PVs found via local PV catalog; falling back to channel finder service.")
+
+        return matches
+
     async def execute(self) -> Dict[str, Any]:
         """
         Find control system channel addresses based on search query.
@@ -115,43 +167,59 @@ class ChannelFindingCapability(BaseCapability):
         # Ensure all child loggers inherit this level and propagate to framework handlers
         cf_root_logger.propagate = True
 
-        try:
-            # Initialize service (reads pipeline_mode from config.yml at runtime)
-            service = ChannelFinderService()
+        channel_list: List[str] = []
+        description = ""
+        result = None
+        service_error_message = ""
 
-            logger.status("Searching channel database...")
+        # First, try local PV catalog (PVs.mon) for direct alias matching
+        catalog_matches = self._find_with_pv_catalog(search_query, logger)
+        if catalog_matches:
+            channel_list = [entry.pv_name for entry in catalog_matches]
+            description = f"Found {len(channel_list)} PV(s) via PV catalog for query: '{search_query}'."
+        else:
+            try:
+                # Initialize service (reads pipeline_mode from config.yml at runtime)
+                service = ChannelFinderService()
 
-            # Execute channel finding
-            result = await service.find_channels(search_query)
+                logger.status("Searching channel database...")
 
-        except Exception as e:
-            error_msg = f"Channel finder service failed for query '{search_query}': {str(e)}"
-            logger.error(error_msg)
-            raise ChannelFinderServiceError(error_msg) from e
+                # Execute channel finding
+                result = await service.find_channels(search_query)
 
-        # Log results
-        # IMPORTANT: We extract the ADDRESS field, not the channel name
-        # The database contains both:
-        #   - 'channel': descriptive/user-friendly name (e.g., "BeamCurrent")
-        #   - 'address': actual control system address (e.g., "BEAM:CURRENT")
-        # We use the ADDRESS for all downstream operations
-        if result.total_channels > 0:
-            logger.info(f"Found {result.total_channels} channel address{'es' if result.total_channels != 1 else ''}")
-            # Detailed logging can be enabled via framework log level
-            for ch in result.channels:
-                logger.debug(f"  {ch.channel} -> {ch.address}")
+            except Exception as e:
+                logger.warning(
+                    "Channel finder service unavailable for query '%s': %s. Using PV catalog only.",
+                    search_query,
+                    e,
+                )
+                result = None
+                channel_list = []
+                description = ""
+                service_error_message = str(e)
 
-        logger.status("Creating channel context...")
+            # Log results
+            # IMPORTANT: We extract the ADDRESS field, not the channel name
+            # The database contains both:
+            #   - 'channel': descriptive/user-friendly name (e.g., "BeamCurrent")
+            #   - 'address': actual control system address (e.g., "BEAM:CURRENT")
+            # We use the ADDRESS for all downstream operations
+            if result.total_channels > 0:
+                logger.info(f"Found {result.total_channels} channel address{'es' if result.total_channels != 1 else ''}")
+                # Detailed logging can be enabled via framework log level
+                for ch in result.channels:
+                    logger.debug(f"  {ch.channel} -> {ch.address}")
 
-        # Convert service layer response to framework context
-        # CRITICAL: Extract ADDRESSES, not channel names
-        # These addresses are what we'll use for actual control system operations
-        channel_list = [ch.address for ch in result.channels]
-        description = f"Found {result.total_channels} channel addresses for query: '{result.query}'. {result.processing_notes}"
+            # Convert service layer response to framework context
+            # CRITICAL: Extract ADDRESSES, not channel names
+            # These addresses are what we'll use for actual control system operations
+            channel_list = [ch.address for ch in result.channels]
+            description = f"Found {result.total_channels} channel addresses for query: '{result.query}'. {result.processing_notes}"
 
         # Check if no channels were found and raise appropriate error for re-planning
         if not channel_list:
-            error_msg = f"No channel addresses found for query: '{search_query}'. {result.processing_notes}"
+            processing_notes = result.processing_notes if result else service_error_message
+            error_msg = f"No channel addresses found for query: '{search_query}'. {processing_notes}"
             logger.warning(f"Channel address not found: {error_msg}")
             raise ChannelNotFoundError(error_msg)
 
