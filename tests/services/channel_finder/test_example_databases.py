@@ -185,6 +185,90 @@ class TestExampleDatabases:
 
         print("✓ Consecutive instances pattern database: All tests passed")
 
+    def test_jlab_style_loads(self):
+        """Test hierarchical_jlab_style.json loads successfully (navigation-only levels with _channel_part)."""
+        db_path = Path(__file__).parents[3] / "src/osprey/templates/apps/control_assistant/data/channel_databases/examples/hierarchical_jlab_style.json"
+
+        if not db_path.exists():
+            pytest.skip(f"Example database not found: {db_path}")
+
+        db = HierarchicalChannelDatabase(str(db_path))
+
+        # Verify structure
+        assert db.hierarchy_levels == ["system", "family", "sector", "device", "pv"]
+        assert db.naming_pattern == "{pv}"
+        assert hasattr(db, 'hierarchy_config')
+
+        # All levels are tree type in this example
+        assert db.hierarchy_config["levels"]["system"]["type"] == "tree"
+        assert db.hierarchy_config["levels"]["family"]["type"] == "tree"
+        assert db.hierarchy_config["levels"]["sector"]["type"] == "tree"
+        assert db.hierarchy_config["levels"]["device"]["type"] == "tree"
+        assert db.hierarchy_config["levels"]["pv"]["type"] == "tree"
+
+        # Verify channels: 19 total PVs across 3 systems
+        assert len(db.channel_map) == 19
+        print(f"JLab-style pattern: {len(db.channel_map)} channels generated")
+
+        # Verify channel names are PV strings (not friendly names)
+        assert "MQS1L02.S" in db.channel_map  # Not "Current Setpoint"
+        assert "IPM1L02X" in db.channel_map  # Not "Horizontal Position"
+        assert "VIP1L02V" in db.channel_map  # Not "Pump Voltage"
+
+        # Test navigation uses friendly names
+        systems = db.get_options_at_level("system", {})
+        assert len(systems) == 3
+        system_names = {s['name'] for s in systems}
+        assert system_names == {"Magnets", "Diagnostics", "Vacuum"}
+
+        # Test family level (friendly names)
+        families = db.get_options_at_level("family", {"system": "Magnets"})
+        assert len(families) == 2
+        family_names = {f['name'] for f in families}
+        assert family_names == {"Skew Quadrupoles", "Main Quadrupoles"}
+
+        # Test sector level (friendly names, not "1L", "1A")
+        sectors = db.get_options_at_level("sector", {"system": "Magnets", "family": "Skew Quadrupoles"})
+        assert len(sectors) == 2
+        sector_names = {s['name'] for s in sectors}
+        assert sector_names == {"North Linac", "East Arc"}  # Not "1L", "1A"!
+
+        # Test PV level (friendly names at leaf)
+        pvs = db.get_options_at_level("pv", {
+            "system": "Magnets",
+            "family": "Skew Quadrupoles",
+            "sector": "North Linac",
+            "device": "MQS1L02"
+        })
+        assert len(pvs) == 4
+        pv_names = {p['name'] for p in pvs}
+        # These are FRIENDLY names in navigation
+        assert "Current Setpoint" in pv_names
+        assert "Magnet Current" in pv_names
+        # NOT the cryptic PV strings
+        assert "MQS1L02.S" not in pv_names
+
+        # Verify navigation-only levels work
+        # Only 'pv' appears in pattern, others are navigation-only
+        pattern_levels = db._get_pattern_levels()
+        assert pattern_levels == ["pv"]
+
+        # Test channel building
+        # Note: build_channels_from_selections expects channel parts, not tree keys
+        # The _channel_part mapping happens during navigation/selection, not here
+        channels = db.build_channels_from_selections({
+            "system": "Magnets",  # Navigation-only (not used in pattern)
+            "family": "Skew Quadrupoles",  # Navigation-only (not used in pattern)
+            "sector": "North Linac",  # Navigation-only (not used in pattern)
+            "device": "MQS1L02",  # Navigation-only (not used in pattern)
+            "pv": ["MQS1L02.S", "MQS1L02M"]  # These are the _channel_part values
+        })
+        assert len(channels) == 2
+        assert "MQS1L02.S" in channels
+        assert "MQS1L02M" in channels
+
+        print("✓ JLab-style database: Navigation-only levels with _channel_part working correctly")
+
     def test_legacy_accelerator_backward_compatible(self):
         """Test main hierarchical.json uses new unified schema correctly."""
         db_path = Path(__file__).parents[3] / "src/osprey/templates/apps/control_assistant/data/channel_databases/hierarchical.json"
@@ -334,7 +418,15 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print()
-    print("4. Testing backward compatibility with hierarchical.json...")
+    print("4. Testing hierarchical_jlab_style.json (navigation-only levels with _channel_part)...")
+    try:
+        test_class.test_jlab_style_loads()
+    except Exception as e:
+        print(f"   ✗ FAILED: {e}")
+        sys.exit(1)
+
+    print()
+    print("5. Testing backward compatibility with hierarchical.json...")
     try:
         test_class.test_legacy_accelerator_backward_compatible()
     except Exception as e:
@@ -342,7 +434,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print()
-    print("5. Testing Cartesian product generation...")
+    print("6. Testing Cartesian product generation...")
     try:
         test_class.test_channel_generation_cartesian_product()
     except Exception as e:

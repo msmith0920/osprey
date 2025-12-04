@@ -862,9 +862,81 @@ That's it—no code changes required. The template includes complete implementat
               - ``name``: Level identifier used in navigation and naming pattern
               - ``type``: Either ``"tree"`` (navigate through named semantic categories like MAG, VAC, RF) or ``"instances"`` (expand numbered/patterned instances like QF01, QF02 that share the same structure)
 
-              Define as many or as few levels as your system needs—three levels for simple systems, five for typical accelerators, ten or more for complex facilities. The system validates that all level names appear exactly once in the naming pattern.
+              Define as many or as few levels as your system needs—three levels for simple systems, five for typical accelerators, ten or more for complex facilities.
 
-            - **naming_pattern**: Template for assembling complete channel names from navigation selections. Uses Python format string syntax with level names as placeholders (e.g., ``{system}:{device}:{field}``). Must reference all and only the level names defined in the levels array.
+            - **naming_pattern**: Template for assembling complete channel names from navigation selections. Uses Python format string syntax with level names as placeholders (e.g., ``{system}:{device}:{field}``). All placeholders must reference defined level names.
+
+            .. dropdown:: **New in v0.9.6**: Enhanced Hierarchy Flexibility
+               :color: info
+               :icon: versions
+
+               Two new features enable more flexible hierarchical organization:
+
+               **1. Navigation-Only Levels** - Not all hierarchy levels need to appear in the naming pattern! Levels can provide navigation context without cluttering channel names.
+
+               **2. Decoupled Tree Keys** (``_channel_part``) - Tree keys (for navigation) can differ from naming components using the ``_channel_part`` field.
+
+               **Pattern 1 - Navigation-Only Levels** (JLab use case):
+
+               .. code-block:: json
+
+                  {
+                    "hierarchy": {
+                      "levels": [
+                        {"name": "system", "type": "tree"},      // Navigation only
+                        {"name": "family", "type": "tree"},      // Navigation only
+                        {"name": "location", "type": "tree"},    // Navigation only
+                        {"name": "pv", "type": "tree"}           // Used in pattern ✓
+                      ],
+                      "naming_pattern": "{pv}"
+                    },
+                    "tree": {
+                      "Magnets": {
+                        "Skew Quads": {
+                          "North Linac": {
+                            "MQS1L02.S": {"_description": "Current Setpoint"}
+                          }
+                        }
+                      }
+                    }
+                  }
+
+               **Navigation**: ``Magnets → Skew Quads → North Linac → MQS1L02.S``
+               **Channel**: ``MQS1L02.S``
+
+               **Pattern 2 - Friendly Names with** ``_channel_part``:
+
+               .. code-block:: json
+
+                  {
+                    "hierarchy": {
+                      "levels": [
+                        {"name": "system", "type": "tree"},
+                        {"name": "device", "type": "tree"}
+                      ],
+                      "naming_pattern": "{system}:{device}"
+                    },
+                    "tree": {
+                      "Magnets": {
+                        "_channel_part": "MAG",  // MAG in channel name
+                        "Skew Quadrupoles": {
+                          "_channel_part": "SK"  // SK in channel name
+                        }
+                      }
+                    }
+                  }
+
+               **Navigation**: ``Magnets → Skew Quadrupoles``
+               **Channel**: ``MAG:SK`` (technical codes)
+
+               **Key Features**:
+
+               - ``_channel_part`` defaults to tree key (backward compatible)
+               - Empty string ``_channel_part: ""`` means navigation-only
+               - Mix and match: some levels with ``_channel_part``, some without
+               - Works with instance expansion (``_expansion``)
+
+               **Example**: ``data/channel_databases/examples/hierarchical_jlab_style.json``
 
             **tree**: The nested hierarchy structure with descriptions at every level (details below).
 
