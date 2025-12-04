@@ -43,9 +43,11 @@ type safety through Pydantic models and comprehensive error handling.
 """
 
 import asyncio
+import os
 import textwrap
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, ClassVar
+import zoneinfo
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -315,7 +317,7 @@ class TimeRangeOutput(BaseModel):
 # LLM Prompting System
 # ========================================================
 
-def _get_time_parsing_system_prompt(user_query: str) -> str:
+def _get_time_parsing_system_prompt(user_query: str, tz_name: str = "America/Chicago") -> str:
     """Create comprehensive system prompt for LLM-based time range parsing.
 
     Constructs a sophisticated system prompt that provides the LLM with complete
@@ -346,9 +348,13 @@ def _get_time_parsing_system_prompt(user_query: str) -> str:
        :class:`TimeRangeContext` : Final context object created from parsed results
     """
 
-    # Use UTC timezone to avoid confusion
-    now = datetime.now(UTC)
-    current_time_str = now.strftime('%Y-%m-%d %H:%M:%S')
+    # Use local timezone (default America/Chicago) for reference time
+    try:
+        local_tz = zoneinfo.ZoneInfo(tz_name)
+    except Exception:
+        local_tz = timezone.utc
+    now = datetime.now(local_tz)
+    current_time_str = now.strftime('%Y-%m-%d %H:%M:%S %Z')
     current_weekday = now.strftime('%A')
 
     # Calculate example dates for the prompt
@@ -381,12 +387,12 @@ def _get_time_parsing_system_prompt(user_query: str) -> str:
         4. If found=false, use current time for both start_date and end_date as placeholders
 
         Common patterns and their conversions:
-        - "last X hours/minutes/days" → X time units BEFORE current time to NOW
+        - "last X hours/minutes/days" → X time units BEFORE current time (local TZ) to NOW (local TZ)
         - "past X hours/minutes/days" → X time units BEFORE current time to NOW
         - "yesterday" → previous day from 00:00:00 to 23:59:59
         - "today" → current day from 00:00:00 to current time
-        - "this week" → from start of current week to now
-        - "last week" → previous week (Monday to Sunday)
+        - "this week" → from start of current week to now (local TZ)
+        - "last week" → previous week (Monday to Sunday) in local TZ
         - Current/real-time requests → very recent time (last few minutes)
 
         CRITICAL CALCULATION RULES FOR RELATIVE TIMES:
@@ -563,6 +569,21 @@ class TimeRangeParsingCapability(BaseCapability):
 
         # Debug logging to see what LLM actually returned
         logger.debug(f"LLM returned: start={response_data.start_date}, end={response_data.end_date}, found={response_data.found}")
+
+        # Normalize to local timezone (default America/Chicago, or TZ env override)
+        tz_name = os.environ.get("TZ", "America/Chicago")
+        try:
+            local_tz = zoneinfo.ZoneInfo(tz_name)
+        except Exception:
+            local_tz = timezone.utc
+
+        def _ensure_local(dt: datetime) -> datetime:
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=local_tz)
+            return dt.astimezone(local_tz)
+
+        response_data.start_date = _ensure_local(response_data.start_date)
+        response_data.end_date = _ensure_local(response_data.end_date)
 
         # Check if the LLM found a valid time range
         if not response_data.found:
