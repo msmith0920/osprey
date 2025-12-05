@@ -647,3 +647,390 @@ class TestBackwardCompatibility:
         finally:
             Path(db_path).unlink()
 
+
+class TestExplicitIsLeafMarker:
+    """Test Phase 1: Explicit _is_leaf marker functionality."""
+
+    def test_basic_is_leaf_marker(self):
+        """Node with _is_leaf=true generates channel even with remaining levels."""
+        content = {
+            "hierarchy": {
+                "levels": [
+                    {"name": "system", "type": "tree"},
+                    {"name": "device", "type": "tree"},
+                    {"name": "signal", "type": "tree", "optional": True}
+                ],
+                "naming_pattern": "{system}:{device}:{signal}"
+            },
+            "tree": {
+                "MAG": {
+                    "DEV01": {
+                        "_is_leaf": True,
+                        "_description": "Device is itself a channel"
+                    }
+                }
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(content, f)
+            db_path = f.name
+
+        try:
+            db = HierarchicalChannelDatabase(db_path)
+            # Should generate channel at device level (signal level optional and empty)
+            assert len(db.channel_map) == 1
+            assert "MAG:DEV01:" in db.channel_map or "MAG:DEV01" in db.channel_map
+        finally:
+            Path(db_path).unlink()
+
+    def test_leaf_with_children(self):
+        """Node with _is_leaf can also have children (suffix pattern)."""
+        content = {
+            "hierarchy": {
+                "levels": [
+                    {"name": "system", "type": "tree"},
+                    {"name": "signal", "type": "tree"},
+                    {"name": "suffix", "type": "tree", "optional": True}
+                ],
+                "naming_pattern": "{system}:{signal}_{suffix}"
+            },
+            "tree": {
+                "MAG": {
+                    "CURRENT": {
+                        "_is_leaf": True,
+                        "_description": "Base current signal",
+                        "RB": {
+                            "_is_leaf": True,
+                            "_description": "Readback"
+                        },
+                        "SP": {
+                            "_is_leaf": True,
+                            "_description": "Setpoint"
+                        }
+                    }
+                }
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(content, f)
+            db_path = f.name
+
+        try:
+            db = HierarchicalChannelDatabase(db_path)
+            # Should generate 3 channels: base + RB + SP
+            assert len(db.channel_map) == 3
+
+            # Base signal (cleaned from "MAG:CURRENT_")
+            base_channels = [ch for ch in db.channel_map.keys() if ch.endswith("CURRENT") or ch == "MAG:CURRENT_"]
+            assert len(base_channels) >= 1
+
+            # Suffixed signals
+            assert "MAG:CURRENT_RB" in db.channel_map
+            assert "MAG:CURRENT_SP" in db.channel_map
+        finally:
+            Path(db_path).unlink()
+
+    def test_optional_subdevice_direct_path(self):
+        """Some signals skip optional subdevice level."""
+        content = {
+            "hierarchy": {
+                "levels": [
+                    {"name": "system", "type": "tree"},
+                    {"name": "device", "type": "tree"},
+                    {"name": "subdevice", "type": "tree", "optional": True},
+                    {"name": "signal", "type": "tree"}
+                ],
+                "naming_pattern": "{system}:{device}:{subdevice}:{signal}"
+            },
+            "tree": {
+                "SYS": {
+                    "DEV": {
+                        "DIRECT_SIGNAL": {
+                            "_is_leaf": True,
+                            "_description": "Signal without subdevice"
+                        },
+                        "SUBDEV": {
+                            "_description": "Subdevice",
+                            "SUB_SIGNAL": {
+                                "_is_leaf": True,
+                                "_description": "Signal from subdevice"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(content, f)
+            db_path = f.name
+
+        try:
+            db = HierarchicalChannelDatabase(db_path)
+            assert len(db.channel_map) == 2
+
+            # Direct signal (cleaned from "SYS:DEV::DIRECT_SIGNAL")
+            direct = [ch for ch in db.channel_map.keys() if "DIRECT_SIGNAL" in ch]
+            assert len(direct) == 1
+            # Should NOT have double colons
+            assert "::" not in direct[0]
+
+            # Subdevice signal (full path)
+            assert "SYS:DEV:SUBDEV:SUB_SIGNAL" in db.channel_map
+        finally:
+            Path(db_path).unlink()
+
+
+class TestOptionalLevelsSeparatorCleanup:
+    """Test separator cleanup when optional levels are skipped."""
+
+    def test_double_colon_cleanup(self):
+        """Double colons from skipped level should be cleaned to single."""
+        content = {
+            "hierarchy": {
+                "levels": [
+                    {"name": "a", "type": "tree"},
+                    {"name": "b", "type": "tree", "optional": True},
+                    {"name": "c", "type": "tree"}
+                ],
+                "naming_pattern": "{a}:{b}:{c}"
+            },
+            "tree": {
+                "A": {
+                    "C": {
+                        "_is_leaf": True
+                    }
+                }
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(content, f)
+            db_path = f.name
+
+        try:
+            db = HierarchicalChannelDatabase(db_path)
+            assert len(db.channel_map) == 1
+            channel = list(db.channel_map.keys())[0]
+            # Should be "A:C" not "A::C"
+            assert channel == "A:C"
+            assert "::" not in channel
+        finally:
+            Path(db_path).unlink()
+
+    def test_trailing_separator_cleanup(self):
+        """Trailing separators from missing suffix should be removed."""
+        content = {
+            "hierarchy": {
+                "levels": [
+                    {"name": "a", "type": "tree"},
+                    {"name": "b", "type": "tree"},
+                    {"name": "c", "type": "tree", "optional": True}
+                ],
+                "naming_pattern": "{a}:{b}_{c}"
+            },
+            "tree": {
+                "A": {
+                    "B": {
+                        "_is_leaf": True
+                    }
+                }
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(content, f)
+            db_path = f.name
+
+        try:
+            db = HierarchicalChannelDatabase(db_path)
+            assert len(db.channel_map) == 1
+            channel = list(db.channel_map.keys())[0]
+            # Should be "A:B" not "A:B_"
+            assert channel == "A:B"
+            assert not channel.endswith("_")
+        finally:
+            Path(db_path).unlink()
+
+    def test_multiple_optional_levels_cleanup(self):
+        """Multiple consecutive optional levels should clean up properly."""
+        content = {
+            "hierarchy": {
+                "levels": [
+                    {"name": "sys", "type": "tree"},
+                    {"name": "opt1", "type": "tree", "optional": True},
+                    {"name": "opt2", "type": "tree", "optional": True},
+                    {"name": "sig", "type": "tree"}
+                ],
+                "naming_pattern": "{sys}:{opt1}:{opt2}:{sig}"
+            },
+            "tree": {
+                "S": {
+                    "SIG": {
+                        "_is_leaf": True
+                    }
+                }
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(content, f)
+            db_path = f.name
+
+        try:
+            db = HierarchicalChannelDatabase(db_path)
+            assert len(db.channel_map) == 1
+            channel = list(db.channel_map.keys())[0]
+            # Should be "S:SIG" not "S:::SIG"
+            assert channel == "S:SIG"
+            assert ":::" not in channel
+            assert "::" not in channel
+        finally:
+            Path(db_path).unlink()
+
+
+class TestOptionalLevelsEdgeCases:
+    """Test edge cases and complex scenarios."""
+
+    def test_optional_level_with_instances(self):
+        """Optional suffix level with instance expansion before it."""
+        content = {
+            "hierarchy": {
+                "levels": [
+                    {"name": "system", "type": "tree"},
+                    {"name": "device", "type": "instances"},
+                    {"name": "signal", "type": "tree"},
+                    {"name": "suffix", "type": "instances", "optional": True}
+                ],
+                "naming_pattern": "{system}:{device}:{signal}_{suffix}"
+            },
+            "tree": {
+                "SYS": {
+                    "DEVICE": {
+                        "_expansion": {
+                            "_type": "range",
+                            "_pattern": "D{:02d}",
+                            "_range": [1, 2]
+                        },
+                        "SIG1": {
+                            "_is_leaf": True,
+                            "_description": "Signal without suffix"
+                        },
+                        "SIG2": {
+                            "_description": "Signal with suffixes (no base)",
+                            "SUFFIX": {
+                                "_expansion": {
+                                    "_type": "list",
+                                    "_instances": ["RB", "SP"]
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(content, f)
+            db_path = f.name
+
+        try:
+            db = HierarchicalChannelDatabase(db_path)
+            # 2 devices × (1 sig without suffix + 1 sig with 2 suffixes) = 2 × 3 = 6 channels
+            assert len(db.channel_map) == 6
+
+            # Signals without suffix (trailing _ should be cleaned)
+            sig1 = [ch for ch in db.channel_map.keys() if "SIG1" in ch]
+            assert len(sig1) == 2
+            for ch in sig1:
+                assert not ch.endswith("_")  # Cleaned
+
+            # Signals with suffix
+            sig2_rb = [ch for ch in db.channel_map.keys() if "SIG2_RB" in ch]
+            assert len(sig2_rb) == 2
+            sig2_sp = [ch for ch in db.channel_map.keys() if "SIG2_SP" in ch]
+            assert len(sig2_sp) == 2
+        finally:
+            Path(db_path).unlink()
+
+    def test_validation_optional_not_in_pattern_fails(self):
+        """Optional level must be in naming pattern."""
+        content = {
+            "hierarchy": {
+                "levels": [
+                    {"name": "system", "type": "tree"},
+                    {"name": "optional_level", "type": "tree", "optional": True},
+                    {"name": "signal", "type": "tree"}
+                ],
+                "naming_pattern": "{system}:{signal}"  # Missing optional_level!
+            },
+            "tree": {
+                "SYS": {
+                    "SIG": {}
+                }
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(content, f)
+            db_path = f.name
+
+        try:
+            with pytest.raises(ValueError, match="Optional level .* must appear in naming_pattern"):
+                HierarchicalChannelDatabase(db_path)
+        finally:
+            Path(db_path).unlink()
+
+    def test_mixed_optional_and_required(self):
+        """Mix of optional and required levels in realistic scenario."""
+        content = {
+            "hierarchy": {
+                "levels": [
+                    {"name": "system", "type": "tree"},
+                    {"name": "subsystem", "type": "tree"},
+                    {"name": "device", "type": "instances"},
+                    {"name": "subdevice", "type": "tree", "optional": True},
+                    {"name": "signal", "type": "tree"},
+                    {"name": "suffix", "type": "tree", "optional": True}
+                ],
+                "naming_pattern": "{system}-{subsystem}:{device}:{subdevice}:{signal}_{suffix}"
+            },
+            "tree": {
+                "SYS": {
+                    "SUB": {
+                        "DEVICE": {
+                            "_expansion": {
+                                "_type": "list",
+                                "_instances": ["D01"]
+                            },
+                            "SIG": {
+                                "_is_leaf": True,
+                                "RB": {
+                                    "_is_leaf": True
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(content, f)
+            db_path = f.name
+
+        try:
+            db = HierarchicalChannelDatabase(db_path)
+            # Should have 2 channels: base + RB
+            assert len(db.channel_map) == 2
+
+            channels = list(db.channel_map.keys())
+            # Both should be cleaned (no :: or trailing _)
+            for ch in channels:
+                assert "::" not in ch
+                assert not (ch.endswith("_") and not ch.endswith("_RB"))
+        finally:
+            Path(db_path).unlink()
+
