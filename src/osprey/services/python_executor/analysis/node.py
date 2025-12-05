@@ -445,6 +445,35 @@ async def _create_analysis_failure_attempt_notebook(
             )
             state["execution_folder"] = execution_folder
 
+        # Save context to file if not already saved
+        if execution_folder and not execution_folder.context_file_path:
+            try:
+                from osprey.context.context_manager import ContextManager
+                from osprey.utils.config import get_config_value
+
+                context_manager = ContextManager(state)
+
+                # Add execution config snapshot for reproducibility
+                execution_config = {}
+
+                # Snapshot control system config
+                control_system_config = get_config_value("control_system", {})
+                if control_system_config:
+                    execution_config["control_system"] = control_system_config
+
+                # Snapshot Python executor config
+                python_executor_config = get_config_value("python_executor", {})
+                if python_executor_config:
+                    execution_config["python_executor"] = python_executor_config
+
+                # Add execution config to context
+                context_manager.add_execution_config(execution_config)
+
+                context_file_path = context_manager.save_context_to_file(execution_folder.folder_path)
+                execution_folder.context_file_path = context_file_path
+            except Exception as e:
+                logger.warning(f"Failed to save context: {e}")
+
         # Create detailed error context for the notebook
         error_context = f"""**Static Analysis Failed**
 
@@ -495,6 +524,35 @@ async def _create_syntax_error_attempt_notebook(
                 state["request"].execution_folder_name
             )
             state["execution_folder"] = execution_folder
+
+        # Save context to file if not already saved
+        if execution_folder and not execution_folder.context_file_path:
+            try:
+                from osprey.context.context_manager import ContextManager
+                from osprey.utils.config import get_config_value
+
+                context_manager = ContextManager(state)
+
+                # Add execution config snapshot for reproducibility
+                execution_config = {}
+
+                # Snapshot control system config
+                control_system_config = get_config_value("control_system", {})
+                if control_system_config:
+                    execution_config["control_system"] = control_system_config
+
+                # Snapshot Python executor config
+                python_executor_config = get_config_value("python_executor", {})
+                if python_executor_config:
+                    execution_config["python_executor"] = python_executor_config
+
+                # Add execution config to context
+                context_manager.add_execution_config(execution_config)
+
+                context_file_path = context_manager.save_context_to_file(execution_folder.folder_path)
+                execution_folder.context_file_path = context_file_path
+            except Exception as e:
+                logger.warning(f"Failed to save context: {e}")
 
         # Create detailed error context for the notebook
         error_context = f"""**Syntax Error Detected**
@@ -551,37 +609,37 @@ async def _create_pre_approval_notebook(
                 state["request"].execution_folder_name
             )
 
-        # Save context.json for runtime utilities
-        # This must be done BEFORE creating the notebook so the notebook can reference it
-        try:
-            from osprey.context import ContextManager
-            from osprey.utils.config import get_config_value
+        # Save context to file if not already saved
+        # This ensures context.json exists before creating the notebook
+        if not execution_folder.context_file_path:
+            try:
+                from osprey.context.context_manager import ContextManager
+                from osprey.utils.config import get_config_value
 
-            context_manager = ContextManager(state)
+                context_manager = ContextManager(state)
 
-            # Add execution config snapshot for reproducibility
-            execution_config = {}
+                # Add execution config snapshot for reproducibility
+                execution_config = {}
 
-            # Snapshot control system config
-            control_system_config = get_config_value('control_system', {})
-            if control_system_config:
-                execution_config['control_system'] = control_system_config
+                # Snapshot control system config
+                control_system_config = get_config_value("control_system", {})
+                if control_system_config:
+                    execution_config["control_system"] = control_system_config
 
-            # Snapshot Python executor config
-            python_executor_config = get_config_value('python_executor', {})
-            if python_executor_config:
-                execution_config['python_executor'] = python_executor_config
+                # Snapshot Python executor config
+                python_executor_config = get_config_value("python_executor", {})
+                if python_executor_config:
+                    execution_config["python_executor"] = python_executor_config
 
-            # Add execution config to context
-            context_manager.add_execution_config(execution_config)
+                # Add execution config to context
+                context_manager.add_execution_config(execution_config)
 
-            context_file_path = context_manager.save_context_to_file(execution_folder.folder_path)
-            # Update execution context with the saved context file path
-            execution_folder.context_file_path = context_file_path
-            logger.debug(f"Saved context.json for pre-approval notebook: {context_file_path}")
-        except Exception as e:
-            logger.warning(f"Failed to save context for pre-approval notebook: {e}")
-            # Don't fail the entire notebook creation for context saving issues
+                context_file_path = context_manager.save_context_to_file(execution_folder.folder_path)
+                # Update execution context with the saved context file path
+                execution_folder.context_file_path = context_file_path
+            except Exception as e:
+                logger.warning(f"Failed to save context in pre-approval: {e}")
+                # Don't fail the entire pre-approval process for context saving issues
 
         # Format execution mode for display
         execution_mode = analysis_result.recommended_execution_mode.value if hasattr(
