@@ -178,15 +178,9 @@ async def test_runtime_utilities_basic_write(e2e_project_factory):
     ), "Context snapshot missing control_system config"
 
     # 8. Verify notebook includes runtime configuration
-<<<<<<< HEAD
-    # After execution completes, a final notebook should be created in the execution folder root
-    notebook_files = list(latest_execution.glob("*.ipynb"))
-    assert len(notebook_files) > 0, f"No notebook generated in {latest_execution}"
-=======
     # Notebooks are in the attempts subdirectory
     notebook_files = list(latest_execution.glob("**/*.ipynb"))
     assert len(notebook_files) > 0, "No notebook generated"
->>>>>>> f4bdddb (fix: save context.json before creating pre-approval notebooks)
 
     import nbformat
 
