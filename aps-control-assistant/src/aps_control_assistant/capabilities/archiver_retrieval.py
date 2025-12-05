@@ -111,7 +111,14 @@ class ArchiverRetrievalCapability(BaseCapability):
         # Get task description for logging
         task_objective = self.get_task_objective(default='unknown')
         logger.info(f"Starting archiver data retrieval: {task_objective}")
-        logger.status("Initializing archiver data retrieval...")
+
+        # Some logger implementations support `status()`, but standard logging.Logger does not.
+        # Use a safe fallback to INFO when `status` is unavailable.
+        status_message = "Initializing archiver data retrieval..."
+        if hasattr(logger, "status"):
+            logger.status(status_message)
+        else:
+            logger.info(status_message)
 
         try:
             # Extract required contexts from execution state
@@ -125,7 +132,11 @@ class ArchiverRetrievalCapability(BaseCapability):
             if not channels_to_retrieve or len(channels_to_retrieve) == 0:
                 raise ArchiverDependencyError("No channel addresses available for archiver data retrieval. The channel finding step may have failed to locate suitable channels.")
 
-            logger.status(f"Found {len(channels_to_retrieve)} channels, retrieving data...")
+            status_message = f"Found {len(channels_to_retrieve)} channels, retrieving data..."
+            if hasattr(logger, "status"):
+                logger.status(status_message)
+            else:
+                logger.info(status_message)
 
             logger.debug(f"Retrieving archiver data for {len(channels_to_retrieve)} channels from {time_range_context.start_date} to {time_range_context.end_date}")
 
@@ -159,7 +170,11 @@ class ArchiverRetrievalCapability(BaseCapability):
             if archiver_df.empty:
                 raise ArchiverDataError("Archiver returned no data for the requested time range.")
 
-            logger.status("Converting archiver data to structured format...")
+            status_message = "Converting archiver data to structured format..."
+            if hasattr(logger, "status"):
+                logger.status(status_message)
+            else:
+                logger.info(status_message)
 
             # Extract timestamps from DataFrame index
             timestamps = [ts.to_pydatetime() for ts in archiver_df.index]
@@ -173,6 +188,12 @@ class ArchiverRetrievalCapability(BaseCapability):
 
             # Optional: persist CSV and plot to disk for downstream use
             save_outputs = params.get("save_outputs", True)
+
+            # If using a real EPICS archiver, default to not generating plots unless explicitly requested
+            archiver_type = archiver_cfg.get("type") if isinstance(archiver_cfg, dict) else None
+            if archiver_type == "epics_archiver":
+                save_outputs = params.get("save_outputs", False)
+
             output_dir_param = params.get("output_dir")
             if save_outputs:
                 project_root = Path(config_builder.get("project_root"))
@@ -187,32 +208,44 @@ class ArchiverRetrievalCapability(BaseCapability):
                 except Exception as exc:
                     logger.warning(f"Failed to write archiver CSV: {exc}")
 
-                # Attempt to plot using matplotlib if available
+                # Attempt to plot using matplotlib if available, but avoid huge plots
                 try:
                     import matplotlib.pyplot as plt  # type: ignore
 
-                    plt.figure(figsize=(10, 5))
-                    for channel in channels_to_retrieve:
-                        if channel in archiver_df.columns:
-                            plt.plot(archiver_df.index, archiver_df[channel], label=channel)
+                    num_points = len(archiver_df.index)
+                    max_plot_points = 200000
+                    if num_points > max_plot_points:
+                        logger.warning(
+                            f"Skipping plot generation: {num_points} points exceed plot limit "
+                            f"({max_plot_points}); returning data without a PNG plot."
+                        )
+                    else:
+                        plt.figure(figsize=(10, 5))
+                        for channel in channels_to_retrieve:
+                            if channel in archiver_df.columns:
+                                plt.plot(archiver_df.index, archiver_df[channel], label=channel)
 
-                    plt.xlabel("Time (UTC)")
-                    plt.ylabel("Value")
-                    plt.title("Archiver Data")
-                    plt.legend()
-                    plt.grid(True)
-                    plt.tight_layout()
+                        plt.xlabel("Time (UTC)")
+                        plt.ylabel("Value")
+                        plt.title("Archiver Data")
+                        plt.legend()
+                        plt.grid(True)
+                        plt.tight_layout()
 
-                    plot_path = output_dir / "archiver_plot.png"
-                    plt.savefig(plot_path, dpi=150)
-                    plt.close()
-                    logger.info(f"Saved archiver plot to {plot_path}")
+                        plot_path = output_dir / "archiver_plot.png"
+                        plt.savefig(plot_path, dpi=150)
+                        plt.close()
+                        logger.info(f"Saved archiver plot to {plot_path}")
                 except Exception as exc:
                     logger.warning(f"Failed to generate archiver plot: {exc}")
 
             logger.debug(f"Retrieved archiver data with {len(timestamps)} timestamps and {len(time_series_data)} channels")
 
-            logger.status("Creating archiver data context...")
+            status_message = "Creating archiver data context..."
+            if hasattr(logger, "status"):
+                logger.status(status_message)
+            else:
+                logger.info(status_message)
 
             # Create rich context object
             archiver_context = ArchiverDataContext(

@@ -102,7 +102,14 @@ class ChannelValueRetrievalCapability(BaseCapability):
 
         # Get unified logger with automatic streaming
         logger = self.get_logger()
-        logger.status("Starting channel value retrieval...")
+
+        # Some logger implementations support `status()`, but a standard logging.Logger does not.
+        # Use a safe fallback to INFO when `status` is unavailable.
+        status_message = "Starting channel value retrieval..."
+        if hasattr(logger, "status"):
+            logger.status(status_message)
+        else:
+            logger.info(status_message)
 
         # Extract channel addresses from execution context
         try:
@@ -110,7 +117,11 @@ class ChannelValueRetrievalCapability(BaseCapability):
         except ValueError as e:
             raise ChannelDependencyError(str(e))
 
-        logger.status(f"Reading {len(channels_to_read)} channel values...")
+        status_message = f"Reading {len(channels_to_read)} channel values..."
+        if hasattr(logger, "status"):
+            logger.status(status_message)
+        else:
+            logger.info(status_message)
 
         # Create control system connector from configuration
         # This will use 'mock' for development or 'epics' for production
@@ -123,7 +134,11 @@ class ChannelValueRetrievalCapability(BaseCapability):
             total_channels = len(channels_to_read)
 
             for i, channel_address in enumerate(channels_to_read):
-                logger.status(f"Reading channel {i+1}/{total_channels}: {channel_address}")
+                status_message = f"Reading channel {i+1}/{total_channels}: {channel_address}"
+                if hasattr(logger, "status"):
+                    logger.status(status_message)
+                else:
+                    logger.info(status_message)
 
                 try:
                     # Read PV using connector (returns PVValue with metadata)
@@ -147,7 +162,11 @@ class ChannelValueRetrievalCapability(BaseCapability):
         # Create structured result
         result = ChannelValuesContext(channel_values=channel_values)
 
-        logger.status(f"Successfully retrieved {result.channel_count} channel values")
+        status_message = f"Successfully retrieved {result.channel_count} channel values"
+        if hasattr(logger, "status"):
+            logger.status(status_message)
+        else:
+            logger.info(status_message)
 
         logger.info(f"Channel value retrieval result: {result.channel_count} channels retrieved")
 

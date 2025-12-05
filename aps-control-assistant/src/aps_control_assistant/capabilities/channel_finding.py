@@ -153,7 +153,14 @@ class ChannelFindingCapability(BaseCapability):
 
         # Log the query
         logger.info(f'Channel finding query: "{search_query}"')
-        logger.status("Finding channel addresses...")
+
+        # Some logger implementations in Osprey support `status()`, but if we are
+        # given a standard logging.Logger it will not exist. Use a safe fallback.
+        status_message = "Finding channel addresses..."
+        if hasattr(logger, "status"):
+            logger.status(status_message)
+        else:
+            logger.info(status_message)
 
         # Configure logging for channel finder service to show detailed pipeline logs
         # This ensures the hierarchical navigation logs (Level: system, Selected, etc.) are visible
@@ -182,7 +189,11 @@ class ChannelFindingCapability(BaseCapability):
                 # Initialize service (reads pipeline_mode from config.yml at runtime)
                 service = ChannelFinderService()
 
-                logger.status("Searching channel database...")
+                status_message = "Searching channel database..."
+                if hasattr(logger, "status"):
+                    logger.status(status_message)
+                else:
+                    logger.info(status_message)
 
                 # Execute channel finding
                 result = await service.find_channels(search_query)
@@ -225,7 +236,11 @@ class ChannelFindingCapability(BaseCapability):
             description=description,
         )
 
-        logger.status("Channel finding complete")
+        status_message = "Channel finding complete"
+        if hasattr(logger, "status"):
+            logger.status(status_message)
+        else:
+            logger.info(status_message)
 
         # Store result in execution context
         return self.store_output_context(channel_context)
