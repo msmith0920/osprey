@@ -1,0 +1,186 @@
+{
+  "_description": "Example database demonstrating optional hierarchy levels with _is_leaf markers",
+  "_use_case": "Naming conventions where some channels have intermediate levels and others skip directly to leaves",
+
+  "hierarchy": {
+    "levels": [
+      {"name": "system", "type": "tree"},
+      {"name": "subsystem", "type": "instances"},
+      {"name": "device", "type": "instances"},
+      {"name": "subdevice", "type": "tree", "optional": true},
+      {"name": "signal", "type": "tree"},
+      {"name": "suffix", "type": "tree", "optional": true}
+    ],
+    "naming_pattern": "{system}-{subsystem}-{device}:{subdevice}:{signal}_{suffix}"
+  },
+
+  "tree": {
+    "SYSTEM": {
+      "_description": "Example accelerator system",
+      "SUBSYSTEM": {
+        "_expansion": {
+          "_type": "range",
+          "_pattern": "SSYS-{:02d}",
+          "_range": [1, 24]
+        },
+        "DEVICE": {
+          "_expansion": {
+            "_type": "range",
+            "_pattern": "DEV-{:02d}",
+            "_range": [1, 24]
+          },
+
+          "_comment_1": "=== DIRECT SIGNALS (no subdevice, no suffix) ===",
+
+          "SIGNAL-X": {
+            "_is_leaf": true,
+            "_description": "Signal X - direct from device, no subdevice needed",
+            "_example_channels": [
+              "SYSTEM-SSYS-01-DEV-01:SIGNAL-X",
+              "SYSTEM-SSYS-01-DEV-02:SIGNAL-X",
+              "... (24 total, one per device)"
+            ]
+          },
+
+          "_comment_2": "=== SIGNALS WITH OPTIONAL SUFFIX (no subdevice) ===",
+
+          "SIGNAL-Y": {
+            "_is_leaf": true,
+            "_description": "Signal Y - has base signal AND suffixed variants",
+            "_example_base": "SYSTEM-SSYS-01-DEV-01:SIGNAL-Y",
+
+            "RB": {
+              "_is_leaf": true,
+              "_description": "Readback suffix",
+              "_example": "SYSTEM-SSYS-01-DEV-01:SIGNAL-Y_RB"
+            },
+            "SP": {
+              "_is_leaf": true,
+              "_description": "Setpoint suffix",
+              "_example": "SYSTEM-SSYS-01-DEV-01:SIGNAL-Y_SP"
+            }
+          },
+
+          "_comment_3": "=== SUBDEVICE BRANCH: Non-instanced subdevice ===",
+
+          "SUBDEVX": {
+            "_description": "Subdevice X (no instance numbering)",
+
+            "SIGNAL-XX": {
+              "_is_leaf": true,
+              "_description": "Signal XX from subdevice X (no suffix)",
+              "_example": "SYSTEM-SSYS-01-DEV-01:SUBDEVX:SIGNAL-XX"
+            },
+
+            "SIGNAL-XY": {
+              "_is_leaf": true,
+              "_description": "Signal XY from subdevice X (base + suffixes)",
+
+              "RB": {
+                "_is_leaf": true,
+                "_description": "Readback",
+                "_example": "SYSTEM-SSYS-01-DEV-01:SUBDEVX:SIGNAL-XY_RB"
+              },
+              "SP": {
+                "_is_leaf": true,
+                "_description": "Setpoint",
+                "_example": "SYSTEM-SSYS-01-DEV-01:SUBDEVX:SIGNAL-XY_SP"
+              }
+            }
+          },
+
+          "_comment_4": "=== SUBDEVICE BRANCH: Instanced subdevice ===",
+
+          "SUBDEVY": {
+            "_expansion": {
+              "_type": "range",
+              "_pattern": "SUBDEVY-{:02d}",
+              "_range": [1, 8]
+            },
+
+            "SIGNAL-YX": {
+              "_is_leaf": true,
+              "_description": "Signal YX from instanced subdevice (no suffix)",
+              "_example": "SYSTEM-SSYS-01-DEV-01:SUBDEVY-01:SIGNAL-YX"
+            },
+
+            "SIGNAL-YY": {
+              "_is_leaf": true,
+              "_description": "Signal YY from instanced subdevice (base + suffixes)",
+
+              "RB": {
+                "_is_leaf": true,
+                "_description": "Readback",
+                "_example": "SYSTEM-SSYS-01-DEV-01:SUBDEVY-01:SIGNAL-YY_RB"
+              },
+              "SP": {
+                "_is_leaf": true,
+                "_description": "Setpoint",
+                "_example": "SYSTEM-SSYS-01-DEV-01:SUBDEVY-01:SIGNAL-YY_SP"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+
+  "_channel_count_breakdown": {
+    "per_device_direct_signals": 2,
+    "per_device_direct_with_suffixes": 4,
+    "per_device_subdevx_signals": 2,
+    "per_device_subdevx_with_suffixes": 4,
+    "per_device_subdevy_instances": 8,
+    "per_subdevy_instance": 6,
+    "per_device_subdevy_total": 48,
+    "per_device_total": 60,
+    "total_devices": 24,
+    "grand_total_channels": 1440,
+    "_note": "24 devices × 60 channels per device = 1,440 total channels"
+  },
+
+  "_example_channels": {
+    "direct_no_suffix": "SYSTEM-SSYS-01:DEV-01:SIGNAL-X",
+    "direct_base_with_empty_suffix": "SYSTEM-SSYS-01:DEV-01:SIGNAL-Y",
+    "direct_with_rb": "SYSTEM-SSYS-01:DEV-01:SIGNAL-Y_RB",
+    "direct_with_sp": "SYSTEM-SSYS-01:DEV-01:SIGNAL-Y_SP",
+    "subdevx_no_suffix": "SYSTEM-SSYS-01:DEV-01:SUBDEVX:SIGNAL-XX",
+    "subdevx_base": "SYSTEM-SSYS-01:DEV-01:SUBDEVX:SIGNAL-XY",
+    "subdevx_with_rb": "SYSTEM-SSYS-01:DEV-01:SUBDEVX:SIGNAL-XY_RB",
+    "subdevx_with_sp": "SYSTEM-SSYS-01:DEV-01:SUBDEVX:SIGNAL-XY_SP",
+    "subdevy_01_no_suffix": "SYSTEM-SSYS-01:DEV-01:SUBDEVY-01:SIGNAL-YX",
+    "subdevy_01_base": "SYSTEM-SSYS-01:DEV-01:SUBDEVY-01:SIGNAL-YY",
+    "subdevy_01_rb": "SYSTEM-SSYS-01:DEV-01:SUBDEVY-01:SIGNAL-YY_RB",
+    "subdevy_01_sp": "SYSTEM-SSYS-01:DEV-01:SUBDEVY-01:SIGNAL-YY_SP"
+  },
+
+  "_key_features": {
+    "optional_subdevice": "Some signals go directly from device to signal, skipping subdevice level",
+    "optional_suffix": "Some signals have base + RB/SP variants, others just base",
+    "_is_leaf_markers": "Explicit markers indicate which nodes are complete channels",
+    "leaf_with_children": "Nodes like SIGNAL-Y are both leaves (generate channel) AND have children (RB, SP)",
+    "separator_cleanup": "Artifacts like '::' and trailing '_' are automatically cleaned",
+    "instanced_subdevice": "SUBDEVY demonstrates optional level that itself has instance expansion"
+  },
+
+  "_pattern_flow_examples": {
+    "example_1": {
+      "path": "SYSTEM → SSYS → DEV-01 → SIGNAL-X",
+      "levels_used": "system, subsystem, device, signal",
+      "levels_skipped": "subdevice (optional), suffix (optional)",
+      "channel": "SYSTEM-SSYS-01-DEV-01:SIGNAL-X"
+    },
+    "example_2": {
+      "path": "SYSTEM → SSYS → DEV-01 → SIGNAL-Y → RB",
+      "levels_used": "system, subsystem, device, signal, suffix",
+      "levels_skipped": "subdevice (optional)",
+      "channel": "SYSTEM-SSYS-01-DEV-01:SIGNAL-Y_RB"
+    },
+    "example_3": {
+      "path": "SYSTEM → SSYS → DEV-01 → SUBDEVX → SIGNAL-XY → SP",
+      "levels_used": "system, subsystem, device, subdevice, signal, suffix",
+      "levels_skipped": "none",
+      "channel": "SYSTEM-SSYS-01-DEV-01:SUBDEVX:SIGNAL-XY_SP"
+    }
+  }
+}
