@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Channel Finder: Pluggable Pipeline and Database System**: Registration pattern for custom implementations
+  - `register_pipeline()` and `register_database()` methods for extending channel finder
+  - Discovery API: `list_available_pipelines()` and `list_available_databases()`
+  - Config-driven selection without modifying framework code
+  - Examples for RAG pipeline and PostgreSQL database implementations
+
 #### Configuration Management
 - **EPICS Gateway Presets**: Built-in configurations for APS and ALS facilities
   - APS: pvgatemain1.aps4.anl.gov:5064 (read-only and write-access)
