@@ -248,10 +248,11 @@ Demonstrates **optional hierarchy levels** where some channels skip intermediate
 - Suffixed variants: `SIGNAL-Y_RB`, `SIGNAL-Y_SP`
 - Trailing separators automatically removed (`_` at end)
 
-**3. Leaf-with-Children Pattern**
-- Nodes marked with `_is_leaf: true` generate channels
-- Same node can ALSO have children (for optional next level)
-- Example: `SIGNAL-Y` generates base channel AND has children `RB`, `SP`
+**3. Automatic Leaf Detection**
+- Nodes without children are automatically detected as leaves (no `_is_leaf` needed)
+- Explicit `_is_leaf: true` ONLY needed for nodes that have children but are also complete channels
+- Example: `SIGNAL-Y` needs `_is_leaf` (generates base channel AND has children `RB`, `SP`)
+- Example: `RB` and `SP` don't need `_is_leaf` (no children = automatic leaf)
 
 ### Example Expansion
 
@@ -297,14 +298,13 @@ Channel: SYSTEM-SSYS-01:DEV-01:SUBDEVY-03:SIGNAL-YY
 ```json
 {
   "SIGNAL-X": {
-    "_is_leaf": true,
-    "_description": "Complete channel here"
+    "_description": "Complete channel (automatic leaf - no children)"
   },
   "SIGNAL-Y": {
     "_is_leaf": true,
-    "_description": "Complete channel, but also has children",
+    "_description": "Complete channel, but also has children (explicit _is_leaf needed)",
     "RB": {
-      "_is_leaf": true
+      "_description": "Readback (automatic leaf - no children, no _is_leaf needed)"
     }
   }
 }
@@ -369,8 +369,9 @@ Tree branches can define different child structures - not all paths through the 
 
 ### Optional Levels (NEW!)
 Hierarchy levels marked `"optional": true` can be skipped in some paths:
-- **Explicit leaf markers**: `"_is_leaf": true` indicates complete channel
-- **Leaf-with-children**: Same node can be both a leaf AND have children
+- **Automatic leaf detection**: Nodes without children are automatically detected as leaves (no `_is_leaf` needed)
+- **Explicit leaf markers**: `"_is_leaf": true` ONLY needed for nodes that have children but are also complete channels
+- **Leaf-with-children**: Same node can be both a leaf AND have children (requires explicit `_is_leaf`)
 - **Automatic cleanup**: Separator artifacts (`::`, trailing `_`) removed automatically
 - **Variable depth**: Different channels can terminate at different hierarchy levels
 

@@ -33,8 +33,7 @@
           "_comment_1": "=== DIRECT SIGNALS (no subdevice, no suffix) ===",
 
           "SIGNAL-X": {
-            "_is_leaf": true,
-            "_description": "Signal X - direct from device, no subdevice needed",
+            "_description": "Signal X - direct from device, no subdevice needed (automatic leaf)",
             "_example_channels": [
               "SYSTEM-SSYS-01-DEV-01:SIGNAL-X",
               "SYSTEM-SSYS-01-DEV-02:SIGNAL-X",
@@ -46,17 +45,15 @@
 
           "SIGNAL-Y": {
             "_is_leaf": true,
-            "_description": "Signal Y - has base signal AND suffixed variants",
+            "_description": "Signal Y - has base signal AND suffixed variants (explicit _is_leaf needed because it has children)",
             "_example_base": "SYSTEM-SSYS-01-DEV-01:SIGNAL-Y",
 
             "RB": {
-              "_is_leaf": true,
-              "_description": "Readback suffix",
+              "_description": "Readback suffix (automatic leaf - no children)",
               "_example": "SYSTEM-SSYS-01-DEV-01:SIGNAL-Y_RB"
             },
             "SP": {
-              "_is_leaf": true,
-              "_description": "Setpoint suffix",
+              "_description": "Setpoint suffix (automatic leaf - no children)",
               "_example": "SYSTEM-SSYS-01-DEV-01:SIGNAL-Y_SP"
             }
           },
@@ -67,23 +64,20 @@
             "_description": "Subdevice X (no instance numbering)",
 
             "SIGNAL-XX": {
-              "_is_leaf": true,
-              "_description": "Signal XX from subdevice X (no suffix)",
+              "_description": "Signal XX from subdevice X (no suffix, automatic leaf)",
               "_example": "SYSTEM-SSYS-01-DEV-01:SUBDEVX:SIGNAL-XX"
             },
 
             "SIGNAL-XY": {
               "_is_leaf": true,
-              "_description": "Signal XY from subdevice X (base + suffixes)",
+              "_description": "Signal XY from subdevice X (base + suffixes, explicit _is_leaf needed)",
 
               "RB": {
-                "_is_leaf": true,
-                "_description": "Readback",
+                "_description": "Readback (automatic leaf)",
                 "_example": "SYSTEM-SSYS-01-DEV-01:SUBDEVX:SIGNAL-XY_RB"
               },
               "SP": {
-                "_is_leaf": true,
-                "_description": "Setpoint",
+                "_description": "Setpoint (automatic leaf)",
                 "_example": "SYSTEM-SSYS-01-DEV-01:SUBDEVX:SIGNAL-XY_SP"
               }
             }
@@ -99,23 +93,20 @@
             },
 
             "SIGNAL-YX": {
-              "_is_leaf": true,
-              "_description": "Signal YX from instanced subdevice (no suffix)",
+              "_description": "Signal YX from instanced subdevice (no suffix, automatic leaf)",
               "_example": "SYSTEM-SSYS-01-DEV-01:SUBDEVY-01:SIGNAL-YX"
             },
 
             "SIGNAL-YY": {
               "_is_leaf": true,
-              "_description": "Signal YY from instanced subdevice (base + suffixes)",
+              "_description": "Signal YY from instanced subdevice (base + suffixes, explicit _is_leaf needed)",
 
               "RB": {
-                "_is_leaf": true,
-                "_description": "Readback",
+                "_description": "Readback (automatic leaf)",
                 "_example": "SYSTEM-SSYS-01-DEV-01:SUBDEVY-01:SIGNAL-YY_RB"
               },
               "SP": {
-                "_is_leaf": true,
-                "_description": "Setpoint",
+                "_description": "Setpoint (automatic leaf)",
                 "_example": "SYSTEM-SSYS-01-DEV-01:SUBDEVY-01:SIGNAL-YY_SP"
               }
             }
@@ -157,8 +148,9 @@
   "_key_features": {
     "optional_subdevice": "Some signals go directly from device to signal, skipping subdevice level",
     "optional_suffix": "Some signals have base + RB/SP variants, others just base",
-    "_is_leaf_markers": "Explicit markers indicate which nodes are complete channels",
-    "leaf_with_children": "Nodes like SIGNAL-Y are both leaves (generate channel) AND have children (RB, SP)",
+    "automatic_leaf_detection": "Nodes without children are automatically detected as leaves (no _is_leaf needed)",
+    "_is_leaf_markers": "Explicit _is_leaf ONLY needed for nodes that have children but are also complete channels",
+    "leaf_with_children": "Nodes like SIGNAL-Y are both leaves (generate channel) AND have children (RB, SP) - these need _is_leaf",
     "separator_cleanup": "Artifacts like '::' and trailing '_' are automatically cleaned",
     "instanced_subdevice": "SUBDEVY demonstrates optional level that itself has instance expansion"
   },

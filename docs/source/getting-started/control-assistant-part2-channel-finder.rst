@@ -866,77 +866,173 @@ That's it—no code changes required. The template includes complete implementat
 
             - **naming_pattern**: Template for assembling complete channel names from navigation selections. Uses Python format string syntax with level names as placeholders (e.g., ``{system}:{device}:{field}``). All placeholders must reference defined level names.
 
-            .. dropdown:: **New in v0.9.6**: Enhanced Hierarchy Flexibility
+            .. dropdown:: **New in v0.9.6**: Advanced Hierarchy Patterns
                :color: info
                :icon: versions
 
-               Two new features enable more flexible hierarchical organization:
+               Three advanced features enable flexible hierarchical organization for diverse control system naming conventions:
 
-               **1. Navigation-Only Levels** - Not all hierarchy levels need to appear in the naming pattern! Levels can provide navigation context without cluttering channel names.
+               .. tab-set::
 
-               **2. Decoupled Tree Keys** (``_channel_part``) - Tree keys (for navigation) can differ from naming components using the ``_channel_part`` field.
+                  .. tab-item:: Navigation-Only Levels
 
-               **Pattern 1 - Navigation-Only Levels** (JLab use case):
+                     **Use Case**: Provide semantic navigation context without cluttering channel names. Perfect when your PV names are self-contained but benefit from hierarchical browsing.
 
-               .. code-block:: json
+                     **How It Works**: Not all hierarchy levels need to appear in the naming pattern. Omit levels from ``naming_pattern`` to use them for navigation only.
 
-                  {
-                    "hierarchy": {
-                      "levels": [
-                        {"name": "system", "type": "tree"},      // Navigation only
-                        {"name": "family", "type": "tree"},      // Navigation only
-                        {"name": "location", "type": "tree"},    // Navigation only
-                        {"name": "pv", "type": "tree"}           // Used in pattern ✓
-                      ],
-                      "naming_pattern": "{pv}"
-                    },
-                    "tree": {
-                      "Magnets": {
-                        "Skew Quads": {
-                          "North Linac": {
-                            "MQS1L02.S": {"_description": "Current Setpoint"}
+                     **Example** (JLab CEBAF pattern):
+
+                     .. code-block:: json
+
+                        {
+                          "hierarchy": {
+                            "levels": [
+                              {"name": "system", "type": "tree"},      // Navigation only
+                              {"name": "family", "type": "tree"},      // Navigation only
+                              {"name": "location", "type": "tree"},    // Navigation only
+                              {"name": "pv", "type": "tree"}           // Used in pattern ✓
+                            ],
+                            "naming_pattern": "{pv}"
+                          },
+                          "tree": {
+                            "Magnets": {
+                              "Skew Quads": {
+                                "North Linac": {
+                                  "MQS1L02.S": {"_description": "Current Setpoint"},
+                                  "MQS1L02M": {"_description": "Current Readback"}
+                                }
+                              }
+                            }
                           }
                         }
-                      }
-                    }
-                  }
 
-               **Navigation**: ``Magnets → Skew Quads → North Linac → MQS1L02.S``
-               **Channel**: ``MQS1L02.S``
+                     **Navigation Path**: ``Magnets → Skew Quads → North Linac → MQS1L02.S``
 
-               **Pattern 2 - Friendly Names with** ``_channel_part``:
+                     **Generated Channel**: ``MQS1L02.S``
 
-               .. code-block:: json
+                     **Benefits**:
 
-                  {
-                    "hierarchy": {
-                      "levels": [
-                        {"name": "system", "type": "tree"},
-                        {"name": "device", "type": "tree"}
-                      ],
-                      "naming_pattern": "{system}:{device}"
-                    },
-                    "tree": {
-                      "Magnets": {
-                        "_channel_part": "MAG",  // MAG in channel name
-                        "Skew Quadrupoles": {
-                          "_channel_part": "SK"  // SK in channel name
+                     - Clean semantic navigation through system hierarchy
+                     - Channel names stay concise (just the PV string)
+                     - Backward compatible with existing PV naming schemes
+                     - LLM gets rich context from navigation levels for better matching
+
+                     **Example Database**: ``hierarchical_jlab_style.json``
+
+                  .. tab-item:: Friendly Names
+
+                     **Use Case**: Use human-readable names for navigation while preserving technical naming conventions in channel names. Separate "what operators call it" from "what the control system needs".
+
+                     **How It Works**: Add ``_channel_part`` field to tree nodes to decouple the tree key (navigation) from the naming component (channel name).
+
+                     **Example**:
+
+                     .. code-block:: json
+
+                        {
+                          "hierarchy": {
+                            "levels": [
+                              {"name": "system", "type": "tree"},
+                              {"name": "device", "type": "tree"}
+                            ],
+                            "naming_pattern": "{system}:{device}"
+                          },
+                          "tree": {
+                            "Magnets": {
+                              "_channel_part": "MAG",
+                              "_description": "Magnet control system",
+                              "Skew Quadrupoles": {
+                                "_channel_part": "SK",
+                                "_description": "Skew quadrupole family"
+                              }
+                            }
+                          }
                         }
-                      }
-                    }
-                  }
 
-               **Navigation**: ``Magnets → Skew Quadrupoles``
-               **Channel**: ``MAG:SK`` (technical codes)
+                     **Navigation Path**: ``Magnets → Skew Quadrupoles``
 
-               **Key Features**:
+                     **Generated Channel**: ``MAG:SK``
 
-               - ``_channel_part`` defaults to tree key (backward compatible)
-               - Empty string ``_channel_part: ""`` means navigation-only
-               - Mix and match: some levels with ``_channel_part``, some without
-               - Works with instance expansion (``_expansion``)
+                     **Key Features**:
 
-               **Example**: ``data/channel_databases/examples/hierarchical_jlab_style.json``
+                     - ``_channel_part`` defaults to tree key (backward compatible)
+                     - Empty string ``_channel_part: ""`` creates navigation-only nodes
+                     - Mix and match: some levels with ``_channel_part``, some without
+                     - Works with instance expansion (``_expansion``)
+
+                     **Benefits**:
+
+                     - Operators navigate using familiar terminology
+                     - Channel names use facility-specific technical codes
+                     - Easier onboarding for new operators (friendly names in navigation)
+                     - Maintains compatibility with existing control systems
+
+                     **Example Database**: ``hierarchical_jlab_style.json``
+
+                  .. tab-item:: Optional Levels
+
+                     **Use Case**: Generate both base channels AND variants with additional suffixes/subdevices. Common for signals that have setpoint/readback pairs or channels that optionally include intermediate levels.
+
+                     **How It Works**: Mark levels as ``"optional": true`` in hierarchy definition. Nodes without children are automatically detected as leaves. Use ``_is_leaf: true`` ONLY on nodes that have children but are also complete channels themselves.
+
+                     **Example** (Signal with optional suffix):
+
+                     .. code-block:: json
+
+                        {
+                          "hierarchy": {
+                            "levels": [
+                              {"name": "system", "type": "tree"},
+                              {"name": "device", "type": "instances"},
+                              {"name": "signal", "type": "tree"},
+                              {"name": "suffix", "type": "tree", "optional": true}
+                            ],
+                            "naming_pattern": "{system}-{device}:{signal}_{suffix}"
+                          },
+                          "tree": {
+                            "SYSTEM": {
+                              "DEVICE": {
+                                "_expansion": {
+                                  "_type": "range",
+                                  "_pattern": "DEV-{:02d}",
+                                  "_range": [1, 10]
+                                },
+                                "SIGNAL-Y": {
+                                  "_is_leaf": true,
+                                  "_description": "Base signal - also has RB/SP variants (explicit _is_leaf needed)",
+                                  "RB": {
+                                    "_description": "Readback variant (already a leaf - no _is_leaf needed)"
+                                  },
+                                  "SP": {
+                                    "_description": "Setpoint variant (already a leaf - no _is_leaf needed)"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+
+                     **Generated Channels**:
+
+                     - ``SYSTEM-DEV-01:SIGNAL-Y`` (base, skips optional suffix)
+                     - ``SYSTEM-DEV-01:SIGNAL-Y_RB`` (with RB suffix)
+                     - ``SYSTEM-DEV-01:SIGNAL-Y_SP`` (with SP suffix)
+
+                     **Key Features**:
+
+                     - ``_is_leaf: true`` marks a node as a complete channel
+                     - Leaf nodes can still have children (for optional levels)
+                     - Automatic separator cleanup (removes ``::`` and trailing ``_``)
+                     - Multiple optional levels can be chained
+
+                     **Benefits**:
+
+                     - Single definition generates both base and variant channels
+                     - Handles complex naming conventions (e.g., with/without subdevices)
+                     - Explicit leaf marking makes intent clear
+                     - Supports gradual migration (some devices with sublevels, some without)
+
+                     **Example Database**: ``optional_levels.json`` (23,040 channels demonstrating multiple optional levels)
 
             **tree**: The nested hierarchy structure with descriptions at every level (details below).
 

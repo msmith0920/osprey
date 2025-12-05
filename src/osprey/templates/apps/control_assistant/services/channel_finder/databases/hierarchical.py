@@ -531,9 +531,10 @@ class HierarchicalChannelDatabase(BaseDatabase):
         before all hierarchy levels are traversed.
 
         Criteria for leaf detection:
-        1. Explicit _is_leaf marker set to True
-        2. All hierarchy levels processed (reached end)
-        3. All remaining levels are optional AND node has no children for those levels
+        1. Explicit _is_leaf marker set to True (for nodes with children that are also leaves)
+        2. Node has no children (automatic leaf detection - no _is_leaf needed)
+        3. All hierarchy levels processed (reached end)
+        4. All remaining levels are optional AND node has no children for those levels
 
         Args:
             node: Current tree node
@@ -543,11 +544,11 @@ class HierarchicalChannelDatabase(BaseDatabase):
             True if node is a complete channel, False otherwise
 
         Examples:
-            # Explicit marker
-            {"SIGNAL-X": {"_is_leaf": True}} → True
-
-            # Leaf with children (suffix optional)
+            # Explicit marker (node with children that is also a leaf)
             {"SIGNAL-Y": {"_is_leaf": True, "RB": {...}}} → True
+
+            # Automatic detection (no children, no _is_leaf needed)
+            {"RB": {"_description": "Readback"}} → True
 
             # All levels processed
             (current_level_idx >= len(hierarchy_levels)) → True
@@ -557,6 +558,15 @@ class HierarchicalChannelDatabase(BaseDatabase):
         """
         # Explicit _is_leaf marker takes precedence
         if node.get('_is_leaf', False):
+            return True
+
+        # AUTOMATIC LEAF DETECTION: Node has no children (only metadata)
+        # This eliminates the need for explicit _is_leaf on obvious leaf nodes
+        has_children = any(
+            not key.startswith('_') and isinstance(node[key], dict)
+            for key in node.keys()
+        )
+        if not has_children:
             return True
 
         # All hierarchy levels processed - definitely a leaf

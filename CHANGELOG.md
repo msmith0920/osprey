@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Python Executor: Context File Creation for Pre-Approval Notebooks**: Fixed timing issue where `context.json` was not created until execution, causing warnings and test failures when approval was required. Context is now saved immediately when creating pre-approval, syntax error, and static analysis failure notebooks.
 
 ### Added
+- **Hierarchical Channel Finder: Automatic Leaf Detection**: Eliminates verbose `_is_leaf` markers for childless nodes
+  - Nodes without children are automatically detected as leaves (no explicit marker needed)
+  - `_is_leaf` now only required for nodes that have children but are also complete channels
+  - Reduces verbosity in database definitions (e.g., RB/SP readback/setpoint nodes)
+  - Backward compatible: explicit `_is_leaf` markers still work (take precedence)
+  - Updated all examples and documentation to reflect cleaner syntax
+  - Test coverage: 2 new tests for automatic leaf detection functionality
 - **Channel Finder: Comprehensive Parameterized Test Suite**: Automated testing coverage for all example databases
   - New `test_all_example_databases.py` with 80 tests covering all 6 example databases
   - Parameterized tests automatically run on any new example database added

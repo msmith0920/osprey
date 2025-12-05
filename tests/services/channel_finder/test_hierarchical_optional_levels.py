@@ -648,8 +648,85 @@ class TestBackwardCompatibility:
             Path(db_path).unlink()
 
 
+class TestAutomaticLeafDetection:
+    """Test automatic leaf detection for nodes without children."""
+
+    def test_childless_node_automatic_leaf(self):
+        """Nodes without children are automatically detected as leaves (no _is_leaf needed)."""
+        content = {
+            "hierarchy": {
+                "levels": [
+                    {"name": "system", "type": "tree"},
+                    {"name": "signal", "type": "tree"},
+                    {"name": "suffix", "type": "tree", "optional": True}
+                ],
+                "naming_pattern": "{system}:{signal}_{suffix}"
+            },
+            "tree": {
+                "MAG": {
+                    "CURRENT": {
+                        "_is_leaf": True,
+                        "_description": "Base signal (has children, needs _is_leaf)",
+                        "RB": {
+                            "_description": "Readback (no children, automatic leaf)"
+                        },
+                        "SP": {
+                            "_description": "Setpoint (no children, automatic leaf)"
+                        }
+                    }
+                }
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(content, f)
+            db_path = f.name
+
+        try:
+            db = HierarchicalChannelDatabase(db_path)
+            # Should generate 3 channels: base + RB + SP (all without explicit _is_leaf on RB/SP)
+            assert len(db.channel_map) == 3
+            assert "MAG:CURRENT_RB" in db.channel_map
+            assert "MAG:CURRENT_SP" in db.channel_map
+        finally:
+            Path(db_path).unlink()
+
+    def test_only_metadata_keys_makes_automatic_leaf(self):
+        """Nodes with only _metadata keys (starting with _) are automatic leaves."""
+        content = {
+            "hierarchy": {
+                "levels": [
+                    {"name": "system", "type": "tree"},
+                    {"name": "signal", "type": "tree"}
+                ],
+                "naming_pattern": "{system}:{signal}"
+            },
+            "tree": {
+                "MAG": {
+                    "CURRENT": {
+                        "_description": "Has only metadata - automatic leaf",
+                        "_example": "MAG:CURRENT",
+                        "_units": "Amps"
+                    }
+                }
+            }
+        }
+
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(content, f)
+            db_path = f.name
+
+        try:
+            db = HierarchicalChannelDatabase(db_path)
+            # Should generate channel without explicit _is_leaf
+            assert len(db.channel_map) == 1
+            assert "MAG:CURRENT" in db.channel_map
+        finally:
+            Path(db_path).unlink()
+
+
 class TestExplicitIsLeafMarker:
-    """Test Phase 1: Explicit _is_leaf marker functionality."""
+    """Test explicit _is_leaf marker for nodes with children that are also leaves."""
 
     def test_basic_is_leaf_marker(self):
         """Node with _is_leaf=true generates channel even with remaining levels."""
@@ -699,14 +776,12 @@ class TestExplicitIsLeafMarker:
                 "MAG": {
                     "CURRENT": {
                         "_is_leaf": True,
-                        "_description": "Base current signal",
+                        "_description": "Base current signal (explicit _is_leaf needed - has children)",
                         "RB": {
-                            "_is_leaf": True,
-                            "_description": "Readback"
+                            "_description": "Readback (automatic leaf - no _is_leaf needed)"
                         },
                         "SP": {
-                            "_is_leaf": True,
-                            "_description": "Setpoint"
+                            "_description": "Setpoint (automatic leaf - no _is_leaf needed)"
                         }
                     }
                 }
@@ -748,14 +823,12 @@ class TestExplicitIsLeafMarker:
                 "SYS": {
                     "DEV": {
                         "DIRECT_SIGNAL": {
-                            "_is_leaf": True,
-                            "_description": "Signal without subdevice"
+                            "_description": "Signal without subdevice (automatic leaf)"
                         },
                         "SUBDEV": {
                             "_description": "Subdevice",
                             "SUB_SIGNAL": {
-                                "_is_leaf": True,
-                                "_description": "Signal from subdevice"
+                                "_description": "Signal from subdevice (automatic leaf)"
                             }
                         }
                     }
@@ -915,8 +988,7 @@ class TestOptionalLevelsEdgeCases:
                             "_range": [1, 2]
                         },
                         "SIG1": {
-                            "_is_leaf": True,
-                            "_description": "Signal without suffix"
+                            "_description": "Signal without suffix (automatic leaf)"
                         },
                         "SIG2": {
                             "_description": "Signal with suffixes (no base)",
@@ -1007,8 +1079,9 @@ class TestOptionalLevelsEdgeCases:
                             },
                             "SIG": {
                                 "_is_leaf": True,
+                                "_description": "Base signal (explicit _is_leaf - has children)",
                                 "RB": {
-                                    "_is_leaf": True
+                                    "_description": "Readback (automatic leaf)"
                                 }
                             }
                         }
