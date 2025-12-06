@@ -89,7 +89,8 @@ class {{ app_class_name }}RegistryProvider(RegistryConfigProvider):
                 FrameworkPromptProviderRegistration(
                     module_path="{{ package_name }}.framework_prompts",
                     prompt_builders={
-                        "python": "ControlSystemPythonPromptBuilder"
+                        "python": "ControlSystemPythonPromptBuilder",
+                        "task_extraction": "ControlSystemTaskExtractionPromptBuilder"
                     }
                 )
             ]
