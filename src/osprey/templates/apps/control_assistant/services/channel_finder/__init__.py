@@ -24,7 +24,10 @@ from .core.models import (
 )
 
 # Databases
-from .databases import HierarchicalChannelDatabase, LegacyChannelDatabase, TemplateChannelDatabase
+from .databases import FlatChannelDatabase, HierarchicalChannelDatabase, TemplateChannelDatabase
+
+# Backward compatibility alias
+LegacyChannelDatabase = FlatChannelDatabase
 
 # Pipelines
 from .pipelines.in_context import InContextPipeline
@@ -40,8 +43,9 @@ __all__ = [
     # Pipelines
     "InContextPipeline",
     # Database classes
+    "FlatChannelDatabase",
     "TemplateChannelDatabase",
-    "LegacyChannelDatabase",
+    "LegacyChannelDatabase",  # Backward compatibility
     "HierarchicalChannelDatabase",
     # Data models
     "QuerySplitterOutput",

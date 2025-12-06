@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Channel Finder: Renamed Database Backend**: Renamed `legacy.py` → `flat.py` to better reflect its purpose
+  - `LegacyChannelDatabase` renamed to `FlatChannelDatabase` (describes flat list structure, not age)
+  - Database type 'legacy' remains supported as alias for 'flat' (backward compatibility)
+  - Updated documentation and config templates to use 'flat' terminology
+  - Template database now correctly described as extending flat database (not legacy)
+
 ### Fixed
 - **MCP Server Template: Dynamic timestamps instead of hardcoded dates**: Fixed MCP server generation template to use current UTC timestamps instead of hardcoded November 15, 2025 dates. Prevents e2e test failures due to stale mock data and ensures demo servers return realistic "current" weather data.
 - **Tests: Channel Finder unit test updates**: Updated channel finder test files for compatibility with hierarchical database changes (optional levels, custom separators)

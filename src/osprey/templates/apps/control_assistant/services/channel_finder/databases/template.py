@@ -1,7 +1,7 @@
 """
 Enhanced Database with Template Support and Dual Presentation Modes
 
-Extends the original ChannelDatabase to support:
+Extends the flat ChannelDatabase to support:
 1. Template-based channel definitions (template storage)
 2. Automatic expansion of templates to explicit channels
 3. Dual presentation modes: explicit (all names listed) vs template (pattern notation)
@@ -11,10 +11,10 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .legacy import ChannelDatabase as ChannelDatabaseLegacy
+from .flat import ChannelDatabase as FlatChannelDatabase
 
 
-class ChannelDatabase(ChannelDatabaseLegacy):
+class ChannelDatabase(FlatChannelDatabase):
     """Database with template support and dual presentation modes."""
 
     def __init__(self, db_path: str, presentation_mode: str = "explicit"):
@@ -22,7 +22,7 @@ class ChannelDatabase(ChannelDatabaseLegacy):
         Initialize database with template support.
 
         Args:
-            db_path: Path to database JSON file (can be template or legacy format)
+            db_path: Path to database JSON file (can be template or flat format)
             presentation_mode: "explicit" (list all names) or "template" (use patterns)
         """
         self.presentation_mode = presentation_mode

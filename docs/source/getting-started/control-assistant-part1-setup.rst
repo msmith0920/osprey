@@ -90,7 +90,7 @@ The interactive menu provides the best onboarding experience with channel finder
    │   │       ├── pipelines/              # Two pipeline architectures:
    │   │       │   ├── in_context/         #   - Semantic search (small systems)
    │   │       │   └── hierarchical/       #   - Hierarchical nav (large systems)
-   │   │       ├── databases/              # Database adapters (template, hierarchical, legacy)
+   │   │       ├── databases/              # Database adapters (flat, template, hierarchical)
    │   │       ├── prompts/                # Pipeline-specific prompts
    │   │       │   ├── in_context/         #   (channel_matcher, query_splitter, etc.)
    │   │       │   └── hierarchical/

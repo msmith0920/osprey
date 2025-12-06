@@ -16,7 +16,7 @@ from .core.base_database import BaseDatabase
 from .core.base_pipeline import BasePipeline
 from .core.exceptions import ConfigurationError, DatabaseLoadError, PipelineModeError
 from .core.models import ChannelFinderResult
-from .databases import HierarchicalChannelDatabase, LegacyChannelDatabase, TemplateChannelDatabase
+from .databases import FlatChannelDatabase, HierarchicalChannelDatabase, TemplateChannelDatabase
 from .pipelines.hierarchical import HierarchicalPipeline
 from .pipelines.in_context import InContextPipeline
 from .utils.prompt_loader import load_prompts
@@ -56,9 +56,10 @@ class ChannelFinderService:
         - hierarchical: Iterative navigation through hierarchy
 
     Built-in Databases:
-        - legacy: Simple flat JSON format
-        - template: Template-based expansion with dual presentation
+        - flat: Simple flat list format (base implementation for in-context databases)
+        - template: Template-based expansion with dual presentation (extends flat)
         - hierarchical: Tree structure for large hierarchies
+        - legacy: Alias for 'flat' (backward compatibility)
     """
 
     # Class-level registries for custom implementations
@@ -178,7 +179,8 @@ class ChannelFinderService:
             Dict mapping database names to descriptions
         """
         databases = {
-            "legacy": "Built-in: Simple flat JSON format",
+            "flat": "Built-in: Simple flat list format (base implementation)",
+            "legacy": "Built-in: Alias for 'flat' (backward compatibility)",
             "template": "Built-in: Template-based expansion with dual presentation",
             "hierarchical": "Built-in: Tree structure for large hierarchies",
         }
@@ -307,8 +309,9 @@ class ChannelFinderService:
             elif db_type == "template":
                 database = TemplateChannelDatabase(db_path, presentation_mode=presentation_mode)
 
-            elif db_type == "legacy":
-                database = LegacyChannelDatabase(db_path)
+            elif db_type in ("flat", "legacy"):
+                # 'legacy' is an alias for 'flat' (backward compatibility)
+                database = FlatChannelDatabase(db_path)
 
             else:
                 available = list(self.list_available_databases().keys())
@@ -443,8 +446,9 @@ class ChannelFinderService:
                 presentation_mode = db_config.get("presentation_mode", "explicit")
                 database = TemplateChannelDatabase(db_path, presentation_mode=presentation_mode)
 
-            elif db_type == "legacy":
-                database = LegacyChannelDatabase(db_path)
+            elif db_type in ("flat", "legacy"):
+                # 'legacy' is an alias for 'flat' (backward compatibility)
+                database = FlatChannelDatabase(db_path)
 
             elif db_type == "hierarchical":
                 database = HierarchicalChannelDatabase(db_path)

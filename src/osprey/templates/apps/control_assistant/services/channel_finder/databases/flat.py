@@ -1,7 +1,8 @@
 """
-Database Management for UCSB FEL Channel Finder
+Flat Channel Database - Simple List Format
 
-Manages the channel database with efficient lookup and formatting capabilities.
+Manages a flat list of channels with efficient lookup and formatting capabilities.
+This is the base implementation for in-context channel databases.
 """
 
 import json
@@ -38,7 +39,7 @@ class ChannelDatabase(BaseDatabase):
 
     def get_statistics(self) -> Dict:
         """Get database statistics."""
-        return {"total_channels": len(self.channels), "format": "legacy"}
+        return {"total_channels": len(self.channels), "format": "flat"}
 
     def get_all_channels(self) -> List[Dict]:
         """Return all channels."""
