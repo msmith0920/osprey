@@ -6,7 +6,9 @@ while falling back to framework defaults for everything else.
 """
 
 from .python import ControlSystemPythonPromptBuilder
+from .task_extraction import ControlSystemTaskExtractionPromptBuilder
 
 __all__ = [
     "ControlSystemPythonPromptBuilder",
+    "ControlSystemTaskExtractionPromptBuilder",
 ]

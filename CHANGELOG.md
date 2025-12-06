@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Control Assistant Template: Custom Task Extraction Prompt**: Added control-system-specific task extraction prompt builder that replaces framework defaults with domain-specific examples
+  - 14 control system examples covering channel references, temporal context, write operations, and visualization requests
+  - Unit test suite verifying custom prompt usage without LLM invocation
+  - Documentation in Part 4 tutorial explaining single-point-of-failure importance
 - **Channel Finder: Enhanced Database Preview Tool**: Flexible display options for better hierarchy visibility
   - `--depth N` parameter to control tree depth display (default: 3, -1 for unlimited)
   - `--max-items N` parameter to limit items shown per level (default: 10, -1 for unlimited)
