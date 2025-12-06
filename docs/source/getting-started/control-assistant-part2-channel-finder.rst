@@ -872,7 +872,7 @@ That's it—no code changes required. The template includes complete implementat
 
             - **naming_pattern**: Template for assembling complete channel names from navigation selections. Uses Python format string syntax with level names as placeholders (e.g., ``{system}:{device}:{field}``). All placeholders must reference defined level names.
 
-            .. dropdown:: **New in v0.9.6**: Advanced Hierarchy Patterns
+            .. dropdown:: Advanced Hierarchy Patterns (v0.9.6+)
                :color: info
                :icon: versions
 
