@@ -247,7 +247,7 @@ class TestExpectedChannelCounts:
         "hierarchical_legacy.json": 1_048,
         "instance_first.json": 85,
         "mixed_hierarchy.json": 1_720,
-        "optional_levels.json": 23_040,
+        "optional_levels.json": 82,
     }
 
     @pytest.mark.parametrize("db_name,expected_count", EXPECTED_COUNTS.items())
@@ -310,14 +310,19 @@ class TestDatabaseSpecificFeatures:
 
         # Channels should exist both:
         # 1. Direct path (skipping optional subdevice)
-        # Find channels without "SUBDEV" in them
+        # Examples: CTRL:MAIN:MC-01:Status, CTRL:MAIN:MC-01:Mode_RB
         direct_channels = [
-            ch for ch in db.channel_map.keys() if "SUBDEV" not in ch and "SIGNAL" in ch
+            ch for ch in db.channel_map.keys() 
+            if any(sig in ch for sig in ['Status', 'Heartbeat', 'Mode', 'Config'])
         ]
         assert len(direct_channels) > 0, "Should have channels that skip optional subdevice level"
 
-        # 2. With optional subdevice
-        subdevice_channels = [ch for ch in db.channel_map.keys() if "SUBDEV" in ch]
+        # 2. With optional subdevice (PSU, ADC, MOTOR, CH)
+        # Examples: CTRL:MAIN:MC-01:PSU:Voltage, CTRL:MAIN:MC-01:ADC:Value_RB
+        subdevice_channels = [
+            ch for ch in db.channel_map.keys() 
+            if any(sub in ch for sub in ['PSU:', 'ADC:', 'MOTOR.', 'CH-'])
+        ]
         assert len(subdevice_channels) > 0, "Should have channels with optional subdevice"
 
         print(
@@ -454,7 +459,8 @@ class TestDatabaseSpecificFeatures:
         lines = db.get_options_at_level("line", {})
         assert len(lines) == 5
 
-        # Test specific channel pattern
+        # Test specific channel pattern - literal prefixes in naming pattern are now supported
+        # Pattern is "LINE{line}:{station}:{parameter}" and generates channels like "LINE1:ASSEMBLY:SPEED"
         assert db.validate_channel("LINE1:ASSEMBLY:SPEED")
         assert db.validate_channel("LINE5:INSPECTION:FAIL_COUNT")
 

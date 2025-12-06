@@ -14,12 +14,20 @@ import pytest
 from osprey.state import AgentState
 
 
-def pytest_configure(config):
-    """Configure pytest to mock registry before any imports.
+@pytest.fixture(autouse=True, scope="function")
+def mock_registry_for_capability_tests():
+    """Mock the registry for capability unit tests.
 
-    This mock is ONLY for capability unit tests.
-    E2E tests should be run separately: pytest tests/e2e/
+    This fixture automatically applies to all tests in the capabilities directory.
+    It mocks the registry to avoid requiring full framework initialization for unit tests.
+    The mock is properly cleaned up after each test to avoid polluting other test modules.
     """
+    # Save the original registry and get_registry function
+    import osprey.registry.manager
+
+    original_registry = osprey.registry.manager._registry
+    original_get_registry = osprey.registry.manager.get_registry
+
     # Create mock registry for capability unit tests
     mock_reg = MagicMock()
     mock_reg.context_types = MagicMock()
@@ -31,12 +39,15 @@ def pytest_configure(config):
     mock_reg.get_context_class = MagicMock(return_value=None)  # Return None to skip type validation
     mock_reg.get_all_context_types = MagicMock(return_value=[])
 
-    # Mock the get_registry function at module level
-    import osprey.registry.manager
-
+    # Replace with mock for this test
     osprey.registry.manager._registry = mock_reg
-    # Accept optional keyword arguments for compatibility
     osprey.registry.manager.get_registry = lambda **kwargs: mock_reg
+
+    yield
+
+    # Restore original registry after test
+    osprey.registry.manager._registry = original_registry
+    osprey.registry.manager.get_registry = original_get_registry
 
 
 @pytest.fixture
