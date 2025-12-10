@@ -172,6 +172,8 @@ Changelog = "https://github.com/als-apg/osprey/blob/main/CHANGELOG.md"
 [project.scripts]
 # Main CLI entry point (Click group with subcommands)
 osprey = "osprey.cli.main:cli"
+# PyQt GUI entry point
+osprey-gui = "osprey.interfaces.pyqt.launcher:main"
 
 # Legacy entry points (maintained for backward compatibility)
 alpha-berkeley = "osprey.interfaces.cli.direct_conversation:main"
