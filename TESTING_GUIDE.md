@@ -1,6 +1,6 @@
 # Testing Guide - Version 0.9.7 Release
 
-**Branch**: `release/0.9.7`  
+**Branch**: `release/0.9.7`
 **Requirements**: Python 3.11+
 
 ## ⚠️ CRITICAL: How to Run Tests

@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Channel Finder Service**: Improved configuration validation with clearer error messages when channel_finder model is not configured
 
+### Fixed
+- **Channel Write Capability**: Removed `verification_levels` field from approval `analysis_details` that incorrectly called `_get_verification_config()` method before connector initialization
+- **Testing**: Added integration test for channel_write approval workflow to catch capability-approval interaction bugs
+
 ## [0.9.6] - 2025-12-06
 
 ### Added
