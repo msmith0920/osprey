@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Channel Finder: API call context tracking**: Added context tracking to channel finder pipeline for better API call logging and debugging
 
 ### Changed
+- **Documentation: Python version requirement consistency**: Updated all documentation and templates to consistently specify "Python 3.11+" instead of "Python 3.11", matching the pyproject.toml requirement of `>=3.11`
 - **Channel Finder Service**: Improved configuration validation with clearer error messages when channel_finder model is not configured
 - **Control Assistant Template: Use Osprey's completion module**: Removed duplicate `completion.py` implementation from channel finder service; now uses `osprey.models.completion` for consistency and maintainability
 
