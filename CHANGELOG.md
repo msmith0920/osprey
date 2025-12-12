@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Channel Finder Service**: Improved configuration validation with clearer error messages when channel_finder model is not configured
+- **Control Assistant Template: Use Osprey's completion module**: Removed duplicate `completion.py` implementation from channel finder service; now uses `osprey.models.completion` for consistency and maintainability
 
 ### Fixed
 - **Hello World Weather Template**: Added service configuration (container runtime, deployed services) to prevent `'services/docker-compose.yml.j2' not found` error when following installation guide
