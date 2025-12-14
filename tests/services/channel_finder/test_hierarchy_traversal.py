@@ -83,7 +83,9 @@ class TestHierarchyTraversal:
 
             # Path A1: Select DIPOLE
             # Level 3: Signal (within MAG:DIPOLE) - should show CURRENT and VOLTAGE
-            signals_dipole = db.get_options_at_level("signal", {"system": "MAG", "device": "DIPOLE"})
+            signals_dipole = db.get_options_at_level(
+                "signal", {"system": "MAG", "device": "DIPOLE"}
+            )
             assert len(signals_dipole) == 2
             signal_names_dipole = {opt["name"] for opt in signals_dipole}
             assert signal_names_dipole == {"CURRENT", "VOLTAGE"}
@@ -187,7 +189,11 @@ class TestHierarchyTraversal:
             channels_all_devices = db.build_channels_from_selections(
                 {"system": "MAG", "device": ["D01", "D02", "D03"], "signal": "VOLTAGE"}
             )
-            assert set(channels_all_devices) == {"MAG:D01:VOLTAGE", "MAG:D02:VOLTAGE", "MAG:D03:VOLTAGE"}
+            assert set(channels_all_devices) == {
+                "MAG:D01:VOLTAGE",
+                "MAG:D02:VOLTAGE",
+                "MAG:D03:VOLTAGE",
+            }
 
             # Verify total channel count: 3 devices × 2 signals = 6
             assert len(db.channel_map) == 6
@@ -236,11 +242,12 @@ class TestHierarchyTraversal:
             assert len(subsystems) == 1
             assert subsystems[0]["name"] == "SUB1"
 
-            # Level 3: Device (optional) - should show DEV and SIG2
+            # Level 3: Device (optional) - should show only DEV (actual device with children)
+            # SIG2 is a leaf node, so it doesn't appear here (it's a signal, not a device)
             devices = db.get_options_at_level("device", {"system": "SYS", "subsystem": "SUB1"})
-            assert len(devices) == 2
+            assert len(devices) == 1
             device_names = {opt["name"] for opt in devices}
-            assert device_names == {"DEV", "SIG2"}
+            assert device_names == {"DEV"}
 
             # Path A: With device (SYS:SUB1:DEV:SIG1)
             signals_with_device = db.get_options_at_level(
@@ -321,17 +328,13 @@ class TestHierarchyTraversal:
 
             # Level 3: Floor (instances) - depends on building, not sector
             # MAIN has floors 1-2
-            floors_main = db.get_options_at_level(
-                "floor", {"sector": "01", "building": "MAIN"}
-            )
+            floors_main = db.get_options_at_level("floor", {"sector": "01", "building": "MAIN"})
             assert len(floors_main) == 2
             floor_names_main = [opt["name"] for opt in floors_main]
             assert floor_names_main == ["1", "2"]
 
             # ANNEX has only floor 1
-            floors_annex = db.get_options_at_level(
-                "floor", {"sector": "01", "building": "ANNEX"}
-            )
+            floors_annex = db.get_options_at_level("floor", {"sector": "01", "building": "ANNEX"})
             assert len(floors_annex) == 1
             assert floors_annex[0]["name"] == "1"
 
@@ -353,7 +356,12 @@ class TestHierarchyTraversal:
 
             # Build channels for specific paths
             channels_main_hvac = db.build_channels_from_selections(
-                {"sector": ["01", "02"], "building": "MAIN", "floor": ["1", "2"], "equipment": "HVAC"}
+                {
+                    "sector": ["01", "02"],
+                    "building": "MAIN",
+                    "floor": ["1", "2"],
+                    "equipment": "HVAC",
+                }
             )
             # 2 sectors × 1 building × 2 floors × 1 equipment = 4 channels
             assert len(channels_main_hvac) == 4
@@ -391,7 +399,11 @@ class TestHierarchyTraversal:
                     "SITE_A": {
                         "BLDG_1": {
                             "FLOOR": {
-                                "_expansion": {"_type": "range", "_pattern": "{}", "_range": [1, 2]},
+                                "_expansion": {
+                                    "_type": "range",
+                                    "_pattern": "{}",
+                                    "_range": [1, 2],
+                                },
                                 "ROOM": {
                                     "_expansion": {
                                         "_type": "range",
@@ -589,7 +601,7 @@ class TestExampleDatabaseTraversalPaths:
         # The actual channels in channel_map use _channel_part values
         # Verify these channels exist (built during database initialization)
         assert db.validate_channel("MQS1L02.S")  # Current Setpoint maps to this
-        assert db.validate_channel("MQS1L02M")   # Magnet Current maps to this
+        assert db.validate_channel("MQS1L02M")  # Magnet Current maps to this
         assert db.validate_channel("MQS1L02.BDL")  # Integrated Field maps to this
 
         # Check that channel_map paths use _channel_part values
@@ -642,7 +654,7 @@ class TestExampleDatabaseTraversalPaths:
         property_names = {opt["name"] for opt in properties}
         # Should have setpoint and readback markers
         assert ".S" in property_names  # Setpoint
-        assert "M" in property_names   # Readback (Monitor)
+        assert "M" in property_names  # Readback (Monitor)
 
         # Build a channel: MQB0L07.S
         selections["property"] = ".S"
@@ -773,4 +785,3 @@ if __name__ == "__main__":
     # Run pytest programmatically
     exit_code = pytest.main([__file__, "-v", "--tb=short"])
     sys.exit(exit_code)
-

@@ -89,12 +89,16 @@ def bpm_messages():
 @pytest.fixture(autouse=True)
 def mock_infrastructure():
     """Automatically mock infrastructure components for all tests."""
-    with patch("osprey.infrastructure.task_extraction_node.get_framework_prompts") as mock_prompts, \
-         patch("osprey.infrastructure.task_extraction_node.get_model_config") as mock_model:
+    with (
+        patch("osprey.infrastructure.task_extraction_node.get_framework_prompts") as mock_prompts,
+        patch("osprey.infrastructure.task_extraction_node.get_model_config") as mock_model,
+    ):
 
         # Set up mock prompt provider
         mock_provider = Mock()
-        mock_provider.get_task_extraction_prompt_builder.return_value = MockControlSystemTaskExtractionPromptBuilder()
+        mock_provider.get_task_extraction_prompt_builder.return_value = (
+            MockControlSystemTaskExtractionPromptBuilder()
+        )
         mock_prompts.return_value = mock_provider
 
         # Mock model config
@@ -165,7 +169,9 @@ class TestControlSystemTaskExtractionPrompt:
 
         # Verify BPM terminology clarification is present
         assert "BPM" in prompt, "Prompt should mention BPM"
-        assert "Beam Position Monitor" in prompt, "Prompt should clarify BPM = Beam Position Monitor"
+        assert (
+            "Beam Position Monitor" in prompt
+        ), "Prompt should clarify BPM = Beam Position Monitor"
         assert (
             "NOT beats per minute" in prompt or "not beats per minute" in prompt.lower()
         ), "Prompt should explicitly state BPM is NOT beats per minute"
@@ -228,8 +234,7 @@ class TestControlSystemTaskExtractionPrompt:
 
         # Verify control system guidelines are present
         assert (
-            "Control System Guidelines" in prompt
-            or "control system operations" in prompt.lower()
+            "Control System Guidelines" in prompt or "control system operations" in prompt.lower()
         ), "Prompt should contain control system specific guidelines section"
 
         # Check for channel reference resolution guidance
@@ -317,4 +322,3 @@ class TestTaskExtractionIntegration:
         assert "BPM" in prompt
         assert "Beam Position Monitor" in prompt
         assert "control system" in prompt.lower()
-
