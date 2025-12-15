@@ -22,6 +22,7 @@ import json
 from pathlib import Path
 
 from osprey.utils.logger import get_logger
+from osprey.interfaces.pyqt.gui_utils import get_gui_data_dir
 
 logger = get_logger("routing_analytics")
 
@@ -90,7 +91,16 @@ class RoutingAnalytics:
         if persistence_path:
             self.persistence_path = persistence_path
         else:
-            self.persistence_path = Path.cwd() / '_agent_data' / 'routing_analytics.json'
+            # For GUI context without a specific project config, use framework-level data directory
+            # This avoids requiring a config.yml when running from the framework directory
+            try:
+                from osprey.utils.config import get_agent_dir
+                agent_data_dir = Path(get_agent_dir('routing_analytics'))
+                self.persistence_path = agent_data_dir.parent / 'routing_analytics.json'
+            except FileNotFoundError:
+                # Fallback: use framework-relative GUI data directory
+                # This works regardless of CWD, user, or host
+                self.persistence_path = get_gui_data_dir() / 'routing_analytics.json'
         
         # Metrics storage
         self._metrics: List[RoutingMetric] = []

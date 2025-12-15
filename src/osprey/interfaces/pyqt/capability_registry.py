@@ -78,11 +78,11 @@ class CapabilityRegistry:
             self._capabilities[cap_name][project_name] = capability
             self._metadata[project_name][cap_name] = metadata.get(cap_name)
             
-            # Log if name collision
+            # Log if name collision (informational - this is expected for framework capabilities)
             if len(self._capabilities[cap_name]) > 1:
                 projects = list(self._capabilities[cap_name].keys())
-                self.logger.warning(
-                    f"Capability name collision: '{cap_name}' "
+                self.logger.debug(
+                    f"⚠️  Capability_Registry: Capability name collision: '{cap_name}' "
                     f"found in projects: {projects}"
                 )
         

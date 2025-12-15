@@ -10,13 +10,13 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt
 
-from osprey.interfaces.pyqt.model_preferences import ModelPreferencesManager
+from osprey.interfaces.pyqt.model_preferences import ModelPreferencesStore
 
 
 class ModelConfigDialog(QDialog):
     """Dialog for configuring per-step models for a project."""
     
-    def __init__(self, project_info: dict, preferences_manager: ModelPreferencesManager, parent=None):
+    def __init__(self, project_info: dict, preferences_manager: ModelPreferencesStore, parent=None):
         """
         Initialize the model configuration dialog.
         
@@ -82,7 +82,7 @@ class ModelConfigDialog(QDialog):
                 self.project_info['name']
             )
             
-            for step in ModelPreferencesManager.INFRASTRUCTURE_STEPS:
+            for step in ModelPreferencesStore.INFRASTRUCTURE_STEPS:
                 combo = QComboBox()
                 combo.addItem("(Use default from config)", "")
                 

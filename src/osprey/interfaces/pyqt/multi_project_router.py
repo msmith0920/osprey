@@ -19,8 +19,7 @@ from typing import List, Optional, Dict, Any, TYPE_CHECKING
 import time
 
 from osprey.utils.logger import get_logger
-from osprey.models import get_chat_completion
-from osprey.utils.config import get_model_config
+from osprey.interfaces.pyqt.llm_client import SimpleLLMClient
 from osprey.interfaces.pyqt.routing_cache import RoutingCache, CacheStatistics
 from osprey.interfaces.pyqt.conversation_context import ConversationContext
 from osprey.interfaces.pyqt.multi_project_orchestrator import (
@@ -117,6 +116,34 @@ class MultiProjectRouter:
         self._last_routing_explanation = ""
         self.routing_mode = "automatic"  # or "manual"
         self.manual_project = None
+        
+        # Initialize SimpleLLMClient for routing (NO SINGLETON DEPENDENCY!)
+        if llm_config:
+            # Use provided LLM config
+            self.llm_client = SimpleLLMClient(
+                provider=llm_config.get('provider', 'anthropic'),
+                model_id=llm_config.get('model_id', 'claude-3-sonnet-20240229'),
+                api_key=llm_config.get('api_key'),
+                base_url=llm_config.get('base_url')
+            )
+            self.logger.info(
+                f"Initialized routing LLM client from config: "
+                f"{llm_config.get('provider')}/{llm_config.get('model_id')}"
+            )
+        else:
+            # Use GUI config (reads user's configured 'classifier' model)
+            try:
+                self.llm_client = SimpleLLMClient.from_gui_config()
+                self.logger.info(
+                    "Initialized routing LLM client from gui_config.yml "
+                    f"({self.llm_client.provider}/{self.llm_client.model_id})"
+                )
+            except Exception as e:
+                self.logger.error(
+                    f"Failed to initialize LLM client from gui_config.yml: {e}. "
+                    f"Routing will fail until LLM client is properly configured."
+                )
+                self.llm_client = None
         
         # Initialize cache
         self.cache_enabled = enable_cache
@@ -737,7 +764,10 @@ class MultiProjectRouter:
         return "\n".join(prompt_parts)
     
     def _call_llm_for_routing(self, prompt: str) -> str:
-        """Call LLM to make routing decision.
+        """Call LLM to make routing decision - NO SINGLETON DEPENDENCY!
+        
+        Uses SimpleLLMClient which reads configuration from gui_config.yml
+        or explicit config, avoiding the "Registry not initialized" error.
         
         Args:
             prompt: Routing prompt for LLM.
@@ -748,18 +778,18 @@ class MultiProjectRouter:
         Raises:
             RoutingError: If LLM call fails.
         """
+        if not self.llm_client:
+            raise RoutingError(
+                "LLM client not initialized. Please ensure gui_config.yml has a "
+                "'classifier' model configured, or provide llm_config during router initialization."
+            )
+        
         try:
-            # Use framework's LLM integration
-            # If llm_config is provided and not empty, use it; otherwise use get_model_config
-            if self.llm_config and len(self.llm_config) > 0:
-                model_config = self.llm_config
-            else:
-                model_config = get_model_config('classifier')
-            
-            response = get_chat_completion(
-                message=prompt,
-                model_config=model_config,
-                max_tokens=500
+            # Direct LLM call - no registry needed!
+            response = self.llm_client.call(
+                prompt=prompt,
+                max_tokens=500,
+                temperature=0.0
             )
             
             return response

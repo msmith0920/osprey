@@ -22,6 +22,7 @@ import time
 import json
 
 from osprey.utils.logger import get_logger
+from osprey.interfaces.pyqt.gui_utils import get_gui_data_dir
 
 logger = get_logger("routing_feedback")
 
@@ -81,14 +82,20 @@ class RoutingFeedback:
         self.enable_persistence = enable_persistence
         self.learning_threshold = learning_threshold
         
-        # Set persistence path using framework's get_agent_dir utility
+        # Set persistence path
         if persistence_path:
             self.persistence_path = persistence_path
         else:
-            # Use framework's path resolution to get _agent_data directory
-            from osprey.utils.config import get_agent_dir
-            agent_data_dir = Path(get_agent_dir('routing_feedback'))
-            self.persistence_path = agent_data_dir.parent / 'routing_feedback.json'
+            # For GUI context without a specific project config, use framework-level data directory
+            # This avoids requiring a config.yml when running from the framework directory
+            try:
+                from osprey.utils.config import get_agent_dir
+                agent_data_dir = Path(get_agent_dir('routing_feedback'))
+                self.persistence_path = agent_data_dir.parent / 'routing_feedback.json'
+            except FileNotFoundError:
+                # Fallback: use framework-relative GUI data directory
+                # This works regardless of CWD, user, or host
+                self.persistence_path = get_gui_data_dir() / 'routing_feedback.json'
         
         # Feedback storage
         self._feedback_records: List[FeedbackRecord] = []

@@ -13,7 +13,7 @@ import yaml
 from osprey.interfaces.pyqt.gui_utils import load_config_safe
 
 
-class ModelPreferencesManager:
+class ModelPreferencesStore:
     """Manages per-step model preferences for projects during runtime."""
     
     # Infrastructure steps that can have custom models

@@ -19,8 +19,10 @@ import logging
 import yaml
 
 from osprey.utils.logger import get_logger
-from osprey.utils.config import ConfigBuilder
-from osprey.infrastructure.gateway import Gateway
+from osprey.interfaces.pyqt.project_context_manager import (
+    ProjectContextManager,
+    IsolatedProjectContext
+)
 
 logger = get_logger("project_manager")
 
@@ -49,27 +51,6 @@ class CapabilityMetadata:
     examples: List[str] = field(default_factory=list)
 
 
-@dataclass
-class ProjectContext:
-    """Complete context for a loaded project.
-    
-    Each project maintains its own isolated Gateway, Registry, and Graph.
-    This ensures no registry merging or capability conflicts between projects.
-    """
-    metadata: ProjectMetadata
-    gateway: Gateway  # from osprey.infrastructure.gateway
-    config: ConfigBuilder  # from osprey.utils.config
-    graph: any = None  # Project-specific graph with its own registry/capabilities
-    registry: any = None  # Project-specific registry
-    
-    def is_loaded(self) -> bool:
-        """Check if project is fully loaded."""
-        return all([
-            self.gateway is not None,
-            self.config is not None,
-            self.graph is not None,
-            self.registry is not None
-        ])
 
 
 class ProjectManager:
@@ -93,7 +74,7 @@ class ProjectManager:
         """
         self.logger = logger
         self.project_search_paths = project_search_paths or self._get_default_search_paths()
-        self._projects: Dict[str, ProjectContext] = {}
+        self._context_manager = ProjectContextManager()  # Manages isolated contexts
         self._metadata_cache: Dict[str, ProjectMetadata] = {}
         self._enabled_projects: Set[str] = set()  # Track enabled/disabled state
         
@@ -164,28 +145,32 @@ class ProjectManager:
         self.logger.info(f"Discovered {len(discovered)} projects: {[p.name for p in discovered]}")
         return discovered
     
-    def load_project(self, project_name: str) -> ProjectContext:
-        """Load a project and create its context.
+    def load_project(self, project_name: str) -> IsolatedProjectContext:
+        """Load a project and create its isolated context.
         
         IMPORTANT: This loads the project into memory with its own
-        Gateway, Registry, and ContextManager. The project remains
+        isolated Gateway, Registry, and Graph. The project remains
         loaded even if later disabled. Disabling only affects routing,
         not the loaded state.
+        
+        This method uses ProjectContextManager to ensure complete isolation
+        between projects - no config pollution, no registry merging.
         
         Args:
             project_name: Name of project to load.
             
         Returns:
-            ProjectContext with loaded gateway and managers.
+            IsolatedProjectContext with loaded components.
             
         Raises:
             ProjectNotFoundError: If project not found.
             ProjectLoadError: If loading fails.
         """
         # Check if already loaded
-        if project_name in self._projects:
+        existing_context = self._context_manager.get_context(project_name)
+        if existing_context is not None:
             self.logger.debug(f"Project already loaded: {project_name}")
-            return self._projects[project_name]
+            return existing_context
         
         # Get metadata
         if project_name not in self._metadata_cache:
@@ -197,94 +182,46 @@ class ProjectManager:
         metadata = self._metadata_cache[project_name]
         
         try:
-            self.logger.info(f"Loading project: {project_name}")
+            self.logger.info(f"Loading project with isolated context: {project_name}")
             
-            # Load configuration using ConfigBuilder
-            config = ConfigBuilder(str(metadata.config_path))
-            
-            # CRITICAL: Check if project_root needs correction
-            # This ensures the project works regardless of where it's moved on the filesystem
-            runtime_project_root = str(metadata.path)
-            config_project_root = config.raw_config.get('project_root')
-            
-            # Only update config file if project_root is missing or incorrect
-            if not config_project_root or config_project_root != runtime_project_root:
-                if config_project_root:
-                    self.logger.info(
-                        f"Updating project_root in {project_name}/config.yml:\n"
-                        f"  Old: {config_project_root}\n"
-                        f"  New: {runtime_project_root}"
-                    )
-                else:
-                    self.logger.info(f"Adding missing project_root to {project_name}/config.yml: {runtime_project_root}")
-                
-                # Update the config
-                config.raw_config['project_root'] = runtime_project_root
-                
-                # Write back to the config file to fix it permanently
-                try:
-                    with open(metadata.config_path, 'w') as f:
-                        yaml.dump(config.raw_config, f, default_flow_style=False, sort_keys=False)
-                    self.logger.debug(f"Updated config file: {metadata.config_path}")
-                except Exception as e:
-                    self.logger.warning(f"Failed to update config file {metadata.config_path}: {e}")
-                    # Continue anyway - the in-memory config is correct
-            else:
-                self.logger.debug(f"project_root already correct for {project_name}: {runtime_project_root}")
-            
-            # Initialize the project's own registry and graph
-            # Each project gets its own isolated registry with its own capabilities
-            from osprey.registry import initialize_registry, get_registry
-            from osprey.graph import create_graph
-            from langgraph.checkpoint.memory import MemorySaver
-            
-            # Initialize registry - it will now read the correct project_root from config
-            initialize_registry(config_path=str(metadata.config_path))
-            project_registry = get_registry(config_path=str(metadata.config_path))
-            
-            # Create graph with this project's registry and capabilities
-            checkpointer = MemorySaver()
-            project_graph = create_graph(project_registry, checkpointer=checkpointer)
-            
-            # Create gateway with project's config
-            gateway = Gateway(config=config.raw_config)
-            
-            # Create project context with its own graph and registry
-            context = ProjectContext(
-                metadata=metadata,
-                gateway=gateway,
-                config=config,
-                graph=project_graph,
-                registry=project_registry
+            # Create isolated context using ProjectContextManager
+            # This ensures NO global state pollution
+            context = self._context_manager.create_project_context(
+                project_name=project_name,
+                project_path=metadata.path,
+                config_path=metadata.config_path
             )
             
-            # Cache it
-            self._projects[project_name] = context
+            # Set metadata for GUI compatibility
+            context.metadata = metadata
             
             # Enable by default (all agents start enabled)
             self._enabled_projects.add(project_name)
             
-            self.logger.info(f"Successfully loaded project: {project_name} with {len(project_registry.get_all_capabilities())} capabilities")
+            self.logger.info(
+                f"Successfully loaded project: {project_name} with "
+                f"{len(context.get_registry().get_all_capabilities())} capabilities"
+            )
             return context
             
         except Exception as e:
             self.logger.error(f"Failed to load project {project_name}: {e}")
             raise ProjectLoadError(f"Failed to load project {project_name}") from e
     
-    def get_project(self, project_name: str) -> Optional[ProjectContext]:
+    def get_project(self, project_name: str) -> Optional[IsolatedProjectContext]:
         """Get a loaded project context.
         
         Args:
             project_name: Name of project.
             
         Returns:
-            ProjectContext if loaded, None otherwise.
+            IsolatedProjectContext if loaded, None otherwise.
         """
-        return self._projects.get(project_name)
+        return self._context_manager.get_context(project_name)
     
     def list_loaded_projects(self) -> List[str]:
         """Get names of all loaded projects."""
-        return list(self._projects.keys())
+        return self._context_manager.list_projects()
     
     def list_available_projects(self) -> List[ProjectMetadata]:
         """Get metadata for all available projects."""
@@ -293,7 +230,7 @@ class ProjectManager:
         return list(self._metadata_cache.values())
     
     def get_project_capabilities(self, project_name: str) -> Dict[str, CapabilityMetadata]:
-        """Get capabilities for a project by loading its registry configuration.
+        """Get capabilities for a project from its isolated registry.
         
         Args:
             project_name: Name of project.
@@ -310,80 +247,25 @@ class ProjectManager:
         
         capabilities = {}
         
-        # Extract capabilities from the project's registry configuration
+        # Extract capabilities directly from the project's loaded registry
         try:
-            import importlib.util
-            import sys
-            from pathlib import Path
-            from osprey.registry.base import RegistryConfigProvider
+            registry = context.get_registry()
             
-            # Get registry_path from config
-            registry_path = context.config.raw_config.get('registry_path')
-            
-            if not registry_path:
-                self.logger.warning(f"No registry_path in config for {project_name}")
-                return capabilities
-            
-            # Resolve registry path relative to project directory
-            if not Path(registry_path).is_absolute():
-                registry_file = context.metadata.path / registry_path
-            else:
-                registry_file = Path(registry_path)
-            
-            if not registry_file.exists():
-                self.logger.warning(f"Registry file not found for {project_name}: {registry_file}")
-                return capabilities
-            
-            # Load the registry module dynamically
-            spec = importlib.util.spec_from_file_location(
-                f"_project_registry_{project_name}",
-                registry_file
-            )
-            
-            if spec is None or spec.loader is None:
-                self.logger.warning(f"Could not create module spec for {registry_file}")
-                return capabilities
-            
-            # Add project's src directory to sys.path if needed
-            project_src = context.metadata.path / "src"
-            if project_src.exists() and str(project_src) not in sys.path:
-                sys.path.insert(0, str(project_src))
-                self.logger.debug(f"Added {project_src} to sys.path for {project_name}")
-            
-            # Load the module
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[f"_project_registry_{project_name}"] = module
-            spec.loader.exec_module(module)
-            
-            # Find the RegistryConfigProvider class
-            provider_class = None
-            for name in dir(module):
-                obj = getattr(module, name)
-                if (isinstance(obj, type) and
-                    issubclass(obj, RegistryConfigProvider) and
-                    obj != RegistryConfigProvider):
-                    provider_class = obj
-                    break
-            
-            if provider_class is None:
-                self.logger.warning(f"No RegistryConfigProvider found in {registry_file}")
-                return capabilities
-            
-            # Instantiate and get registry config
-            provider = provider_class()
-            registry_config = provider.get_registry_config()
-            
-            # Extract capability metadata from registry config
-            for cap_reg in registry_config.capabilities:
-                capabilities[cap_reg.name] = CapabilityMetadata(
-                    name=cap_reg.name,
-                    project=project_name,
-                    description=cap_reg.description,
-                    input_schema={},
-                    output_schema={},
-                    tags=[],
-                    examples=[]
-                )
+            # Get all capabilities from the registry
+            for capability in registry.get_all_capabilities():
+                cap_name = getattr(capability, 'name', None)
+                cap_desc = getattr(capability, 'description', '')
+                
+                if cap_name:
+                    capabilities[cap_name] = CapabilityMetadata(
+                        name=cap_name,
+                        project=project_name,
+                        description=cap_desc,
+                        input_schema={},
+                        output_schema={},
+                        tags=[],
+                        examples=[]
+                    )
             
             self.logger.info(f"Extracted {len(capabilities)} capabilities from {project_name}")
             
@@ -403,7 +285,7 @@ class ProjectManager:
         Returns:
             True if enabled, False if project not loaded.
         """
-        if project_name in self._projects:
+        if self._context_manager.get_context(project_name) is not None:
             self._enabled_projects.add(project_name)
             self.logger.info(f"Enabled project: {project_name}")
             return True
@@ -413,8 +295,8 @@ class ProjectManager:
         """Disable a project from routing (runtime control).
         
         IMPORTANT: This does NOT unload the project. The project's
-        Gateway, Registry, and ContextManager remain in memory.
-        This only removes the project from the routing pool.
+        isolated context remains in memory. This only removes the
+        project from the routing pool.
         
         Args:
             project_name: Name of project to disable.
@@ -422,7 +304,7 @@ class ProjectManager:
         Returns:
             True if disabled, False if project not loaded.
         """
-        if project_name in self._projects:
+        if self._context_manager.get_context(project_name) is not None:
             self._enabled_projects.discard(project_name)
             self.logger.info(f"Disabled project: {project_name}")
             return True
@@ -439,7 +321,7 @@ class ProjectManager:
         """
         return project_name in self._enabled_projects
     
-    def get_enabled_projects(self) -> List[ProjectContext]:
+    def get_enabled_projects(self) -> List[IsolatedProjectContext]:
         """Get list of currently enabled projects for routing.
         
         Returns only the subset of loaded projects that are currently
@@ -447,12 +329,14 @@ class ProjectManager:
         available for routing.
         
         Returns:
-            List of enabled ProjectContext objects.
+            List of enabled IsolatedProjectContext objects.
         """
-        return [
-            context for name, context in self._projects.items()
-            if name in self._enabled_projects
-        ]
+        enabled = []
+        for project_name in self._enabled_projects:
+            context = self._context_manager.get_context(project_name)
+            if context is not None:
+                enabled.append(context)
+        return enabled
     
     def get_disabled_projects(self) -> List[str]:
         """Get list of currently disabled project names.
@@ -460,10 +344,8 @@ class ProjectManager:
         Returns:
             List of disabled project names.
         """
-        return [
-            name for name in self._projects.keys()
-            if name not in self._enabled_projects
-        ]
+        all_projects = set(self._context_manager.list_projects())
+        return list(all_projects - self._enabled_projects)
     
     def unload_project(self, project_name: str) -> bool:
         """Unload a project and free resources.
@@ -474,22 +356,20 @@ class ProjectManager:
         Returns:
             True if unloaded, False if not loaded.
         """
-        if project_name not in self._projects:
-            return False
-        
-        context = self._projects.pop(project_name)
-        self._enabled_projects.discard(project_name)
-        self.logger.info(f"Unloaded project: {project_name}")
-        return True
+        if self._context_manager.remove_context(project_name):
+            self._enabled_projects.discard(project_name)
+            self.logger.info(f"Unloaded project: {project_name}")
+            return True
+        return False
     
-    def reload_project(self, project_name: str) -> ProjectContext:
+    def reload_project(self, project_name: str) -> IsolatedProjectContext:
         """Reload a project (unload and load).
         
         Args:
             project_name: Name of project to reload.
             
         Returns:
-            Reloaded ProjectContext.
+            Reloaded IsolatedProjectContext.
         """
         self.unload_project(project_name)
         return self.load_project(project_name)

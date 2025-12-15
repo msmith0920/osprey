@@ -87,6 +87,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# PyQt GUI interface
+gui = [
+    "PyQt5>=5.15.0",
+]
+
 # Documentation dependencies
 docs = [
     "sphinx>=8.0.0",
@@ -157,7 +162,7 @@ utils = [
 
 # All optional dependencies for complete installation
 all = [
-    "osprey-framework[docs,scientific,databases,postgres,memory,dev,nlp,utils]"
+    "osprey-framework[gui,docs,scientific,databases,postgres,memory,dev,nlp,utils]"
 ]
 
 [project.urls]
@@ -187,7 +192,7 @@ include = ["osprey*"]
 
 # Include package data files
 [tool.setuptools.package-data]
-"*" = ["*.yml", "*.yaml", "*.json", "*.j2", "*.md", "*.txt", "*.cfg", "*.ini"]
+"*" = ["*.yml", "*.yaml", "*.json", "*.j2", "*.txt", "*.cfg", "*.ini"]
 "osprey" = [
     "config.yml",
     "templates/**/*",
@@ -201,6 +206,14 @@ include = ["osprey*"]
     "templates/**/*.css",
     "templates/**/*.js",
     "templates/**/*.json",
+]
+"osprey.interfaces.pyqt" = [
+    "*.py",
+    "*.yml",
+    "*.yaml",
+    "gui_components/**/*.py",
+    "gui_components/tabs/*.py",
+    "gui_components/widgets/*.py",
 ]
 
 # Development tool configurations
