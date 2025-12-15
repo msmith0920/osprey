@@ -20,8 +20,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from osprey.utils.logger import get_logger
-from osprey.models import get_chat_completion
-from osprey.utils.config import get_model_config
+from osprey.interfaces.pyqt.llm_client import SimpleLLMClient
 
 if TYPE_CHECKING:
     from osprey.interfaces.pyqt.multi_project_router import RoutingDecision
@@ -89,7 +88,7 @@ class MultiProjectOrchestrator:
     
     def __init__(
         self,
-        llm_config: Dict[str, Any] = None,
+        llm_config: Optional[Dict[str, Any]] = None,
         max_parallel_executions: int = 3,
         enable_dependency_detection: bool = True
     ):
@@ -104,6 +103,34 @@ class MultiProjectOrchestrator:
         self.llm_config = llm_config or {}
         self.max_parallel_executions = max_parallel_executions
         self.enable_dependency_detection = enable_dependency_detection
+        
+        # Initialize SimpleLLMClient for orchestration (NO SINGLETON DEPENDENCY!)
+        if llm_config:
+            # Use provided LLM config
+            self.llm_client = SimpleLLMClient(
+                provider=llm_config.get('provider', 'anthropic'),
+                model_id=llm_config.get('model_id', 'claude-3-sonnet-20240229'),
+                api_key=llm_config.get('api_key'),
+                base_url=llm_config.get('base_url')
+            )
+            self.logger.info(
+                f"Initialized orchestration LLM client from config: "
+                f"{llm_config.get('provider')}/{llm_config.get('model_id')}"
+            )
+        else:
+            # Use GUI config (reads user's configured 'classifier' model)
+            try:
+                self.llm_client = SimpleLLMClient.from_gui_config()
+                self.logger.info(
+                    "Initialized orchestration LLM client from gui_config.yml "
+                    f"({self.llm_client.provider}/{self.llm_client.model_id})"
+                )
+            except Exception as e:
+                self.logger.error(
+                    f"Failed to initialize LLM client from gui_config.yml: {e}. "
+                    f"Orchestration will fail until LLM client is properly configured."
+                )
+                self.llm_client = None
         
         self.logger.info(
             f"Initialized MultiProjectOrchestrator "
@@ -264,41 +291,57 @@ SUB_QUERIES: <if multi-project, list sub-queries, one per line, in format "PROJE
 
 Guidelines:
 1. A query is multi-project if it explicitly asks about multiple domains or requires information from different projects
-2. Examples of multi-project queries:
-   - "What's the weather in SF and is the MPS system operational?"
-   - "Compare the temperature data with the beam current"
-   - "Show me both the channel finder results and the weather forecast"
-3. Examples of single-project queries:
-   - "What's the weather in San Francisco?"
-   - "Is the MPS system operational?"
-   - "Show me the channel finder results"
-4. When decomposing, create clear, independent sub-queries
-5. Each sub-query should target a specific project
-6. Maintain the original intent and context
+2. Look for connecting words like "and", "also", "both", "plus" that indicate multiple requests
+3. Count the number of distinct questions - if there are 2+ separate questions, it's likely multi-project
+4. Examples of multi-project queries:
+   - "What's the weather in SF and is the MPS system operational?" → 2 questions, 2 projects
+   - "What is the weather like in NY? Can you also tell me the last MPS fault and the storage ring beam current now?" → 3 questions, 3 projects
+   - "Compare the temperature data with the beam current" → 2 data sources, likely 2 projects
+   - "Show me both the channel finder results and the weather forecast" → 2 requests, 2 projects
+5. Examples of single-project queries:
+   - "What's the weather in San Francisco?" → 1 question, 1 project
+   - "Is the MPS system operational?" → 1 question, 1 project
+   - "Show me the channel finder results" → 1 request, 1 project
+6. When decomposing multi-project queries:
+   - Create ONE sub-query per distinct question/request
+   - Each sub-query should be self-contained and answerable independently
+   - Match each sub-query to the most appropriate project based on its domain
+   - Preserve the specific details from the original query (locations, times, etc.)
+7. IMPORTANT: If you identify multiple distinct questions, you MUST decompose them into separate sub-queries
+   - Don't ask for clarification if the questions are clear
+   - Each question should map to exactly one project
 
 Respond now:"""
         
         return prompt
     
     def _call_llm_for_analysis(self, prompt: str) -> str:
-        """Call LLM for query analysis.
+        """Call LLM for query analysis - NO SINGLETON DEPENDENCY!
+        
+        Uses SimpleLLMClient which reads configuration from gui_config.yml
+        or explicit config, avoiding the "Registry not initialized" error.
         
         Args:
             prompt: Analysis prompt.
             
         Returns:
             LLM response.
-        """
-        try:
-            if self.llm_config and len(self.llm_config) > 0:
-                model_config = self.llm_config
-            else:
-                model_config = get_model_config('classifier')
             
-            response = get_chat_completion(
-                message=prompt,
-                model_config=model_config,
-                max_tokens=1000
+        Raises:
+            Exception: If LLM call fails.
+        """
+        if not self.llm_client:
+            raise Exception(
+                "LLM client not initialized. Please ensure gui_config.yml has a "
+                "'classifier' model configured, or provide llm_config during orchestrator initialization."
+            )
+        
+        try:
+            # Direct LLM call - no registry needed!
+            response = self.llm_client.call(
+                prompt=prompt,
+                max_tokens=1000,
+                temperature=0.0
             )
             
             return response
@@ -656,24 +699,32 @@ Provide your synthesized response:"""
         return prompt
     
     def _call_llm_for_synthesis(self, prompt: str) -> str:
-        """Call LLM for result synthesis.
+        """Call LLM for result synthesis - NO SINGLETON DEPENDENCY!
+        
+        Uses SimpleLLMClient which reads configuration from gui_config.yml
+        or explicit config, avoiding the "Registry not initialized" error.
         
         Args:
             prompt: Synthesis prompt.
             
         Returns:
             Synthesized result.
-        """
-        try:
-            if self.llm_config and len(self.llm_config) > 0:
-                model_config = self.llm_config
-            else:
-                model_config = get_model_config('classifier')
             
-            response = get_chat_completion(
-                message=prompt,
-                model_config=model_config,
-                max_tokens=1500
+        Raises:
+            Exception: If LLM call fails.
+        """
+        if not self.llm_client:
+            raise Exception(
+                "LLM client not initialized. Please ensure gui_config.yml has a "
+                "'classifier' model configured, or provide llm_config during orchestrator initialization."
+            )
+        
+        try:
+            # Direct LLM call - no registry needed!
+            response = self.llm_client.call(
+                prompt=prompt,
+                max_tokens=1500,
+                temperature=0.0
             )
             
             return response

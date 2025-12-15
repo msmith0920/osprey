@@ -13,7 +13,7 @@ from typing import List, Dict, Any, Optional
 import yaml
 
 from osprey.utils.logger import get_logger
-from osprey.interfaces.pyqt.gui_utils import load_config_safe
+from osprey.interfaces.pyqt.gui_utils import load_config_safe, get_gui_data_dir
 
 logger = get_logger("project_discovery")
 
@@ -282,7 +282,7 @@ def create_unified_config(projects: List[Dict[str, Any]], output_path: Optional[
     Args:
         projects: List of project info dictionaries from discover_projects()
         output_path: Optional path where unified_config.yml should be created.
-                    If None, creates in the current working directory (project root)
+                    If None, creates in the GUI data directory
         
     Returns:
         Path to the created unified config file
@@ -290,9 +290,10 @@ def create_unified_config(projects: List[Dict[str, Any]], output_path: Optional[
     if not projects:
         raise ValueError("No projects provided for unified config generation")
     
-    # Default to current working directory (project root) if no output path specified
+    # Default to GUI data directory if no output path specified
+    # This ensures it works regardless of CWD, user, or host
     if output_path is None:
-        output_path = Path.cwd() / "unified_config.yml"
+        output_path = get_gui_data_dir() / "unified_config.yml"
     
     # Use first project's config as base
     base_config_path = Path(projects[0]['config_path'])
@@ -363,7 +364,7 @@ def create_unified_registry(projects: List[Dict[str, Any]], output_path: Optiona
     Args:
         projects: List of project info dictionaries from discover_projects()
         output_path: Optional path where unified_registry.py should be created.
-                    If None, creates in the current working directory (project root)
+                    If None, creates in the GUI data directory
         
     Returns:
         Path to the created unified registry file
@@ -371,9 +372,10 @@ def create_unified_registry(projects: List[Dict[str, Any]], output_path: Optiona
     if not projects:
         raise ValueError("No projects provided for unified registry generation")
     
-    # Default to current working directory (project root) if no output path specified
+    # Default to GUI data directory if no output path specified
+    # This ensures it works regardless of CWD, user, or host
     if output_path is None:
-        output_path = Path.cwd() / "unified_registry.py"
+        output_path = get_gui_data_dir() / "unified_registry.py"
     
     # Filter projects that have registry_path
     projects_with_registry = [p for p in projects if 'registry_path' in p]

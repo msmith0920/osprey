@@ -99,6 +99,25 @@ class AnalyticsDashboard(QWidget):
                 border: 1px solid #3F3F46;
                 padding: 5px;
             }
+            QComboBox::drop-down {
+                border: none;
+                background-color: #2D2D30;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #FFFFFF;
+                width: 0;
+                height: 0;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #2D2D30;
+                color: #FFFFFF;
+                selection-background-color: #0078D4;
+                selection-color: #FFFFFF;
+                border: 1px solid #3F3F46;
+            }
         """)
         header_layout.addWidget(self.time_range_combo)
         

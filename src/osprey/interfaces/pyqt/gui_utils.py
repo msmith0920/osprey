@@ -58,6 +58,30 @@ def load_config_safe(config_path: str) -> Optional[Dict[str, Any]]:
         return None
 
 
+def get_gui_data_dir() -> Path:
+    """
+    Get the GUI data directory relative to the osprey framework installation.
+    
+    This ensures data is stored in a consistent location regardless of:
+    - Who is running the GUI
+    - Which host it's running on
+    - What the current working directory is
+    
+    Returns:
+        Path to GUI data directory (creates if doesn't exist)
+    """
+    # Get the osprey package root directory
+    # This file is at: osprey/src/osprey/interfaces/pyqt/gui_utils.py
+    # So we go up 3 levels to get to osprey/src/osprey/
+    osprey_package_root = Path(__file__).parent.parent.parent
+    
+    # Create a data directory within the osprey package
+    gui_data_dir = osprey_package_root / '_gui_data'
+    gui_data_dir.mkdir(parents=True, exist_ok=True)
+    
+    return gui_data_dir
+
+
 # Shared CSS for help dialog tabs
 HELP_DIALOG_CSS = """
 <style>

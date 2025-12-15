@@ -3,10 +3,10 @@ build_dir: ./_agent_data
 models:
   classifier:
     provider: argo
-    model_id: gpt5
+    model_id: gpt41
   orchestrator:
     provider: argo
-    model_id: gpt5
+    model_id: gpt41
     max_tokens: 4096
   task_extraction:
     provider: argo
@@ -48,7 +48,7 @@ approval:
     memory:
       enabled: true
 development:
-  debug: true
+  debug: false
   verbose_logging: false
   raise_raw_errors: true
   prompts:
