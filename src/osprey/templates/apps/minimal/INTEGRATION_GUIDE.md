@@ -1,6 +1,6 @@
 # Integration Guide - Quick Reference
 
-**Quick reference for integrating your API/workflow into the Alpha Berkeley Framework**
+**Quick reference for integrating your API/workflow into the Osprey Framework**
 
 ---
 

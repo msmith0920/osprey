@@ -532,4 +532,3 @@ class TestSeparatorOverrideBackwardCompatibility:
             assert "NEW.SIG2" in db.channel_map
         finally:
             Path(db_path).unlink()
-

@@ -312,16 +312,18 @@ class TestDatabaseSpecificFeatures:
         # 1. Direct path (skipping optional subdevice)
         # Examples: CTRL:MAIN:MC-01:Status, CTRL:MAIN:MC-01:Mode_RB
         direct_channels = [
-            ch for ch in db.channel_map.keys()
-            if any(sig in ch for sig in ['Status', 'Heartbeat', 'Mode', 'Config'])
+            ch
+            for ch in db.channel_map.keys()
+            if any(sig in ch for sig in ["Status", "Heartbeat", "Mode", "Config"])
         ]
         assert len(direct_channels) > 0, "Should have channels that skip optional subdevice level"
 
         # 2. With optional subdevice (PSU, ADC, MOTOR, CH)
         # Examples: CTRL:MAIN:MC-01:PSU:Voltage, CTRL:MAIN:MC-01:ADC:Value_RB
         subdevice_channels = [
-            ch for ch in db.channel_map.keys()
-            if any(sub in ch for sub in ['PSU:', 'ADC:', 'MOTOR.', 'CH-'])
+            ch
+            for ch in db.channel_map.keys()
+            if any(sub in ch for sub in ["PSU:", "ADC:", "MOTOR.", "CH-"])
         ]
         assert len(subdevice_channels) > 0, "Should have channels with optional subdevice"
 

@@ -15,7 +15,14 @@ from jinja2 import Environment, FileSystemLoader
 
 
 # Paths
-TEMPLATE_ROOT = Path(__file__).parent.parent.parent.parent / "src" / "osprey" / "templates" / "apps" / "control_assistant"
+TEMPLATE_ROOT = (
+    Path(__file__).parent.parent.parent.parent
+    / "src"
+    / "osprey"
+    / "templates"
+    / "apps"
+    / "control_assistant"
+)
 EXAMPLES_DIR = TEMPLATE_ROOT / "data" / "channel_databases" / "examples"
 
 
@@ -69,12 +76,14 @@ def compiled_preview_module(tmp_path_factory):
     shutil.copy(src_databases / "template.py", databases_dir / "template.py")
 
     # Create __init__.py for databases with imports
-    (databases_dir / "__init__.py").write_text("""
+    (databases_dir / "__init__.py").write_text(
+        """
 from .hierarchical import HierarchicalChannelDatabase
 from .template import ChannelDatabase as TemplateChannelDatabase
 
 __all__ = ['HierarchicalChannelDatabase', 'TemplateChannelDatabase']
-""")
+"""
+    )
 
     # Copy utils - config.py is not a template
     src_utils = TEMPLATE_ROOT / "services" / "channel_finder" / "utils"
@@ -82,7 +91,8 @@ __all__ = ['HierarchicalChannelDatabase', 'TemplateChannelDatabase']
 
     # Create minimal config.yml
     config_yml = test_preview_dir / "config.yml"
-    config_yml.write_text(f"""
+    config_yml.write_text(
+        f"""
 project_root: {test_preview_dir}
 channel_finder:
   pipeline_mode: hierarchical
@@ -90,12 +100,14 @@ channel_finder:
     hierarchical:
       database:
         path: data/channel_databases/examples/consecutive_instances.json
-""")
+"""
+    )
 
     # Set environment variables for config
     import os
-    os.environ['PROJECT_ROOT'] = str(test_preview_dir)
-    os.environ['CONFIG_FILE'] = str(config_yml)
+
+    os.environ["PROJECT_ROOT"] = str(test_preview_dir)
+    os.environ["CONFIG_FILE"] = str(config_yml)
 
     # Render preview_database.py from template
     env = Environment(loader=FileSystemLoader(str(TEMPLATE_ROOT / "data" / "tools")))
@@ -121,8 +133,8 @@ channel_finder:
 
     # Cleanup
     sys.path.remove(str(tmp_dir))
-    os.environ.pop('PROJECT_ROOT', None)
-    os.environ.pop('CONFIG_FILE', None)
+    os.environ.pop("PROJECT_ROOT", None)
+    os.environ.pop("CONFIG_FILE", None)
 
 
 @pytest.fixture
@@ -146,7 +158,9 @@ def optional_levels_db_path():
 class TestDepthParameter:
     """Test --depth parameter."""
 
-    def test_depth_3_limits_tree_levels(self, compiled_preview_module, consecutive_db_path, tmp_path):
+    def test_depth_3_limits_tree_levels(
+        self, compiled_preview_module, consecutive_db_path, tmp_path
+    ):
         """Test that depth=3 actually limits the tree to 3 levels."""
         import io
         import re
@@ -155,6 +169,7 @@ class TestDepthParameter:
         # Import Osprey's theme to get proper styles
         try:
             from osprey.cli.styles import osprey_theme
+
             theme = osprey_theme
         except ImportError:
             # Fallback: no theme (won't have custom colors but won't crash)
@@ -167,8 +182,8 @@ class TestDepthParameter:
             width=120,
             legacy_windows=False,
             force_terminal=False,  # Disable terminal features
-            no_color=True,         # Disable color codes for easier parsing
-            theme=theme            # Use Osprey's theme for style names
+            no_color=True,  # Disable color codes for easier parsing
+            theme=theme,  # Use Osprey's theme for style names
         )
 
         # Replace the module's console with our capturing console
@@ -179,10 +194,10 @@ class TestDepthParameter:
             compiled_preview_module.preview_database(
                 depth=3,
                 max_items=10,
-                sections='tree',
+                sections="tree",
                 focus=None,
                 show_full=False,
-                db_path=consecutive_db_path
+                db_path=consecutive_db_path,
             )
 
             # Get the captured output
@@ -198,35 +213,36 @@ class TestDepthParameter:
 
             # Validate depth=3 behavior:
             # 1. Configuration section should show Display Depth = 3
-            assert re.search(r'Display Depth\s+3', result), \
-                f"Output should show 'Display Depth' with value 3\nGot: {result[:500]}"
+            assert re.search(
+                r"Display Depth\s+3", result
+            ), f"Output should show 'Display Depth' with value 3\nGot: {result[:500]}"
 
             # 2. Tree should be present
-            assert 'Hierarchy Tree' in result, \
-                "Tree section header should be present"
+            assert "Hierarchy Tree" in result, "Tree section header should be present"
 
             # 3. Validate actual tree depth limitation
             # With depth=3, we should see: system → family → sector (3 levels)
             # Count tree branch characters (━━) to estimate depth
-            tree_section = result[result.find('Hierarchy Tree'):result.find('💡 Tip:')]
-            branch_lines = [line for line in tree_section.split('\n') if '━━' in line]
+            tree_section = result[result.find("Hierarchy Tree") : result.find("💡 Tip:")]
+            branch_lines = [line for line in tree_section.split("\n") if "━━" in line]
 
             # Should have branches but not too many levels deep
             assert len(branch_lines) > 0, "Tree should have branches"
 
             # Check that we don't go beyond the requested depth
             # Each level adds indentation (┃ characters)
-            max_indentation = max(line.count('┃') for line in branch_lines) if branch_lines else 0
-            assert max_indentation <= 3, \
-                f"Tree depth should not exceed 3 levels, but found {max_indentation} levels of indentation"
+            max_indentation = max(line.count("┃") for line in branch_lines) if branch_lines else 0
+            assert (
+                max_indentation <= 3
+            ), f"Tree depth should not exceed 3 levels, but found {max_indentation} levels of indentation"
 
             # 4. Should have the tip about using -1 for complete hierarchy
             # (only shown when depth/max_items are limited)
-            assert '--depth -1' in result, \
-                "Should show tip about viewing complete hierarchy with --depth -1"
+            assert (
+                "--depth -1" in result
+            ), "Should show tip about viewing complete hierarchy with --depth -1"
 
-            print(f"\n✓ All depth=3 validations passed:")\
-
+            print(f"\n✓ All depth=3 validations passed:")
             print(f"  - Display Depth parameter shown correctly")
             print(f"  - Tree structure present")
             print(f"  - Tree limited to {max_indentation} levels (≤3 as expected)")
@@ -242,15 +258,15 @@ class TestDepthParameter:
         from unittest.mock import patch
 
         # Mock console to prevent actual output
-        with patch.object(compiled_preview_module, 'console'):
+        with patch.object(compiled_preview_module, "console"):
             try:
                 compiled_preview_module.preview_database(
                     depth=depth,
                     max_items=5,
-                    sections='tree',
+                    sections="tree",
                     focus=None,
                     show_full=False,
-                    db_path=consecutive_db_path
+                    db_path=consecutive_db_path,
                 )
                 # Should not raise errors
                 assert True
@@ -261,7 +277,9 @@ class TestDepthParameter:
 class TestMaxItemsParameter:
     """Test --max-items parameter."""
 
-    def test_max_items_limits_branches(self, compiled_preview_module, consecutive_db_path, tmp_path):
+    def test_max_items_limits_branches(
+        self, compiled_preview_module, consecutive_db_path, tmp_path
+    ):
         """Test that max_items=3 actually limits branches to 3 per level."""
         import io
         import re
@@ -269,6 +287,7 @@ class TestMaxItemsParameter:
 
         try:
             from osprey.cli.styles import osprey_theme
+
             theme = osprey_theme
         except ImportError:
             theme = None
@@ -280,7 +299,7 @@ class TestMaxItemsParameter:
             legacy_windows=False,
             force_terminal=False,
             no_color=True,
-            theme=theme
+            theme=theme,
         )
 
         original_console = compiled_preview_module.console
@@ -290,10 +309,10 @@ class TestMaxItemsParameter:
             compiled_preview_module.preview_database(
                 depth=5,
                 max_items=3,  # Limit to 3 items per level
-                sections='tree',
+                sections="tree",
                 focus=None,
                 show_full=False,
-                db_path=consecutive_db_path
+                db_path=consecutive_db_path,
             )
 
             result = output.getvalue()
@@ -305,26 +324,30 @@ class TestMaxItemsParameter:
 
             # Validate max_items=3 behavior:
             # 1. Should show Max Items/Level = 3
-            assert re.search(r'Max Items/Level\s+3', result), \
-                "Output should show 'Max Items/Level' with value 3"
+            assert re.search(
+                r"Max Items/Level\s+3", result
+            ), "Output should show 'Max Items/Level' with value 3"
 
             # 2. Extract tree section
-            tree_section = result[result.find('Hierarchy Tree'):result.find('💡 Tip:')]
+            tree_section = result[result.find("Hierarchy Tree") : result.find("💡 Tip:")]
 
             # 3. Check for truncation message "... X more"
-            assert '... ' in tree_section and ' more ' in tree_section, \
-                "Tree should show truncation message when items exceed max_items"
+            assert (
+                "... " in tree_section and " more " in tree_section
+            ), "Tree should show truncation message when items exceed max_items"
 
             # 4. Count top-level systems in the tree
             # Top level has pattern: │  ┣━━ or │  ┗━━ (panel border + 2 spaces + branch + capital letter)
             # This distinguishes from nested items which have ┃ tree connectors
-            top_level_pattern = re.compile(r'│\s\s[┣┗]━━\s+[A-Z]')
-            top_level_branches = [line for line in tree_section.split('\n')
-                                 if top_level_pattern.search(line)]
+            top_level_pattern = re.compile(r"│\s\s[┣┗]━━\s+[A-Z]")
+            top_level_branches = [
+                line for line in tree_section.split("\n") if top_level_pattern.search(line)
+            ]
 
             # With max_items=3, should see exactly 3 systems (M, V, D)
-            assert len(top_level_branches) == 3, \
-                f"Should show exactly 3 top-level items, found {len(top_level_branches)}"
+            assert (
+                len(top_level_branches) == 3
+            ), f"Should show exactly 3 top-level items, found {len(top_level_branches)}"
 
             print(f"\n✓ All max_items=3 validations passed:")
             print(f"  - Max Items/Level parameter shown correctly")
@@ -339,15 +362,15 @@ class TestMaxItemsParameter:
         """Test different max_items values."""
         from unittest.mock import patch
 
-        with patch.object(compiled_preview_module, 'console'):
+        with patch.object(compiled_preview_module, "console"):
             try:
                 compiled_preview_module.preview_database(
                     depth=3,
                     max_items=max_items,
-                    sections='tree',
+                    sections="tree",
                     focus=None,
                     show_full=False,
-                    db_path=consecutive_db_path
+                    db_path=consecutive_db_path,
                 )
                 assert True
             except Exception as e:
@@ -364,31 +387,40 @@ class TestSectionsParameter:
 
         try:
             from osprey.cli.styles import osprey_theme
+
             theme = osprey_theme
         except ImportError:
             theme = None
 
         output = io.StringIO()
-        test_console = Console(file=output, width=120, no_color=True, theme=theme, force_terminal=False)
+        test_console = Console(
+            file=output, width=120, no_color=True, theme=theme, force_terminal=False
+        )
 
         original_console = compiled_preview_module.console
         compiled_preview_module.console = test_console
 
         try:
             compiled_preview_module.preview_database(
-                depth=3, max_items=5, sections='tree',
-                focus=None, show_full=False, db_path=consecutive_db_path
+                depth=3,
+                max_items=5,
+                sections="tree",
+                focus=None,
+                show_full=False,
+                db_path=consecutive_db_path,
             )
 
             result = output.getvalue()
 
             # Should have tree
-            assert 'Hierarchy Tree' in result, "Tree section should be present"
+            assert "Hierarchy Tree" in result, "Tree section should be present"
 
             # Should NOT have stats or breakdown
-            assert 'Hierarchy Level Statistics' not in result, "Stats section should NOT be present"
-            assert 'Channel Count Breakdown' not in result, "Breakdown section should NOT be present"
-            assert 'Sample Channels' not in result, "Samples section should NOT be present"
+            assert "Hierarchy Level Statistics" not in result, "Stats section should NOT be present"
+            assert (
+                "Channel Count Breakdown" not in result
+            ), "Breakdown section should NOT be present"
+            assert "Sample Channels" not in result, "Samples section should NOT be present"
 
             print("\n✓ sections='tree' correctly shows only tree")
 
@@ -402,30 +434,39 @@ class TestSectionsParameter:
 
         try:
             from osprey.cli.styles import osprey_theme
+
             theme = osprey_theme
         except ImportError:
             theme = None
 
         output = io.StringIO()
-        test_console = Console(file=output, width=120, no_color=True, theme=theme, force_terminal=False)
+        test_console = Console(
+            file=output, width=120, no_color=True, theme=theme, force_terminal=False
+        )
 
         original_console = compiled_preview_module.console
         compiled_preview_module.console = test_console
 
         try:
             compiled_preview_module.preview_database(
-                depth=3, max_items=5, sections='stats',
-                focus=None, show_full=False, db_path=consecutive_db_path
+                depth=3,
+                max_items=5,
+                sections="stats",
+                focus=None,
+                show_full=False,
+                db_path=consecutive_db_path,
             )
 
             result = output.getvalue()
 
             # Should have stats
-            assert 'Hierarchy Level Statistics' in result, "Stats section should be present"
+            assert "Hierarchy Level Statistics" in result, "Stats section should be present"
 
             # Should NOT have tree or breakdown
-            assert 'Hierarchy Tree' not in result, "Tree section should NOT be present"
-            assert 'Channel Count Breakdown' not in result, "Breakdown section should NOT be present"
+            assert "Hierarchy Tree" not in result, "Tree section should NOT be present"
+            assert (
+                "Channel Count Breakdown" not in result
+            ), "Breakdown section should NOT be present"
 
             print("\n✓ sections='stats' correctly shows only stats")
 
@@ -439,51 +480,61 @@ class TestSectionsParameter:
 
         try:
             from osprey.cli.styles import osprey_theme
+
             theme = osprey_theme
         except ImportError:
             theme = None
 
         output = io.StringIO()
-        test_console = Console(file=output, width=120, no_color=True, theme=theme, force_terminal=False)
+        test_console = Console(
+            file=output, width=120, no_color=True, theme=theme, force_terminal=False
+        )
 
         original_console = compiled_preview_module.console
         compiled_preview_module.console = test_console
 
         try:
             compiled_preview_module.preview_database(
-                depth=3, max_items=5, sections='all',
-                focus=None, show_full=False, db_path=consecutive_db_path
+                depth=3,
+                max_items=5,
+                sections="all",
+                focus=None,
+                show_full=False,
+                db_path=consecutive_db_path,
             )
 
             result = output.getvalue()
 
             # All sections should be present
-            assert 'Hierarchy Tree' in result, "Tree section should be present"
-            assert 'Hierarchy Level Statistics' in result, "Stats section should be present"
-            assert 'Channel Count Breakdown' in result, "Breakdown section should be present"
-            assert 'Sample Channels' in result, "Samples section should be present"
+            assert "Hierarchy Tree" in result, "Tree section should be present"
+            assert "Hierarchy Level Statistics" in result, "Stats section should be present"
+            assert "Channel Count Breakdown" in result, "Breakdown section should be present"
+            assert "Sample Channels" in result, "Samples section should be present"
 
             print("\n✓ sections='all' correctly includes all sections")
 
         finally:
             compiled_preview_module.console = original_console
 
-    @pytest.mark.parametrize("sections", [
-        "tree",
-        "stats",
-        "breakdown",
-        "samples",
-        "tree,stats",
-        "tree,breakdown",
-        "tree,stats,breakdown",
-        "tree,stats,breakdown,samples",
-        "all"
-    ])
+    @pytest.mark.parametrize(
+        "sections",
+        [
+            "tree",
+            "stats",
+            "breakdown",
+            "samples",
+            "tree,stats",
+            "tree,breakdown",
+            "tree,stats,breakdown",
+            "tree,stats,breakdown,samples",
+            "all",
+        ],
+    )
     def test_sections_combinations(self, compiled_preview_module, consecutive_db_path, sections):
         """Test different section combinations."""
         from unittest.mock import patch
 
-        with patch.object(compiled_preview_module, 'console'):
+        with patch.object(compiled_preview_module, "console"):
             try:
                 compiled_preview_module.preview_database(
                     depth=3,
@@ -491,7 +542,7 @@ class TestSectionsParameter:
                     sections=sections,
                     focus=None,
                     show_full=False,
-                    db_path=consecutive_db_path
+                    db_path=consecutive_db_path,
                 )
                 assert True
             except Exception as e:
@@ -501,34 +552,38 @@ class TestSectionsParameter:
 class TestDepthMaxItemsCombinations:
     """Test combinations of depth and max_items."""
 
-    @pytest.mark.parametrize("depth,max_items", [
-        (1, 1),
-        (1, 5),
-        (2, 1),
-        (2, 5),
-        (3, 1),
-        (3, 5),
-        (3, 10),
-        (4, 10),
-        (5, 5),
-        (-1, -1),  # unlimited both
-        (-1, 5),   # unlimited depth, limited items
-        (3, -1),   # limited depth, unlimited items
-    ])
-    def test_depth_max_items_combinations(self, compiled_preview_module, instance_first_db_path,
-                                         depth, max_items):
+    @pytest.mark.parametrize(
+        "depth,max_items",
+        [
+            (1, 1),
+            (1, 5),
+            (2, 1),
+            (2, 5),
+            (3, 1),
+            (3, 5),
+            (3, 10),
+            (4, 10),
+            (5, 5),
+            (-1, -1),  # unlimited both
+            (-1, 5),  # unlimited depth, limited items
+            (3, -1),  # limited depth, unlimited items
+        ],
+    )
+    def test_depth_max_items_combinations(
+        self, compiled_preview_module, instance_first_db_path, depth, max_items
+    ):
         """Test all combinations of depth and max_items."""
         from unittest.mock import patch
 
-        with patch.object(compiled_preview_module, 'console'):
+        with patch.object(compiled_preview_module, "console"):
             try:
                 compiled_preview_module.preview_database(
                     depth=depth,
                     max_items=max_items,
-                    sections='tree',
+                    sections="tree",
                     focus=None,
                     show_full=False,
-                    db_path=instance_first_db_path
+                    db_path=instance_first_db_path,
                 )
                 assert True
             except Exception as e:
@@ -546,21 +601,27 @@ class TestFocusParameter:
 
         try:
             from osprey.cli.styles import osprey_theme
+
             theme = osprey_theme
         except ImportError:
             theme = None
 
         output = io.StringIO()
-        test_console = Console(file=output, width=120, no_color=True, theme=theme, force_terminal=False)
+        test_console = Console(
+            file=output, width=120, no_color=True, theme=theme, force_terminal=False
+        )
 
         original_console = compiled_preview_module.console
         compiled_preview_module.console = test_console
 
         try:
             compiled_preview_module.preview_database(
-                depth=3, max_items=10, sections='tree',
-                focus='M',  # Focus on M system only
-                show_full=False, db_path=consecutive_db_path
+                depth=3,
+                max_items=10,
+                sections="tree",
+                focus="M",  # Focus on M system only
+                show_full=False,
+                db_path=consecutive_db_path,
             )
 
             result = output.getvalue()
@@ -570,19 +631,20 @@ class TestFocusParameter:
             output_file.write_text(result)
 
             # Should show focus path in config
-            assert re.search(r'Focus Path\s+M', result), "Should show Focus Path = M"
+            assert re.search(r"Focus Path\s+M", result), "Should show Focus Path = M"
 
             # Tree title should show M
-            assert 'M' in result.split('Hierarchy Tree')[0], "Should show M in tree title area"
+            assert "M" in result.split("Hierarchy Tree")[0], "Should show M in tree title area"
 
             # Should have M system content
-            assert 'QB' in result or 'DP' in result or 'CM' in result, \
-                "Should show M subsystems (QB, DP, or CM)"
+            assert (
+                "QB" in result or "DP" in result or "CM" in result
+            ), "Should show M subsystems (QB, DP, or CM)"
 
             # Should NOT have other top-level systems
-            tree_section = result[result.find('Hierarchy Tree'):]
-            assert '━━ V ' not in tree_section, "Should NOT show V system"
-            assert '━━ D ' not in tree_section, "Should NOT show D system"
+            tree_section = result[result.find("Hierarchy Tree") :]
+            assert "━━ V " not in tree_section, "Should NOT show V system"
+            assert "━━ D " not in tree_section, "Should NOT show D system"
 
             print("\n✓ focus='M' correctly filters to M subtree only")
 
@@ -593,16 +655,16 @@ class TestFocusParameter:
         """Test focusing on a valid path."""
         from unittest.mock import patch
 
-        with patch.object(compiled_preview_module, 'console'):
+        with patch.object(compiled_preview_module, "console"):
             try:
                 # M is a valid system in consecutive_instances.json
                 compiled_preview_module.preview_database(
                     depth=3,
                     max_items=5,
-                    sections='tree',
-                    focus='M',
+                    sections="tree",
+                    focus="M",
                     show_full=False,
-                    db_path=consecutive_db_path
+                    db_path=consecutive_db_path,
                 )
                 assert True
             except Exception as e:
@@ -612,15 +674,15 @@ class TestFocusParameter:
         """Test focusing on an invalid path."""
         from unittest.mock import patch
 
-        with patch.object(compiled_preview_module, 'console'):
+        with patch.object(compiled_preview_module, "console"):
             # Should handle gracefully, not crash
             compiled_preview_module.preview_database(
                 depth=3,
                 max_items=5,
-                sections='tree',
-                focus='NONEXISTENT',
+                sections="tree",
+                focus="NONEXISTENT",
                 show_full=False,
-                db_path=consecutive_db_path
+                db_path=consecutive_db_path,
             )
 
 
@@ -631,42 +693,42 @@ class TestPathParameter:
         """Test with consecutive_instances.json."""
         from unittest.mock import patch
 
-        with patch.object(compiled_preview_module, 'console'):
+        with patch.object(compiled_preview_module, "console"):
             compiled_preview_module.preview_database(
                 depth=3,
                 max_items=5,
-                sections='tree,stats',
+                sections="tree,stats",
                 focus=None,
                 show_full=False,
-                db_path=consecutive_db_path
+                db_path=consecutive_db_path,
             )
 
     def test_path_instance_first(self, compiled_preview_module, instance_first_db_path):
         """Test with instance_first.json."""
         from unittest.mock import patch
 
-        with patch.object(compiled_preview_module, 'console'):
+        with patch.object(compiled_preview_module, "console"):
             compiled_preview_module.preview_database(
                 depth=3,
                 max_items=5,
-                sections='tree,stats',
+                sections="tree,stats",
                 focus=None,
                 show_full=False,
-                db_path=instance_first_db_path
+                db_path=instance_first_db_path,
             )
 
     def test_path_optional_levels(self, compiled_preview_module, optional_levels_db_path):
         """Test with optional_levels.json."""
         from unittest.mock import patch
 
-        with patch.object(compiled_preview_module, 'console'):
+        with patch.object(compiled_preview_module, "console"):
             compiled_preview_module.preview_database(
                 depth=5,
                 max_items=5,
-                sections='all',
+                sections="all",
                 focus=None,
                 show_full=False,
-                db_path=optional_levels_db_path
+                db_path=optional_levels_db_path,
             )
 
 
@@ -677,21 +739,21 @@ class TestBackwardsCompatibility:
         """Test that --full sets depth and max_items to -1."""
         from unittest.mock import patch
 
-        with patch.object(compiled_preview_module, 'preview_hierarchical') as mock_preview:
+        with patch.object(compiled_preview_module, "preview_hierarchical") as mock_preview:
             compiled_preview_module.preview_database(
                 depth=3,  # Will be overridden
                 max_items=10,  # Will be overridden
-                sections='tree',
+                sections="tree",
                 focus=None,
                 show_full=True,  # This should override to -1, -1
-                db_path=consecutive_db_path
+                db_path=consecutive_db_path,
             )
 
             # Verify it was called with -1 for both
             assert mock_preview.called
             call_kwargs = mock_preview.call_args[1]
-            assert call_kwargs['depth'] == -1
-            assert call_kwargs['max_items'] == -1
+            assert call_kwargs["depth"] == -1
+            assert call_kwargs["max_items"] == -1
 
 
 class TestStatisticsCalculation:
@@ -703,6 +765,7 @@ class TestStatisticsCalculation:
 
         # Load database
         from test_preview.services.channel_finder.databases import HierarchicalChannelDatabase
+
         db = HierarchicalChannelDatabase(consecutive_db_path)
 
         stats = compiled_preview_module._calculate_level_statistics(db, db.hierarchy_levels)
@@ -719,9 +782,12 @@ class TestStatisticsCalculation:
     def test_breakdown_calculation(self, compiled_preview_module, consecutive_db_path):
         """Test breakdown calculation."""
         from test_preview.services.channel_finder.databases import HierarchicalChannelDatabase
+
         db = HierarchicalChannelDatabase(consecutive_db_path)
 
-        breakdown = compiled_preview_module._calculate_breakdown(db, db.hierarchy_levels, focus=None)
+        breakdown = compiled_preview_module._calculate_breakdown(
+            db, db.hierarchy_levels, focus=None
+        )
 
         # Should return sorted list of (path, count) tuples
         assert isinstance(breakdown, list)
@@ -733,7 +799,7 @@ class TestStatisticsCalculation:
             assert isinstance(count, int)
             assert count > 0
             # Path should use colon separator
-            assert ':' in path or len(path.split(':')) == 1
+            assert ":" in path or len(path.split(":")) == 1
 
         # Verify sorted by count descending
         counts = [count for _, count in breakdown]
@@ -743,11 +809,10 @@ class TestStatisticsCalculation:
 class TestCrossDatabaseCompatibility:
     """Test that features work across all database formats."""
 
-    @pytest.mark.parametrize("db_fixture_name", [
-        "consecutive_db_path",
-        "instance_first_db_path",
-        "optional_levels_db_path"
-    ])
+    @pytest.mark.parametrize(
+        "db_fixture_name",
+        ["consecutive_db_path", "instance_first_db_path", "optional_levels_db_path"],
+    )
     def test_depth_works_on_all_databases(self, compiled_preview_module, db_fixture_name, request):
         """Test that depth parameter works on all database formats."""
         import io
@@ -759,30 +824,32 @@ class TestCrossDatabaseCompatibility:
 
         try:
             from osprey.cli.styles import osprey_theme
+
             theme = osprey_theme
         except ImportError:
             theme = None
 
         output = io.StringIO()
-        test_console = Console(file=output, width=120, no_color=True, theme=theme, force_terminal=False)
+        test_console = Console(
+            file=output, width=120, no_color=True, theme=theme, force_terminal=False
+        )
 
         original_console = compiled_preview_module.console
         compiled_preview_module.console = test_console
 
         try:
             compiled_preview_module.preview_database(
-                depth=2, max_items=5, sections='tree',
-                focus=None, show_full=False, db_path=db_path
+                depth=2, max_items=5, sections="tree", focus=None, show_full=False, db_path=db_path
             )
 
             result = output.getvalue()
 
             # Basic validations that should work on all databases
-            assert 'Hierarchy Tree' in result, f"Tree should render on {db_fixture_name}"
-            assert re.search(r'Display Depth\s+2', result), \
-                f"Depth parameter should show on {db_fixture_name}"
-            assert 'channels' in result.lower(), \
-                f"Should show channel count on {db_fixture_name}"
+            assert "Hierarchy Tree" in result, f"Tree should render on {db_fixture_name}"
+            assert re.search(
+                r"Display Depth\s+2", result
+            ), f"Depth parameter should show on {db_fixture_name}"
+            assert "channels" in result.lower(), f"Should show channel count on {db_fixture_name}"
 
             print(f"\n✓ depth=2 works on {db_fixture_name}")
 
@@ -797,47 +864,47 @@ class TestEdgeCases:
         """Test depth=0."""
         from unittest.mock import patch
 
-        with patch.object(compiled_preview_module, 'console'):
+        with patch.object(compiled_preview_module, "console"):
             # Should handle gracefully
             compiled_preview_module.preview_database(
                 depth=0,
                 max_items=10,
-                sections='tree',
+                sections="tree",
                 focus=None,
                 show_full=False,
-                db_path=consecutive_db_path
+                db_path=consecutive_db_path,
             )
 
     def test_max_items_zero(self, compiled_preview_module, consecutive_db_path):
         """Test max_items=0."""
         from unittest.mock import patch
 
-        with patch.object(compiled_preview_module, 'console'):
+        with patch.object(compiled_preview_module, "console"):
             # Should handle gracefully
             compiled_preview_module.preview_database(
                 depth=3,
                 max_items=0,
-                sections='tree',
+                sections="tree",
                 focus=None,
                 show_full=False,
-                db_path=consecutive_db_path
+                db_path=consecutive_db_path,
             )
 
     def test_empty_sections(self, compiled_preview_module, consecutive_db_path):
         """Test with empty sections string."""
         from unittest.mock import patch
 
-        with patch.object(compiled_preview_module, 'console'):
+        with patch.object(compiled_preview_module, "console"):
             # Should handle gracefully
             compiled_preview_module.preview_database(
                 depth=3,
                 max_items=10,
-                sections='',
+                sections="",
                 focus=None,
                 show_full=False,
-                db_path=consecutive_db_path
+                db_path=consecutive_db_path,
             )
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

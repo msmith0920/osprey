@@ -1,6 +1,6 @@
 # Osprey Framework
 
-**🎉 Latest Release: v0.9.6** - Control Assistant Enhancements & Channel Finder Improvements
+**🎉 Latest Release: v0.9.7** - Configuration Management & Channel Finder Robustness
 
 > **🚧 Early Access Release**
 > This is an early access version of the Osprey Framework. While the core functionality is stable and ready for experimentation, documentation and APIs may still evolve. We welcome feedback and contributions!
@@ -67,11 +67,11 @@ See [TESTING_GUIDE.md](TESTING_GUIDE.md) and [tests/e2e/README.md](tests/e2e/REA
 
 ## 📖 Citation
 
-If you use the Alpha Berkeley Framework in your research or projects, please cite our [paper](https://arxiv.org/abs/2508.15066):
+If you use the Osprey Framework in your research or projects, please cite our [paper](https://arxiv.org/abs/2508.15066):
 
 ```bibtex
 @misc{hellert2025osprey,
-      title={Osprey: A Scalable Framework for the Orchestration of Agentic Systems},
+      title={Osprey: Production-Ready Agentic AI for Safety-Critical Control Systems},
       author={Thorsten Hellert and João Montenegro and Antonin Sulc},
       year={2025},
       eprint={2508.15066},
