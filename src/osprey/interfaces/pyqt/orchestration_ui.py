@@ -175,13 +175,14 @@ class OrchestrationUIHandler:
         Args:
             combined_result: The synthesized result from all sub-queries
         """
-        # Save to conversation history
+        # Save to conversation history with formatting hint
         if self.gui.current_conversation_id:
-            # Use ConversationManager to add message
+            # Use ConversationManager to add message with 'orchestrated' formatting
             self.gui.conversation_manager.add_message(
                 self.gui.current_conversation_id,
                 'agent',
-                combined_result
+                combined_result,
+                formatting='orchestrated'
             )
             self.gui.update_conversation_list()
             self.gui.save_conversation_history()

@@ -6,6 +6,7 @@ query execution in a background thread to keep the GUI responsive.
 """
 
 from typing import Any, Dict
+import time
 from PyQt5.QtCore import pyqtSignal
 
 from osprey.interfaces.pyqt.base_worker import BaseWorker
@@ -76,6 +77,9 @@ class OrchestrationWorker(BaseWorker):
                     return
                 
                 try:
+                    # Record start time for analytics
+                    sub_query_start_time = time.time()
+                    
                     # Emit start signal
                     self.sub_query_start.emit(idx, sub_query.project_name, sub_query.query)
                     
@@ -85,6 +89,22 @@ class OrchestrationWorker(BaseWorker):
                         error_msg = f"Project not found: {sub_query.project_name}"
                         self.sub_query_error.emit(idx, error_msg)
                         results[idx] = f"Error: {error_msg}"
+                        
+                        # Record failed routing in analytics
+                        if self.router and self.router.analytics_enabled and self.router.analytics:
+                            routing_time_ms = (time.time() - sub_query_start_time) * 1000
+                            self.router.analytics.record_routing(
+                                query=sub_query.query,
+                                project_selected=sub_query.project_name,
+                                confidence=0.0,
+                                routing_time_ms=routing_time_ms,
+                                cache_hit=False,
+                                mode="orchestration",
+                                reasoning=f"Sub-query {idx + 1} of multi-project orchestration",
+                                alternative_projects=[],
+                                success=False,
+                                error=error_msg
+                            )
                         continue
                     
                     # Initialize global registry for this project
@@ -126,12 +146,59 @@ class OrchestrationWorker(BaseWorker):
                         # Extract response from final state
                         response = self._extract_response(final_state)
                         self.sub_query_complete.emit(idx, response)
+                        
+                        # Record successful routing in analytics
+                        if self.router and self.router.analytics_enabled and self.router.analytics:
+                            routing_time_ms = (time.time() - sub_query_start_time) * 1000
+                            self.router.analytics.record_routing(
+                                query=sub_query.query,
+                                project_selected=sub_query.project_name,
+                                confidence=1.0,  # Sub-queries are pre-assigned to projects
+                                routing_time_ms=routing_time_ms,
+                                cache_hit=False,
+                                mode="orchestration",
+                                reasoning=f"Sub-query {idx + 1} of multi-project orchestration",
+                                alternative_projects=[],
+                                success=True
+                            )
                     elif result.error:
                         response = f"Error: {result.error}"
                         self.sub_query_error.emit(idx, response)
+                        
+                        # Record failed routing in analytics
+                        if self.router and self.router.analytics_enabled and self.router.analytics:
+                            routing_time_ms = (time.time() - sub_query_start_time) * 1000
+                            self.router.analytics.record_routing(
+                                query=sub_query.query,
+                                project_selected=sub_query.project_name,
+                                confidence=1.0,
+                                routing_time_ms=routing_time_ms,
+                                cache_hit=False,
+                                mode="orchestration",
+                                reasoning=f"Sub-query {idx + 1} of multi-project orchestration",
+                                alternative_projects=[],
+                                success=False,
+                                error=result.error
+                            )
                     else:
                         response = "No response generated"
                         self.sub_query_error.emit(idx, response)
+                        
+                        # Record failed routing in analytics
+                        if self.router and self.router.analytics_enabled and self.router.analytics:
+                            routing_time_ms = (time.time() - sub_query_start_time) * 1000
+                            self.router.analytics.record_routing(
+                                query=sub_query.query,
+                                project_selected=sub_query.project_name,
+                                confidence=1.0,
+                                routing_time_ms=routing_time_ms,
+                                cache_hit=False,
+                                mode="orchestration",
+                                reasoning=f"Sub-query {idx + 1} of multi-project orchestration",
+                                alternative_projects=[],
+                                success=False,
+                                error="No response generated"
+                            )
                     
                     results[idx] = response
                     
@@ -140,6 +207,22 @@ class OrchestrationWorker(BaseWorker):
                     logger.error(f"Sub-query {idx} failed: {e}")
                     self.sub_query_error.emit(idx, error_msg)
                     results[idx] = f"Error: {error_msg}"
+                    
+                    # Record failed routing in analytics
+                    if self.router and self.router.analytics_enabled and self.router.analytics:
+                        routing_time_ms = (time.time() - sub_query_start_time) * 1000
+                        self.router.analytics.record_routing(
+                            query=sub_query.query,
+                            project_selected=sub_query.project_name,
+                            confidence=1.0,
+                            routing_time_ms=routing_time_ms,
+                            cache_hit=False,
+                            mode="orchestration",
+                            reasoning=f"Sub-query {idx + 1} of multi-project orchestration",
+                            alternative_projects=[],
+                            success=False,
+                            error=str(e)
+                        )
             
             # Check if stopped before synthesis
             if self.should_stop():

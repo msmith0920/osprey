@@ -25,14 +25,18 @@ class ConversationMessage:
     type: str  # 'user' or 'agent'
     content: str
     timestamp: datetime = field(default_factory=datetime.now)
+    formatting: Optional[str] = None  # 'orchestrated' or None for special formatting
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
-        return {
+        result = {
             'type': self.type,
             'content': self.content,
             'timestamp': self.timestamp.isoformat()
         }
+        if self.formatting:
+            result['formatting'] = self.formatting
+        return result
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'ConversationMessage':
@@ -49,7 +53,8 @@ class ConversationMessage:
         return cls(
             type=data['type'],
             content=data['content'],
-            timestamp=timestamp
+            timestamp=timestamp,
+            formatting=data.get('formatting')
         )
 
 
@@ -225,7 +230,7 @@ class ConversationManager:
         logger.info(f"Renamed conversation: '{old_name}' → '{new_name}'")
         return True
     
-    def add_message(self, thread_id: str, message_type: str, content: str) -> bool:
+    def add_message(self, thread_id: str, message_type: str, content: str, formatting: Optional[str] = None) -> bool:
         """
         Add a message to a conversation.
         
@@ -233,6 +238,7 @@ class ConversationManager:
             thread_id: Thread ID to add message to
             message_type: 'user' or 'agent'
             content: Message content
+            formatting: Optional formatting hint ('orchestrated', etc.)
             
         Returns:
             True if successful, False if conversation not found
@@ -244,7 +250,8 @@ class ConversationManager:
         message = ConversationMessage(
             type=message_type,
             content=content,
-            timestamp=datetime.now()
+            timestamp=datetime.now(),
+            formatting=formatting
         )
         
         self.conversations[thread_id].messages.append(message)

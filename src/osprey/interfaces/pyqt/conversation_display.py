@@ -72,7 +72,15 @@ class ConversationDisplayManager:
                     if msg.type == 'user':
                         self.gui._append_colored_message(f"👤 You: {msg.content}", "#D8BFD8")
                     else:
-                        self.gui._append_colored_message(f"🤖 {msg.content}", "#FFFFFF")
+                        # Check if message has special formatting
+                        if msg.formatting == 'orchestrated':
+                            # Apply orchestrated formatting
+                            self.gui._append_colored_message(f"🤖 Combined Answer:", "#00FF00")
+                            self.gui._append_colored_message("", "#FFFFFF")  # Empty line
+                            self.gui.orchestration_ui._display_formatted_result(msg.content)
+                        else:
+                            # Regular message
+                            self.gui._append_colored_message(f"🤖 {msg.content}", "#FFFFFF")
             elif storage_mode == 'postgresql' and self.gui.settings_manager.get('use_persistent_conversations', True) and self.gui.graph:
                 # Load from PostgreSQL checkpointer
                 logger.info("Loading messages from PostgreSQL checkpointer")
@@ -252,7 +260,15 @@ class ConversationDisplayManager:
                     if msg.type == 'user':
                         self.gui._append_colored_message(f"👤 You: {msg.content}", "#D8BFD8")
                     else:
-                        self.gui._append_colored_message(f"🤖 {msg.content}", "#FFFFFF")
+                        # Check if message has special formatting
+                        if msg.formatting == 'orchestrated':
+                            # Apply orchestrated formatting
+                            self.gui._append_colored_message(f"🤖 Combined Answer:", "#00FF00")
+                            self.gui._append_colored_message("", "#FFFFFF")  # Empty line
+                            self.gui.orchestration_ui._display_formatted_result(msg.content)
+                        else:
+                            # Regular message
+                            self.gui._append_colored_message(f"🤖 {msg.content}", "#FFFFFF")
                 
                 self.gui.add_status(f"✅ Loaded {message_count} messages", "base")
                 
