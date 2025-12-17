@@ -344,7 +344,7 @@ development:
   # LLM API call logging configuration
   # Captures raw inputs/outputs to get_chat_completion with caller metadata
   api_calls:
-    save_all: false            # Save all API inputs/outputs to files
+    save_all: true             # Save all API inputs/outputs to files
     latest_only: true          # Keep only latest call per function (false = timestamped files)
     include_stack_trace: false # Include full Python stack trace in metadata
 

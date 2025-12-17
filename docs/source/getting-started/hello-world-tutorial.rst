@@ -344,16 +344,14 @@ The ``execute()`` method contains your main business logic, which you could call
           logger = self.get_logger()
 
           try:
-              logger.status("Extracting location from query...")
-              query = self.get_task_objective().lower()
+              # Extract location from user's query using LLM-based parser
+              query = self.get_task_objective()
 
-              # Simple location detection
-              location = "San Francisco"  # default
-              if "new york" in query or "nyc" in query:
-                  location = "New York"
-              elif "prague" in query or "praha" in query:
-                  location = "Prague"
+              logger.debug(f"Parsing weather query: {query}")
+              parsed_query = await parse_weather_query(query)
+              location = parsed_query.location
 
+              # Get weather data
               logger.status(f"Getting weather for {location}...")
               weather = weather_api.get_current_weather(location)
 
@@ -377,7 +375,7 @@ The ``execute()`` method contains your main business logic, which you could call
 
    1. **Logger Setup** - Get unified logger using self.get_logger()
    2. **Task Retrieval** - Get task of current execution step
-   3. **Location Extraction** - Parse user query to find location (simplified for demo)
+   3. **Location Extraction** - Parse user query to find location
    4. **Data Retrieval** - Call your API/service to get actual data
    5. **Context Creation** - Convert raw data to structured context object
    6. **Context Storage** - Store context so other capabilities and LLM can access it
@@ -547,16 +545,14 @@ The classifier guide teaches the LLM when to activate your capability based on u
               logger = self.get_logger()
 
               try:
-                  logger.status("Extracting location from query...")
-                  query = self.get_task_objective().lower()
+                  # Extract location from user's query using LLM-based parser
+                  query = self.get_task_objective()
 
-                  # Simple location detection
-                  location = "San Francisco"  # default
-                  if "new york" in query or "nyc" in query:
-                      location = "New York"
-                  elif "prague" in query or "praha" in query:
-                      location = "Prague"
+                  logger.debug(f"Parsing weather query: {query}")
+                  parsed_query = await parse_weather_query(query)
+                  location = parsed_query.location
 
+                  # Get weather data
                   logger.status(f"Getting weather for {location}...")
                   weather = weather_api.get_current_weather(location)
 
@@ -1174,6 +1170,7 @@ Ask weather-related questions:
    You: What's the weather in San Francisco?
    You: How's the weather in Prague?
    You: Tell me the current conditions in New York
+   You: What's the weather like?
 
 When you run your agent, you'll see the framework's decision-making process in action. Here are the key phases to watch for:
 

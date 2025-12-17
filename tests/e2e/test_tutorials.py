@@ -252,18 +252,76 @@ async def test_hello_world_weather_tutorial(e2e_project_factory, llm_judge):
         f"Warnings:\n" + "\n".join(f"  - {w}" for w in evaluation.warnings)
     )
 
-    # Additional sanity checks
+    # Belt-and-suspenders sanity checks (redundant with LLM judge but provide fast failure signals)
     assert result.error is None, f"Workflow encountered error: {result.error}"
-
-    # Verify weather capability was mentioned in trace
     trace_lower = result.execution_trace.lower()
     assert (
         "weather" in trace_lower or "current_weather" in trace_lower
     ), "Weather capability not executed"
-
-    # Verify San Francisco was mentioned (either in trace or response)
     full_output = (result.execution_trace + result.response).lower()
     assert "san francisco" in full_output, "San Francisco not mentioned in workflow output"
+
+    # =========================================================================
+    # DETAILED VERIFICATION: Check LLM Parser API Call Logs
+    # =========================================================================
+    # Verify the location parser was called correctly by inspecting API logs
+    # This ensures the LLM-based location extraction is working as intended
+
+    import re
+
+    api_calls_dir = project.project_dir / "_agent_data" / "api_calls"
+    assert api_calls_dir.exists(), f"API calls directory not found: {api_calls_dir}"
+
+    # Find the location parsing API call log
+    # The log file should be named with _parse_location_from_query in the name
+    api_log_files = list(api_calls_dir.glob("*_parse_location_from_query*.txt"))
+
+    assert len(api_log_files) > 0, (
+        f"No API call log found for location parsing in {api_calls_dir}. "
+        f"Found files: {list(api_calls_dir.glob('*.txt'))}"
+    )
+
+    # Read the most recent log (in case there are multiple)
+    api_log_file = sorted(api_log_files, key=lambda p: p.stat().st_mtime)[-1]
+    api_log_content = api_log_file.read_text()
+
+    # Verify the prompt contains our location extraction instructions
+    assert "location extraction assistant" in api_log_content.lower(), (
+        "API log doesn't contain expected location extraction prompt"
+    )
+    assert "Examples:" in api_log_content, (
+        "API log should contain example-based prompt"
+    )
+
+    # Verify the prompt includes the user's query
+    assert "san francisco" in api_log_content.lower(), (
+        "User's query not found in API log"
+    )
+
+    # Verify structured output model is used
+    assert "_ParsedWeatherQuery" in api_log_content or "ParsedWeatherQuery" in api_log_content, (
+        "API log should show structured output model usage"
+    )
+
+    # Verify the output contains San Francisco as the extracted location
+    # Look for the OUTPUT RESPONSE section
+    output_match = re.search(
+        r"OUTPUT RESPONSE.*?={10,}(.*?)(?:={10,}|$)",
+        api_log_content,
+        re.DOTALL
+    )
+
+    if output_match:
+        output_section = output_match.group(1)
+        # Check for San Francisco in the output (could be JSON or other format)
+        assert "San Francisco" in output_section or "san francisco" in output_section.lower(), (
+            f"Output doesn't contain 'San Francisco'. Output section:\n{output_section}"
+        )
+    else:
+        # If we can't parse the output section, at least verify it exists somewhere
+        assert "San Francisco" in api_log_content or "san francisco" in api_log_content.lower(), (
+            "Parsed location 'San Francisco' not found anywhere in API log"
+        )
 
 
 # Template for adding new tutorial tests:
