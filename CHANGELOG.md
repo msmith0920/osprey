@@ -15,11 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Custom Sphinx Extension**: `workflow_autodoc.py` extension with `.. workflow-summary::` and `.. workflow-list::` directives for auto-documenting workflow files from markdown with YAML frontmatter, including custom CSS styling
 - **Testing: Workflow autodoc extension**: Comprehensive test suite for custom Sphinx extension including frontmatter parsing, directive rendering, and integration tests with actual workflow files
 - **Contributing Guide**: Professional `CONTRIBUTING.md` with quick start guide, branch naming conventions, code standards summary, and links to comprehensive documentation
+- **CI/CD Infrastructure**: Comprehensive GitHub Actions CI pipeline with parallel jobs for testing (Python 3.11 & 3.12, Ubuntu & macOS), linting (Ruff), type checking (mypy), documentation builds, and package validation
+- **Pre-commit Hooks**: `.pre-commit-config.yaml` with Ruff linting/formatting, file quality checks (trailing whitespace, merge conflicts, large files), and optional mypy type checking
+- **Dependabot Configuration**: Automated weekly dependency updates for Python packages and GitHub Actions with intelligent grouping (development, Sphinx, LangChain dependencies)
+- **Release Automation**: `.github/workflows/release.yml` for automated PyPI publishing using trusted publishing (OIDC), version verification, and optional TestPyPI deployment
+- **Pre-merge Check Script**: `scripts/premerge_check.sh` automated scanning for debug code, commented code, hardcoded secrets, missing CHANGELOG entries, incomplete docstrings, and unlinked TODOs
+- **Code Coverage Reporting**: Codecov integration in CI pipeline with coverage reports uploaded for Python 3.11 Ubuntu runs
+- **Status Badges**: README.md badges for CI status, documentation, code coverage, PyPI version, Python version support, and license
 
 ### Changed
 - **Documentation Workflows**: Migrated workflow files from `docs/resources/other/` to `docs/workflows/` with updated references throughout; workflows now feature consistent YAML frontmatter for machine parsing and AI integration
 - **Documentation Structure**: Reorganized contributing documentation from placeholder to comprehensive guide with 6 dedicated sections (Getting Started, Git & GitHub, Code Standards, Developer Workflows, AI-Assisted Development, Community Guidelines) using sphinx-design cards and grids
 - **Contributing Guide**: Restructured `docs/source/contributing/index.rst` from placeholder to comprehensive 400+ line guide with learning paths, AI integration examples, workflow categories, and automation tools documentation
+- **CI Pipeline**: Enhanced documentation job to create preview artifacts for pull requests with 7-day retention; added clear separation between CI checks (`.github/workflows/ci.yml`) and deployment (`.github/workflows/docs.yml`)
+- **Development Dependencies**: Added `pytest-cov` to `[dev]` optional dependencies in `pyproject.toml` for code coverage reporting in CI pipeline
 
 ### Changed
 - **Hello World Weather: Mock API simplification**: Refactored mock weather API to accept any location string and generate random weather data, removing hardcoded city list and enabling flexible location support for tutorial demonstrations
