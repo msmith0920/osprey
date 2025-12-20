@@ -45,5 +45,3 @@ def get_prompt(facility_name: str = "Example Middle Layer Accelerator") -> str:
         Return ONLY JSON with "queries" field containing a list of strings.
         """
     ).strip()
-
-

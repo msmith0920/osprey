@@ -37,7 +37,6 @@ Example structure:
 """
 
 import json
-from typing import Any, Dict, List, Optional
 
 from ..core.base_database import BaseDatabase
 
@@ -50,7 +49,7 @@ class MiddleLayerDatabase(BaseDatabase):
     Designed for React agent-style exploration using query tools.
     """
 
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str) -> None:
         """
         Initialize middle layer database.
 
@@ -59,15 +58,15 @@ class MiddleLayerDatabase(BaseDatabase):
         """
         super().__init__(db_path)
 
-    def load_database(self):
+    def load_database(self) -> None:
         """Load middle layer database from JSON file."""
-        with open(self.db_path, "r") as f:
+        with open(self.db_path) as f:
             self.data = json.load(f)
 
         # Build flat channel map for validation and lookup
         self.channel_map = self._build_channel_map()
 
-    def _build_channel_map(self) -> Dict[str, Dict]:
+    def _build_channel_map(self) -> dict[str, dict]:
         """
         Flatten MML hierarchy into channel map for O(1) validation.
 
@@ -85,20 +84,18 @@ class MiddleLayerDatabase(BaseDatabase):
                     continue
 
                 # Process each field in the family
-                self._extract_channels_from_field(
-                    channels, system, family, fields, path=[]
-                )
+                self._extract_channels_from_field(channels, system, family, fields, path=[])
 
         return channels
 
     def _extract_channels_from_field(
         self,
-        channels: Dict[str, Dict],
+        channels: dict[str, dict],
         system: str,
         family: str,
-        field_data: Dict,
-        path: List[str],
-    ):
+        field_data: dict,
+        path: list[str],
+    ) -> None:
         """
         Recursively extract channels from nested field structure.
 
@@ -130,8 +127,17 @@ class MiddleLayerDatabase(BaseDatabase):
 
                 # Extract metadata if present (preserve from MML exports)
                 metadata = {}
-                for meta_key in ["DataType", "Mode", "Units", "HWUnits", "PhysicsUnits",
-                               "MemberOf", "Range", "Tolerance", "Description"]:
+                for meta_key in [
+                    "DataType",
+                    "Mode",
+                    "Units",
+                    "HWUnits",
+                    "PhysicsUnits",
+                    "MemberOf",
+                    "Range",
+                    "Tolerance",
+                    "Description",
+                ]:
                     if meta_key in value:
                         metadata[meta_key] = value[meta_key]
 
@@ -152,11 +158,9 @@ class MiddleLayerDatabase(BaseDatabase):
                         }
             else:
                 # Recurse into nested structure (handles subfields)
-                self._extract_channels_from_field(
-                    channels, system, family, value, path + [key]
-                )
+                self._extract_channels_from_field(channels, system, family, value, path + [key])
 
-    def get_channel(self, channel_name: str) -> Optional[Dict]:
+    def get_channel(self, channel_name: str) -> dict | None:
         """
         Get channel information by name.
 
@@ -168,7 +172,7 @@ class MiddleLayerDatabase(BaseDatabase):
         """
         return self.channel_map.get(channel_name.strip())
 
-    def get_all_channels(self) -> List[Dict]:
+    def get_all_channels(self) -> list[dict]:
         """
         Get all channels in the database.
 
@@ -189,7 +193,7 @@ class MiddleLayerDatabase(BaseDatabase):
         """
         return channel_name.strip() in self.channel_map
 
-    def get_statistics(self) -> Dict:
+    def get_statistics(self) -> dict:
         """
         Get database statistics.
 
@@ -204,9 +208,7 @@ class MiddleLayerDatabase(BaseDatabase):
         for system in systems:
             if isinstance(self.data[system], dict):
                 families = [
-                    f
-                    for f in self.data[system].keys()
-                    if isinstance(self.data[system][f], dict)
+                    f for f in self.data[system].keys() if isinstance(self.data[system][f], dict)
                 ]
                 all_families.update(families)
 
@@ -219,7 +221,7 @@ class MiddleLayerDatabase(BaseDatabase):
 
     # === Tool support methods for React agent ===
 
-    def list_systems(self) -> List[Dict[str, str]]:
+    def list_systems(self) -> list[dict[str, str]]:
         """
         Get list of all system names with descriptions.
 
@@ -230,13 +232,10 @@ class MiddleLayerDatabase(BaseDatabase):
         systems = []
         for s in self.data.keys():
             if isinstance(self.data[s], dict):
-                systems.append({
-                    "name": s,
-                    "description": self.data[s].get("_description", "")
-                })
+                systems.append({"name": s, "description": self.data[s].get("_description", "")})
         return systems
 
-    def list_families(self, system: str) -> List[Dict[str, str]]:
+    def list_families(self, system: str) -> list[dict[str, str]]:
         """
         Get list of families in a system with descriptions.
 
@@ -252,24 +251,21 @@ class MiddleLayerDatabase(BaseDatabase):
         """
         if system not in self.data or not isinstance(self.data[system], dict):
             available = [s["name"] for s in self.list_systems()]
-            raise ValueError(
-                f"System '{system}' not found. Available systems: {available}"
-            )
+            raise ValueError(f"System '{system}' not found. Available systems: {available}")
 
         families = []
         for f in self.data[system].keys():
             if f.startswith("_"):  # Skip metadata keys
                 continue
             if isinstance(self.data[system][f], dict):
-                families.append({
-                    "name": f,
-                    "description": self.data[system][f].get("_description", "")
-                })
+                families.append(
+                    {"name": f, "description": self.data[system][f].get("_description", "")}
+                )
         return families
 
     def inspect_fields(
-        self, system: str, family: str, field: Optional[str] = None
-    ) -> Dict[str, Dict[str, str]]:
+        self, system: str, family: str, field: str | None = None
+    ) -> dict[str, dict[str, str]]:
         """
         Inspect field structure with types and descriptions.
 
@@ -302,7 +298,9 @@ class MiddleLayerDatabase(BaseDatabase):
         # If specific field requested, inspect that field
         if field:
             if field not in family_data:
-                available = [k for k in family_data.keys() if not k.startswith("_") and k.lower() != "setup"]
+                available = [
+                    k for k in family_data.keys() if not k.startswith("_") and k.lower() != "setup"
+                ]
                 raise ValueError(
                     f"Field '{field}' not found in '{system}:{family}'. "
                     f"Available fields: {available}"
@@ -320,18 +318,15 @@ class MiddleLayerDatabase(BaseDatabase):
                         if "ChannelNames" in value:
                             result[key] = {
                                 "type": "ChannelNames",
-                                "description": value.get("_description", "")
+                                "description": value.get("_description", ""),
                             }
                         else:
                             result[key] = {
                                 "type": "dict (subfield)",
-                                "description": value.get("_description", "")
+                                "description": value.get("_description", ""),
                             }
                     else:
-                        result[key] = {
-                            "type": type(value).__name__,
-                            "description": ""
-                        }
+                        result[key] = {"type": type(value).__name__, "description": ""}
 
             return result
 
@@ -343,24 +338,21 @@ class MiddleLayerDatabase(BaseDatabase):
             if key.lower() == "setup":
                 result[key] = {
                     "type": "metadata",
-                    "description": "Device setup information (CommonNames, DeviceList)"
+                    "description": "Device setup information (CommonNames, DeviceList)",
                 }
             elif isinstance(value, dict):
                 if "ChannelNames" in value:
                     result[key] = {
                         "type": "ChannelNames",
-                        "description": value.get("_description", "")
+                        "description": value.get("_description", ""),
                     }
                 else:
                     result[key] = {
                         "type": "dict (has subfields)",
-                        "description": value.get("_description", "")
+                        "description": value.get("_description", ""),
                     }
             else:
-                result[key] = {
-                    "type": type(value).__name__,
-                    "description": ""
-                }
+                result[key] = {"type": type(value).__name__, "description": ""}
 
         return result
 
@@ -369,10 +361,10 @@ class MiddleLayerDatabase(BaseDatabase):
         system: str,
         family: str,
         field: str,
-        subfield: Optional[str] = None,
-        sectors: Optional[List[int]] = None,
-        devices: Optional[List[int]] = None,
-    ) -> List[str]:
+        subfield: str | None = None,
+        sectors: list[int] | None = None,
+        devices: list[int] | None = None,
+    ) -> list[str]:
         """
         Get channel names for a specific field/subfield with optional filtering.
 
@@ -407,16 +399,15 @@ class MiddleLayerDatabase(BaseDatabase):
         # If subfield specified, navigate deeper
         if subfield:
             if not isinstance(field_data, dict) or subfield not in field_data:
-                raise ValueError(
-                    f"Subfield '{subfield}' not found in '{system}:{family}:{field}'"
-                )
+                raise ValueError(f"Subfield '{subfield}' not found in '{system}:{family}:{field}'")
             field_data = field_data[subfield]
 
         # Get channel names
         if "ChannelNames" not in field_data:
             raise ValueError(
                 f"No ChannelNames found at '{system}:{family}:{field}"
-                + (f":{subfield}" if subfield else "") + "'"
+                + (f":{subfield}" if subfield else "")
+                + "'"
             )
 
         channel_names = field_data["ChannelNames"]
@@ -434,10 +425,10 @@ class MiddleLayerDatabase(BaseDatabase):
         self,
         system: str,
         family: str,
-        channel_names: List[str],
-        sectors: Optional[List[int]],
-        devices: Optional[List[int]],
-    ) -> List[str]:
+        channel_names: list[str],
+        sectors: list[int] | None,
+        devices: list[int] | None,
+    ) -> list[str]:
         """
         Filter channel names by device and sector numbers.
 
@@ -476,7 +467,9 @@ class MiddleLayerDatabase(BaseDatabase):
         sectors_set = set(sectors) if sectors else None
         devices_set = set(devices) if devices else None
 
-        for i, (channel_name, device_entry) in enumerate(zip(channel_names, device_list)):
+        for i, (channel_name, device_entry) in enumerate(
+            zip(channel_names, device_list, strict=True)
+        ):
             if not isinstance(device_entry, list) or len(device_entry) != 2:
                 raise ValueError(f"Invalid DeviceList entry at index {i}: {device_entry}")
 
@@ -497,7 +490,7 @@ class MiddleLayerDatabase(BaseDatabase):
 
         return filtered
 
-    def get_common_names(self, system: str, family: str) -> Optional[List[str]]:
+    def get_common_names(self, system: str, family: str) -> list[str] | None:
         """
         Get common/friendly names for devices in a family.
 
@@ -514,4 +507,3 @@ class MiddleLayerDatabase(BaseDatabase):
         family_data = self.data[system][family]
         setup = family_data.get("setup", {})
         return setup.get("CommonNames")
-

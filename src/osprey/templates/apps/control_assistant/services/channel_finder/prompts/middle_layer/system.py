@@ -122,5 +122,3 @@ facility_description = textwrap.dedent(
     assumptions. Always verify available options before making selections.
     """
 ).strip()
-
-

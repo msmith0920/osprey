@@ -6,11 +6,10 @@ These tests validate tool behavior without requiring full LLM integration.
 """
 
 import json
-import yaml
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
+import yaml
 
 from osprey.templates.apps.control_assistant.services.channel_finder.databases.middle_layer import (
     MiddleLayerDatabase,
@@ -23,7 +22,7 @@ from osprey.templates.apps.control_assistant.services.channel_finder.pipelines.m
 class TestMiddleLayerTools:
     """Test individual tool functions created by the pipeline."""
 
-    def test_list_systems_tool(self, sample_middle_layer_pipeline):
+    def test_list_systems_tool(self, sample_middle_layer_pipeline) -> None:
         """Test that list_systems tool returns correct data."""
         pipeline = sample_middle_layer_pipeline
         tools = pipeline._create_tools()
@@ -47,7 +46,7 @@ class TestMiddleLayerTools:
             assert "description" in system
             assert isinstance(system["description"], str)
 
-    def test_list_families_tool(self, sample_middle_layer_pipeline):
+    def test_list_families_tool(self, sample_middle_layer_pipeline) -> None:
         """Test that list_families tool returns correct data."""
         pipeline = sample_middle_layer_pipeline
         tools = pipeline._create_tools()
@@ -68,7 +67,7 @@ class TestMiddleLayerTools:
         assert isinstance(result_invalid, dict)
         assert "error" in result_invalid
 
-    def test_inspect_fields_tool(self, sample_middle_layer_pipeline):
+    def test_inspect_fields_tool(self, sample_middle_layer_pipeline) -> None:
         """Test that inspect_fields tool returns correct structure."""
         pipeline = sample_middle_layer_pipeline
         tools = pipeline._create_tools()
@@ -95,7 +94,7 @@ class TestMiddleLayerTools:
         assert isinstance(result_invalid, dict)
         assert "error" in result_invalid
 
-    def test_list_channel_names_tool(self, sample_middle_layer_pipeline):
+    def test_list_channel_names_tool(self, sample_middle_layer_pipeline) -> None:
         """Test that list_channel_names tool retrieves correct channels."""
         pipeline = sample_middle_layer_pipeline
         tools = pipeline._create_tools()
@@ -133,7 +132,7 @@ class TestMiddleLayerTools:
         assert isinstance(result_invalid, dict)
         assert "error" in result_invalid
 
-    def test_get_common_names_tool(self, sample_middle_layer_pipeline):
+    def test_get_common_names_tool(self, sample_middle_layer_pipeline) -> None:
         """Test that get_common_names tool returns device names."""
         pipeline = sample_middle_layer_pipeline
         tools = pipeline._create_tools()
@@ -150,7 +149,7 @@ class TestMiddleLayerTools:
         assert isinstance(result_empty, list)
         # May or may not have common names depending on fixture
 
-    def test_report_results_tool(self, sample_middle_layer_pipeline):
+    def test_report_results_tool(self, sample_middle_layer_pipeline) -> None:
         """Test that report_results tool validates and returns confirmation."""
         pipeline = sample_middle_layer_pipeline
         tools = pipeline._create_tools()
@@ -160,22 +159,19 @@ class TestMiddleLayerTools:
         # Test with valid results
         result = report_results_tool.func(
             channels=["SR01C:BPM1:X", "SR01C:BPM1:Y"],
-            description="Found BPM positions in SR:BPM:Monitor field"
+            description="Found BPM positions in SR:BPM:Monitor field",
         )
         assert "2 channel(s) found" in result
 
         # Test with empty results
-        result_empty = report_results_tool.func(
-            channels=[],
-            description="No channels found"
-        )
+        result_empty = report_results_tool.func(channels=[], description="No channels found")
         assert "0 channel(s) found" in result_empty
 
 
 class TestMiddleLayerToolIntegration:
     """Test tool interaction patterns that the agent would use."""
 
-    def test_typical_search_workflow(self, sample_middle_layer_pipeline):
+    def test_typical_search_workflow(self, sample_middle_layer_pipeline) -> None:
         """Test a typical workflow: systems → families → fields → channels."""
         pipeline = sample_middle_layer_pipeline
         tools = pipeline._create_tools()
@@ -203,7 +199,7 @@ class TestMiddleLayerToolIntegration:
         assert len(channels) > 0
         assert all(isinstance(ch, str) for ch in channels)
 
-    def test_subfield_navigation_workflow(self, sample_middle_layer_pipeline):
+    def test_subfield_navigation_workflow(self, sample_middle_layer_pipeline) -> None:
         """Test workflow with subfield navigation."""
         pipeline = sample_middle_layer_pipeline
         tools = pipeline._create_tools()
@@ -228,7 +224,7 @@ class TestMiddleLayerToolIntegration:
         assert len(channels_x) > 0
         assert all("XSet" in ch for ch in channels_x)
 
-    def test_filtering_workflow(self, sample_middle_layer_pipeline):
+    def test_filtering_workflow(self, sample_middle_layer_pipeline) -> None:
         """Test workflow with sector and device filtering."""
         pipeline = sample_middle_layer_pipeline
         tools = pipeline._create_tools()
@@ -239,16 +235,12 @@ class TestMiddleLayerToolIntegration:
         all_channels = list_channel_names("SR", "BPM", "Setpoint", subfield="X")
 
         # Filter by sector
-        sector1_channels = list_channel_names(
-            "SR", "BPM", "Setpoint", subfield="X", sectors=[1]
-        )
+        sector1_channels = list_channel_names("SR", "BPM", "Setpoint", subfield="X", sectors=[1])
         assert len(sector1_channels) < len(all_channels)
         assert all("SR01C" in ch for ch in sector1_channels)
 
         # Filter by device
-        device1_channels = list_channel_names(
-            "SR", "BPM", "Setpoint", subfield="X", devices=[1]
-        )
+        device1_channels = list_channel_names("SR", "BPM", "Setpoint", subfield="X", devices=[1])
         assert all("BPM1" in ch for ch in device1_channels)
 
         # Combined filtering
@@ -262,7 +254,7 @@ class TestMiddleLayerToolIntegration:
 class TestMiddleLayerErrorHandling:
     """Test error handling in tool functions."""
 
-    def test_invalid_system_error(self, sample_middle_layer_pipeline):
+    def test_invalid_system_error(self, sample_middle_layer_pipeline) -> None:
         """Test that invalid system name returns error."""
         pipeline = sample_middle_layer_pipeline
         tools = pipeline._create_tools()
@@ -274,7 +266,7 @@ class TestMiddleLayerErrorHandling:
         assert "error" in result
         assert "not found" in result["error"].lower()
 
-    def test_invalid_family_error(self, sample_middle_layer_pipeline):
+    def test_invalid_family_error(self, sample_middle_layer_pipeline) -> None:
         """Test that invalid family name returns error."""
         pipeline = sample_middle_layer_pipeline
         tools = pipeline._create_tools()
@@ -285,7 +277,7 @@ class TestMiddleLayerErrorHandling:
         assert isinstance(result, dict)
         assert "error" in result
 
-    def test_invalid_field_error(self, sample_middle_layer_pipeline):
+    def test_invalid_field_error(self, sample_middle_layer_pipeline) -> None:
         """Test that invalid field name returns error."""
         pipeline = sample_middle_layer_pipeline
         tools = pipeline._create_tools()
@@ -296,7 +288,7 @@ class TestMiddleLayerErrorHandling:
         assert isinstance(result, dict)
         assert "error" in result
 
-    def test_invalid_subfield_error(self, sample_middle_layer_pipeline):
+    def test_invalid_subfield_error(self, sample_middle_layer_pipeline) -> None:
         """Test that invalid subfield name returns error."""
         pipeline = sample_middle_layer_pipeline
         tools = pipeline._create_tools()
@@ -312,7 +304,7 @@ class TestMiddleLayerErrorHandling:
 
 
 @pytest.fixture
-def sample_middle_layer_db_path(tmp_path):
+def sample_middle_layer_db_path(tmp_path) -> str:
     """Create a sample middle layer database for testing."""
     db_file = tmp_path / "test_middle_layer.json"
 
@@ -333,7 +325,7 @@ def sample_middle_layer_db_path(tmp_path):
                         "SR02C:BPM1:Y",
                         "SR02C:BPM2:X",
                         "SR02C:BPM2:Y",
-                    ]
+                    ],
                 },
                 "Setpoint": {
                     "X": {
@@ -365,7 +357,7 @@ def sample_middle_layer_db_path(tmp_path):
                     "ChannelNames": [
                         "SR01C:HCM1:Current",
                         "SR01C:HCM2:Current",
-                    ]
+                    ],
                 },
                 "Setpoint": {
                     "ChannelNames": [
@@ -426,16 +418,14 @@ def sample_middle_layer_db_path(tmp_path):
 
 
 @pytest.fixture
-def sample_middle_layer_pipeline(sample_middle_layer_db_path, monkeypatch, tmp_path):
+def sample_middle_layer_pipeline(
+    sample_middle_layer_db_path, monkeypatch, tmp_path
+) -> "MiddleLayerPipeline":
     """Create a sample middle layer pipeline for testing."""
     # Create a minimal config file for testing
     config_data = {
         "project_root": str(tmp_path),
-        "channel_finder": {
-            "prompts": {
-                "path": "prompts/middle_layer"
-            }
-        }
+        "channel_finder": {"prompts": {"path": "prompts/middle_layer"}},
     }
 
     config_file = tmp_path / "config.yml"
@@ -456,7 +446,7 @@ def sample_middle_layer_pipeline(sample_middle_layer_db_path, monkeypatch, tmp_p
 
     monkeypatch.setattr(
         "osprey.templates.apps.control_assistant.services.channel_finder.pipelines.middle_layer.pipeline.load_prompts",
-        mock_load_prompts
+        mock_load_prompts,
     )
 
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
@@ -466,15 +456,14 @@ def sample_middle_layer_pipeline(sample_middle_layer_db_path, monkeypatch, tmp_p
         "provider": "anthropic",
         "model_id": "claude-3-5-sonnet-20241022",
         "api_key": "test-key",  # Not used in tool tests
-        "max_tokens": 4096
+        "max_tokens": 4096,
     }
 
     pipeline = MiddleLayerPipeline(
         database=db,
         model_config=model_config,
         facility_name="Test Facility",
-        facility_description="Test accelerator facility"
+        facility_description="Test accelerator facility",
     )
 
     return pipeline
-

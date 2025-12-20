@@ -22,5 +22,3 @@ from . import query_splitter
 from .system import facility_description
 
 __all__ = ["facility_description", "query_splitter"]
-
-

@@ -3,5 +3,3 @@
 from .pipeline import MiddleLayerPipeline
 
 __all__ = ["MiddleLayerPipeline"]
-
-

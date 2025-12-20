@@ -24,17 +24,18 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
+
 from osprey.models import get_chat_completion
 from osprey.utils.config import _get_config
 
 # LangGraph and LangChain imports
 try:
-    from langchain_core.tools import tool, StructuredTool
+    from langchain_core.tools import StructuredTool, tool
     from langgraph.prebuilt import create_react_agent
-except ImportError:
+except ImportError as err:
     raise ImportError(
         "LangGraph not installed. Install with: pip install langgraph langchain-core"
-    )
+    ) from err
 
 from ...core.base_pipeline import BasePipeline
 from ...core.models import ChannelFinderResult, ChannelInfo, QuerySplitterOutput
@@ -45,8 +46,10 @@ logger = logging.getLogger(__name__)
 
 # === Structured Output Models ===
 
+
 class ChannelSearchResult(BaseModel):
     """Structured result from channel search with validation."""
+
     channels: list[str] = Field(
         description="List of channel addresses found (e.g., ['SR:DCCT:Current', 'SR01C:BPM1:X']). Empty list if none found."
     )
@@ -58,7 +61,7 @@ class ChannelSearchResult(BaseModel):
 # === Tool Support Functions ===
 
 
-def _save_prompt_to_file(prompt: str, stage: str, query: str = ""):
+def _save_prompt_to_file(prompt: str, stage: str, query: str = "") -> None:
     """Save prompt to temporary file for inspection."""
     config_builder = _get_config()
     if not config_builder.get("debug.save_prompts", False):
@@ -107,7 +110,7 @@ class MiddleLayerPipeline(BasePipeline):
         facility_name: str = "control system",
         facility_description: str = "",
         **kwargs,
-    ):
+    ) -> None:
         """
         Initialize middle layer pipeline.
 
@@ -181,7 +184,9 @@ class MiddleLayerPipeline(BasePipeline):
                 return {"error": str(e)}
 
         @tool
-        def inspect_fields(system: str, family: str, field: str = None) -> dict[str, dict[str, str]]:
+        def inspect_fields(
+            system: str, family: str, field: str = None
+        ) -> dict[str, dict[str, str]]:
             """Inspect the structure of fields within a family.
 
             Use this to discover what fields and subfields are available
@@ -209,7 +214,9 @@ class MiddleLayerPipeline(BasePipeline):
                     }
                 }
             """
-            logger.info(f"Tool: inspect_fields(system='{system}', family='{family}', field='{field}') called")
+            logger.info(
+                f"Tool: inspect_fields(system='{system}', family='{family}', field='{field}') called"
+            )
             try:
                 result = self.database.inspect_fields(system, family, field)
                 logger.debug(f"  → Returned {len(result)} fields")
@@ -303,11 +310,18 @@ class MiddleLayerPipeline(BasePipeline):
             func=report_results_func,
             name="report_results",
             description=report_results_func.__doc__,
-            args_schema=ChannelSearchResult
+            args_schema=ChannelSearchResult,
         )
 
         # Return list of all tools (report_results must be last per instructions to agent)
-        return [list_systems, list_families, inspect_fields, list_channel_names, get_common_names, report_results]
+        return [
+            list_systems,
+            list_families,
+            inspect_fields,
+            list_channel_names,
+            get_common_names,
+            report_results,
+        ]
 
     async def _get_agent(self):
         """Get or create ReAct agent with database tools (cached)."""
@@ -324,8 +338,8 @@ class MiddleLayerPipeline(BasePipeline):
 
             if not provider:
                 raise ValueError(
-                    f"No provider configured for channel finder model. "
-                    f"Please configure a model in config.yml"
+                    "No provider configured for channel finder model. "
+                    "Please configure a model in config.yml"
                 )
 
             # Create LangChain ChatModel based on provider
@@ -333,25 +347,22 @@ class MiddleLayerPipeline(BasePipeline):
             # which requires registry initialization
             if provider == "anthropic":
                 from langchain_anthropic import ChatAnthropic
+
                 llm = ChatAnthropic(
-                    model=model_id,
-                    anthropic_api_key=api_key,
-                    max_tokens=max_tokens
+                    model=model_id, anthropic_api_key=api_key, max_tokens=max_tokens
                 )
             elif provider == "openai":
                 from langchain_openai import ChatOpenAI
-                llm = ChatOpenAI(
-                    model=model_id,
-                    api_key=api_key,
-                    max_tokens=max_tokens
-                )
+
+                llm = ChatOpenAI(model=model_id, api_key=api_key, max_tokens=max_tokens)
             elif provider == "cborg":
                 from langchain_openai import ChatOpenAI
+
                 llm = ChatOpenAI(
                     model=model_id,
                     api_key=api_key,
                     base_url=self.model_config.get("base_url"),
-                    max_tokens=max_tokens
+                    max_tokens=max_tokens,
                 )
             else:
                 raise ValueError(f"Provider {provider} not supported")
@@ -469,7 +480,7 @@ Example workflow:
         all_channels = []
         for i, atomic_query in enumerate(atomic_queries, 1):
             if len(atomic_queries) == 1:
-                logger.info(f"[bold cyan]Stage 2:[/bold cyan] Querying database with React agent...")
+                logger.info("[bold cyan]Stage 2:[/bold cyan] Querying database with React agent...")
             else:
                 logger.info(
                     f"[bold cyan]Stage 2 - Query {i}/{len(atomic_queries)}:[/bold cyan] {atomic_query}"
@@ -535,29 +546,24 @@ Example workflow:
         full_query = f"{system_prompt}\n\nUser Query: {query}"
 
         # Run LangGraph agent (no stdout suppression needed - we extract from tool call)
-        response = await agent.ainvoke({
-            "messages": [{
-                "role": "user",
-                "content": full_query
-            }]
-        })
+        response = await agent.ainvoke({"messages": [{"role": "user", "content": full_query}]})
 
         # Extract structured result from report_results tool call in messages
         # This is thread-safe and works with concurrent queries
         for message in response.get("messages", []):
             # Check if message has tool_calls attribute
-            if hasattr(message, 'tool_calls') and message.tool_calls:
+            if hasattr(message, "tool_calls") and message.tool_calls:
                 for tool_call in message.tool_calls:
-                    if tool_call.get('name') == 'report_results':
+                    if tool_call.get("name") == "report_results":
                         # Extract args directly from the tool call
-                        args = tool_call.get('args', {})
+                        args = tool_call.get("args", {})
                         return {
                             "channels": args.get("channels", []),
-                            "description": args.get("description", "No description provided")
+                            "description": args.get("description", "No description provided"),
                         }
 
             # Also check for ToolMessage responses (where tool results are stored)
-            if hasattr(message, 'name') and message.name == 'report_results':
+            if hasattr(message, "name") and message.name == "report_results":
                 # Tool was called, check if result is available
                 # The actual structured data should be in the tool_calls, but keep this as fallback
                 pass
@@ -565,11 +571,15 @@ Example workflow:
         # Fallback: If agent didn't call report_results, log warning and return empty
         logger.warning("Agent did not call report_results tool. Returning empty result.")
         final_message = response["messages"][-1] if response.get("messages") else None
-        fallback_description = final_message.content if final_message and hasattr(final_message, 'content') else "Agent completed without calling report_results"
+        fallback_description = (
+            final_message.content
+            if final_message and hasattr(final_message, "content")
+            else "Agent completed without calling report_results"
+        )
 
         return {
             "channels": [],
-            "description": f"WARNING: Agent did not report results properly. Agent response: {fallback_description}"
+            "description": f"WARNING: Agent did not report results properly. Agent response: {fallback_description}",
         }
 
     def _build_result(self, query: str, channels_list: list[str]) -> ChannelFinderResult:
@@ -588,7 +598,8 @@ Example workflow:
                 )
 
         notes = (
-            f"Processed query using React agent with database tools. " f"Found {len(channel_infos)} channels."
+            f"Processed query using React agent with database tools. "
+            f"Found {len(channel_infos)} channels."
         )
 
         return ChannelFinderResult(
@@ -606,4 +617,3 @@ Example workflow:
             "systems": db_stats.get("systems", 0),
             "families": db_stats.get("families", 0),
         }
-

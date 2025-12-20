@@ -5,20 +5,15 @@ Tests the MML-style channel finder with React agent and database query tools.
 """
 
 import pytest
-from pathlib import Path
 
 from osprey.templates.apps.control_assistant.services.channel_finder.databases.middle_layer import (
     MiddleLayerDatabase,
 )
-from osprey.templates.apps.control_assistant.services.channel_finder.pipelines.middle_layer import (
-    MiddleLayerPipeline,
-)
-
 
 # === Database Tests ===
 
 
-def test_middle_layer_database_load(sample_middle_layer_db_path):
+def test_middle_layer_database_load(sample_middle_layer_db_path) -> None:
     """Test that middle layer database loads correctly."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
@@ -32,7 +27,7 @@ def test_middle_layer_database_load(sample_middle_layer_db_path):
     assert "SR01C:BPM1:X" in db.channel_map
 
 
-def test_middle_layer_database_list_systems(sample_middle_layer_db_path):
+def test_middle_layer_database_list_systems(sample_middle_layer_db_path) -> None:
     """Test listing systems with descriptions."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
@@ -49,7 +44,7 @@ def test_middle_layer_database_list_systems(sample_middle_layer_db_path):
         assert isinstance(system["description"], str)  # Can be empty string
 
 
-def test_middle_layer_database_list_families(sample_middle_layer_db_path):
+def test_middle_layer_database_list_families(sample_middle_layer_db_path) -> None:
     """Test listing families in a system with descriptions."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
@@ -67,7 +62,7 @@ def test_middle_layer_database_list_families(sample_middle_layer_db_path):
         assert isinstance(family["description"], str)  # Can be empty string
 
 
-def test_middle_layer_database_inspect_fields(sample_middle_layer_db_path):
+def test_middle_layer_database_inspect_fields(sample_middle_layer_db_path) -> None:
     """Test inspecting field structure with descriptions."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
@@ -78,7 +73,7 @@ def test_middle_layer_database_inspect_fields(sample_middle_layer_db_path):
     assert "setup" in fields
 
     # Check structure - fields now return dicts with type and description
-    for field_name, field_info in fields.items():
+    for _field_name, field_info in fields.items():
         assert "type" in field_info
         assert "description" in field_info
         assert isinstance(field_info["description"], str)  # Can be empty string
@@ -89,12 +84,12 @@ def test_middle_layer_database_inspect_fields(sample_middle_layer_db_path):
     assert "Y" in subfields
 
     # Check subfield structure
-    for subfield_name, subfield_info in subfields.items():
+    for _subfield_name, subfield_info in subfields.items():
         assert "type" in subfield_info
         assert "description" in subfield_info
 
 
-def test_middle_layer_database_list_channel_names(sample_middle_layer_db_path):
+def test_middle_layer_database_list_channel_names(sample_middle_layer_db_path) -> None:
     """Test retrieving channel names."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
@@ -111,7 +106,7 @@ def test_middle_layer_database_list_channel_names(sample_middle_layer_db_path):
     assert len(channels) == 4
 
 
-def test_middle_layer_database_sector_filtering(sample_middle_layer_db_path):
+def test_middle_layer_database_sector_filtering(sample_middle_layer_db_path) -> None:
     """Test filtering by sectors."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
@@ -124,7 +119,7 @@ def test_middle_layer_database_sector_filtering(sample_middle_layer_db_path):
     assert len(channels) == 2
 
 
-def test_middle_layer_database_device_filtering(sample_middle_layer_db_path):
+def test_middle_layer_database_device_filtering(sample_middle_layer_db_path) -> None:
     """Test filtering by devices."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
@@ -137,17 +132,19 @@ def test_middle_layer_database_device_filtering(sample_middle_layer_db_path):
     assert len(channels) == 2
 
 
-def test_middle_layer_database_combined_filtering(sample_middle_layer_db_path):
+def test_middle_layer_database_combined_filtering(sample_middle_layer_db_path) -> None:
     """Test filtering by both sectors and devices."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
     # Filter to sector 1, device 1 only - use Setpoint/X which has one channel per device
-    channels = db.list_channel_names("SR", "BPM", "Setpoint", subfield="X", sectors=[1], devices=[1])
+    channels = db.list_channel_names(
+        "SR", "BPM", "Setpoint", subfield="X", sectors=[1], devices=[1]
+    )
     assert "SR01C:BPM1:XSet" in channels
     assert len(channels) == 1
 
 
-def test_middle_layer_database_validation(sample_middle_layer_db_path):
+def test_middle_layer_database_validation(sample_middle_layer_db_path) -> None:
     """Test channel validation."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
@@ -160,7 +157,7 @@ def test_middle_layer_database_validation(sample_middle_layer_db_path):
     assert db.validate_channel("SR01C:BPM999:X") is False
 
 
-def test_middle_layer_database_get_channel(sample_middle_layer_db_path):
+def test_middle_layer_database_get_channel(sample_middle_layer_db_path) -> None:
     """Test getting channel metadata."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
@@ -173,7 +170,7 @@ def test_middle_layer_database_get_channel(sample_middle_layer_db_path):
     assert channel["field"] == "Monitor"
 
 
-def test_middle_layer_database_statistics(sample_middle_layer_db_path):
+def test_middle_layer_database_statistics(sample_middle_layer_db_path) -> None:
     """Test database statistics."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
@@ -184,7 +181,7 @@ def test_middle_layer_database_statistics(sample_middle_layer_db_path):
     assert stats["families"] > 0
 
 
-def test_middle_layer_database_error_handling(sample_middle_layer_db_path):
+def test_middle_layer_database_error_handling(sample_middle_layer_db_path) -> None:
     """Test error handling for invalid queries."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
@@ -208,7 +205,7 @@ def test_middle_layer_database_error_handling(sample_middle_layer_db_path):
 # === Fixtures ===
 
 
-def test_middle_layer_database_descriptions_optional(sample_middle_layer_db_path):
+def test_middle_layer_database_descriptions_optional(sample_middle_layer_db_path) -> None:
     """Test that descriptions are optional and system works without them."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
@@ -224,7 +221,7 @@ def test_middle_layer_database_descriptions_optional(sample_middle_layer_db_path
         # Can be empty string
 
 
-def test_middle_layer_database_descriptions_present(sample_middle_layer_db_path):
+def test_middle_layer_database_descriptions_present(sample_middle_layer_db_path) -> None:
     """Test that descriptions are extracted when present."""
     db = MiddleLayerDatabase(sample_middle_layer_db_path)
 
@@ -242,7 +239,7 @@ def test_middle_layer_database_descriptions_present(sample_middle_layer_db_path)
 
 
 @pytest.fixture
-def sample_middle_layer_db_path(tmp_path):
+def sample_middle_layer_db_path(tmp_path) -> str:
     """Create a sample middle layer database for testing."""
     db_file = tmp_path / "test_middle_layer.json"
 
@@ -265,7 +262,7 @@ def sample_middle_layer_db_path(tmp_path):
                         "SR02C:BPM1:Y",
                         "SR02C:BPM2:X",
                         "SR02C:BPM2:Y",
-                    ]
+                    ],
                 },
                 "Setpoint": {
                     "X": {
@@ -297,7 +294,7 @@ def sample_middle_layer_db_path(tmp_path):
                     "ChannelNames": [
                         "SR01C:HCM1:Current",
                         "SR01C:HCM2:Current",
-                    ]
+                    ],
                 },
                 "Setpoint": {
                     "ChannelNames": [
@@ -355,4 +352,3 @@ def sample_middle_layer_db_path(tmp_path):
         json.dump(test_data, f, indent=2)
 
     return str(db_file)
-

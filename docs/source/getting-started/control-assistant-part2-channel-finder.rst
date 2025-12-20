@@ -1904,6 +1904,13 @@ That's it—no code changes required. The template includes complete implementat
 
             This shows you what information the agent sees at each level of exploration, helping you verify descriptions are clear and helpful.
 
+            **Preview Output Example:**
+
+            .. image:: ../_static/screenshots/channel_finder_db_preview_middlelayer.png
+               :alt: Middle Layer Database Preview
+               :align: center
+               :width: 90%
+
             **Best Practices:**
 
             1. **Rich Descriptions**: Write clear descriptions at all levels—these are the primary guide for the LLM agent

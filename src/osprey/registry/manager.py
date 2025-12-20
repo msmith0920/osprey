@@ -981,9 +981,9 @@ class RegistryManager:
         if silent:
             # Suppress INFO and DEBUG output from registry-related loggers
             loggers_to_silence = [
-                'REGISTRY',  # Main registry logger
-                'connector_factory',  # Control system connector factory
-                'memory_storage',  # Memory storage system
+                "REGISTRY",  # Main registry logger
+                "connector_factory",  # Control system connector factory
+                "memory_storage",  # Memory storage system
             ]
             for logger_name in loggers_to_silence:
                 log = logging.getLogger(logger_name)
@@ -2536,7 +2536,9 @@ def _create_registry_from_config(config_path: str | None = None) -> RegistryMana
         raise RuntimeError(f"Registry creation failed: {e}") from e
 
 
-def initialize_registry(auto_export: bool = True, config_path: str | None = None, silent: bool = False) -> None:
+def initialize_registry(
+    auto_export: bool = True, config_path: str | None = None, silent: bool = False
+) -> None:
     """Initialize the global registry system with all components.
 
     Performs complete initialization of the global registry system, including

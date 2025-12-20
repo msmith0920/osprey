@@ -213,9 +213,9 @@ class TestDepthParameter:
 
             # Validate depth=3 behavior:
             # 1. Configuration section should show Display Depth = 3
-            assert re.search(r"Display Depth\s+3", result), (
-                f"Output should show 'Display Depth' with value 3\nGot: {result[:500]}"
-            )
+            assert re.search(
+                r"Display Depth\s+3", result
+            ), f"Output should show 'Display Depth' with value 3\nGot: {result[:500]}"
 
             # 2. Tree should be present
             assert "Hierarchy Tree" in result, "Tree section header should be present"
@@ -232,15 +232,15 @@ class TestDepthParameter:
             # Check that we don't go beyond the requested depth
             # Each level adds indentation (┃ characters)
             max_indentation = max(line.count("┃") for line in branch_lines) if branch_lines else 0
-            assert max_indentation <= 3, (
-                f"Tree depth should not exceed 3 levels, but found {max_indentation} levels of indentation"
-            )
+            assert (
+                max_indentation <= 3
+            ), f"Tree depth should not exceed 3 levels, but found {max_indentation} levels of indentation"
 
             # 4. Should have the tip about using -1 for complete hierarchy
             # (only shown when depth/max_items are limited)
-            assert "--depth -1" in result, (
-                "Should show tip about viewing complete hierarchy with --depth -1"
-            )
+            assert (
+                "--depth -1" in result
+            ), "Should show tip about viewing complete hierarchy with --depth -1"
 
             print("\n✓ All depth=3 validations passed:")
             print("  - Display Depth parameter shown correctly")
@@ -325,17 +325,17 @@ class TestMaxItemsParameter:
 
             # Validate max_items=3 behavior:
             # 1. Should show Max Items/Level = 3
-            assert re.search(r"Max Items/Level\s+3", result), (
-                "Output should show 'Max Items/Level' with value 3"
-            )
+            assert re.search(
+                r"Max Items/Level\s+3", result
+            ), "Output should show 'Max Items/Level' with value 3"
 
             # 2. Extract tree section
             tree_section = result[result.find("Hierarchy Tree") : result.find("💡 Tip:")]
 
             # 3. Check for truncation message "... X more"
-            assert "... " in tree_section and " more " in tree_section, (
-                "Tree should show truncation message when items exceed max_items"
-            )
+            assert (
+                "... " in tree_section and " more " in tree_section
+            ), "Tree should show truncation message when items exceed max_items"
 
             # 4. Count top-level systems in the tree
             # Top level has pattern: │  ┣━━ or │  ┗━━ (panel border + 2 spaces + branch + capital letter)
@@ -346,9 +346,9 @@ class TestMaxItemsParameter:
             ]
 
             # With max_items=3, should see exactly 3 systems (M, V, D)
-            assert len(top_level_branches) == 3, (
-                f"Should show exactly 3 top-level items, found {len(top_level_branches)}"
-            )
+            assert (
+                len(top_level_branches) == 3
+            ), f"Should show exactly 3 top-level items, found {len(top_level_branches)}"
 
             print("\n✓ All max_items=3 validations passed:")
             print("  - Max Items/Level parameter shown correctly")
@@ -419,9 +419,9 @@ class TestSectionsParameter:
 
             # Should NOT have stats or breakdown
             assert "Hierarchy Level Statistics" not in result, "Stats section should NOT be present"
-            assert "Channel Count Breakdown" not in result, (
-                "Breakdown section should NOT be present"
-            )
+            assert (
+                "Channel Count Breakdown" not in result
+            ), "Breakdown section should NOT be present"
             assert "Sample Channels" not in result, "Samples section should NOT be present"
 
             print("\n✓ sections='tree' correctly shows only tree")
@@ -467,9 +467,9 @@ class TestSectionsParameter:
 
             # Should NOT have tree or breakdown
             assert "Hierarchy Tree" not in result, "Tree section should NOT be present"
-            assert "Channel Count Breakdown" not in result, (
-                "Breakdown section should NOT be present"
-            )
+            assert (
+                "Channel Count Breakdown" not in result
+            ), "Breakdown section should NOT be present"
 
             print("\n✓ sections='stats' correctly shows only stats")
 
@@ -642,9 +642,9 @@ class TestFocusParameter:
             assert "M" in result.split("Hierarchy Tree")[0], "Should show M in tree title area"
 
             # Should have M system content
-            assert "QB" in result or "DP" in result or "CM" in result, (
-                "Should show M subsystems (QB, DP, or CM)"
-            )
+            assert (
+                "QB" in result or "DP" in result or "CM" in result
+            ), "Should show M subsystems (QB, DP, or CM)"
 
             # Should NOT have other top-level systems
             tree_section = result[result.find("Hierarchy Tree") :]
@@ -851,9 +851,9 @@ class TestCrossDatabaseCompatibility:
 
             # Basic validations that should work on all databases
             assert "Hierarchy Tree" in result, f"Tree should render on {db_fixture_name}"
-            assert re.search(r"Display Depth\s+2", result), (
-                f"Depth parameter should show on {db_fixture_name}"
-            )
+            assert re.search(
+                r"Display Depth\s+2", result
+            ), f"Depth parameter should show on {db_fixture_name}"
             assert "channels" in result.lower(), f"Should show channel count on {db_fixture_name}"
 
             print(f"\n✓ depth=2 works on {db_fixture_name}")

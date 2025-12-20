@@ -290,9 +290,9 @@ async def test_hello_world_weather_tutorial(e2e_project_factory, llm_judge):
 
     # Verify BOTH capabilities were executed
     trace_lower = result.execution_trace.lower()
-    assert "weather" in trace_lower or "current_weather" in trace_lower, (
-        "Weather capability not executed"
-    )
+    assert (
+        "weather" in trace_lower or "current_weather" in trace_lower
+    ), "Weather capability not executed"
     assert "python" in trace_lower, "Python capability not executed"
 
     # Verify San Francisco was mentioned (either in trace or response)
@@ -330,18 +330,18 @@ async def test_hello_world_weather_tutorial(e2e_project_factory, llm_judge):
     api_log_content = api_log_file.read_text()
 
     # Verify the prompt contains our location extraction instructions
-    assert "location extraction assistant" in api_log_content.lower(), (
-        "API log doesn't contain expected location extraction prompt"
-    )
+    assert (
+        "location extraction assistant" in api_log_content.lower()
+    ), "API log doesn't contain expected location extraction prompt"
     assert "Examples:" in api_log_content, "API log should contain example-based prompt"
 
     # Verify the prompt includes the user's query
     assert "san francisco" in api_log_content.lower(), "User's query not found in API log"
 
     # Verify structured output model is used
-    assert "_ParsedWeatherQuery" in api_log_content or "ParsedWeatherQuery" in api_log_content, (
-        "API log should show structured output model usage"
-    )
+    assert (
+        "_ParsedWeatherQuery" in api_log_content or "ParsedWeatherQuery" in api_log_content
+    ), "API log should show structured output model usage"
 
     # Verify the output contains San Francisco as the extracted location
     # Look for the OUTPUT RESPONSE section
@@ -352,14 +352,14 @@ async def test_hello_world_weather_tutorial(e2e_project_factory, llm_judge):
     if output_match:
         output_section = output_match.group(1)
         # Check for San Francisco in the output (could be JSON or other format)
-        assert "San Francisco" in output_section or "san francisco" in output_section.lower(), (
-            f"Output doesn't contain 'San Francisco'. Output section:\n{output_section}"
-        )
+        assert (
+            "San Francisco" in output_section or "san francisco" in output_section.lower()
+        ), f"Output doesn't contain 'San Francisco'. Output section:\n{output_section}"
     else:
         # If we can't parse the output section, at least verify it exists somewhere
-        assert "San Francisco" in api_log_content or "san francisco" in api_log_content.lower(), (
-            "Parsed location 'San Francisco' not found anywhere in API log"
-        )
+        assert (
+            "San Francisco" in api_log_content or "san francisco" in api_log_content.lower()
+        ), "Parsed location 'San Francisco' not found anywhere in API log"
 
 
 # Template for adding new tutorial tests:

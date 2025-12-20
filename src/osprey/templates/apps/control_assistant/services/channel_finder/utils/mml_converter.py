@@ -26,7 +26,7 @@ Usage:
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +48,11 @@ class MMLConverter:
     - And all other custom fields
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize converter with empty data dict."""
         self.data = {}
 
-    def add_system(self, system_name: str, mml_data: Dict[str, Any]):
+    def add_system(self, system_name: str, mml_data: dict[str, Any]) -> None:
         """
         Add a system's MML data to the converter.
 
@@ -80,13 +80,13 @@ class MMLConverter:
             f"Added system '{system_name}': {num_families} families, {num_channels} channels"
         )
 
-    def _count_channels(self, mml_data: Dict) -> int:
+    def _count_channels(self, mml_data: dict) -> int:
         """Count total channels in MML data structure."""
         count = 0
-        for family, family_data in mml_data.items():
+        for _family, family_data in mml_data.items():
             if not isinstance(family_data, dict):
                 continue
-            for field, field_data in family_data.items():
+            for _field, field_data in family_data.items():
                 if isinstance(field_data, dict) and "ChannelNames" in field_data:
                     channel_names = field_data["ChannelNames"]
                     # Count non-empty channel names (filter out whitespace padding)
@@ -96,7 +96,7 @@ class MMLConverter:
                     count += self._count_nested_channels(field_data)
         return count
 
-    def _count_nested_channels(self, data: Dict) -> int:
+    def _count_nested_channels(self, data: dict) -> int:
         """Recursively count channels in nested structure."""
         count = 0
         for key, value in data.items():
@@ -110,7 +110,7 @@ class MMLConverter:
                     count += self._count_nested_channels(value)
         return count
 
-    def save_json(self, output_path: str, indent: int = 2):
+    def save_json(self, output_path: str, indent: int = 2) -> None:
         """
         Save the converted data to JSON file.
 
@@ -130,9 +130,7 @@ class MMLConverter:
         )
 
     @classmethod
-    def convert_and_save(
-        cls, ao_data: Dict[str, Dict], output_path: str, indent: int = 2
-    ):
+    def convert_and_save(cls, ao_data: dict[str, dict], output_path: str, indent: int = 2) -> None:
         """
         Convert and save MML data in one step.
 
@@ -164,7 +162,9 @@ class MMLConverter:
         converter.save_json(output_path, indent)
 
     @classmethod
-    def convert_from_python_file(cls, module_path: str, variable_name: str, output_path: str):
+    def convert_from_python_file(
+        cls, module_path: str, variable_name: str, output_path: str
+    ) -> None:
         """
         Convert directly from a Python file containing MML data.
 
@@ -199,7 +199,8 @@ class MMLConverter:
 
 # === Command-line interface ===
 
-def main():
+
+def main() -> None:
     """
     Command-line interface for MML conversion.
 
@@ -269,11 +270,9 @@ def main():
     # Save combined data
     converter.save_json(args.output, indent=args.indent)
 
-    logger.info(f"✓ Conversion complete!")
+    logger.info("✓ Conversion complete!")
     return 0
 
 
 if __name__ == "__main__":
     exit(main())
-
-
