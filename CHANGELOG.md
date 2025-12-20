@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.8] - 2025-12-19
 
 ### Added
+- **Channel Finder - Middle Layer**: React agent prompts for functional navigation
+  - Query splitter prompt for decomposing complex queries
+  - System prompt with database exploration tools
 - **Registry Manager**: Silent initialization mode for clean CLI output
   - Suppress INFO/DEBUG logging during initialization when `silent=True`
   - Useful for CLI tools that need clean output without verbose registry logs
