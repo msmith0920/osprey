@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enables version-locked workflow documentation
 
 ### Added
+- **CLI**: New `osprey workflows` command to export AI workflow files
+  - `osprey workflows export` - Export workflows to local directory (default: ./osprey-workflows/)
+  - `osprey workflows list` - List all available workflow files
+  - Interactive menu integration for easy access
 - **Documentation - AI Workflows**: Channel Finder workflow guides for AI-assisted development
   - New workflow files: pipeline selection guide and database builder guide with AI prompts and code references
   - Workflow cards in AI-assisted development guide linking to pipeline selection and database building workflows
