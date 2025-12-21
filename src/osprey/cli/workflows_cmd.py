@@ -35,9 +35,7 @@ def get_workflows_source_path() -> Path | None:
             # It's a Traversable, convert via str
             return Path(str(workflows_ref))
     except Exception as e:
-        console.print(
-            f"{Messages.error('Error locating workflow files:')} {e}", style=Styles.ERROR
-        )
+        console.print(f"{Messages.error('Error locating workflow files:')} {e}", style=Styles.ERROR)
         return None
 
 
@@ -124,7 +122,9 @@ def list():
 
         except Exception:
             # Fallback: just show filename
-            console.print(f"  [{Styles.SUCCESS}]•[/{Styles.SUCCESS}] {wf.name} [{Styles.DIM}](read error)[/{Styles.DIM}]")
+            console.print(
+                f"  [{Styles.SUCCESS}]•[/{Styles.SUCCESS}] {wf.name} [{Styles.DIM}](read error)[/{Styles.DIM}]"
+            )
 
     console.print(f"\n[{Styles.DIM}]Total: {len(workflows_list)} workflows[/{Styles.DIM}]")
     console.print(
@@ -140,9 +140,7 @@ def list():
     default="./osprey-workflows",
     help="Target directory for exported workflows",
 )
-@click.option(
-    "--force", "-f", is_flag=True, help="Overwrite existing files without prompting"
-)
+@click.option("--force", "-f", is_flag=True, help="Overwrite existing files without prompting")
 def export(output, force):
     """Export workflow files to a local directory.
 
@@ -219,9 +217,7 @@ def export(output, force):
                     copied += 1
                 except Exception as e:
                     errors.append((wf_file.name, str(e)))
-                    console.print(
-                        f"  [{Styles.ERROR}]✗[/{Styles.ERROR}] {wf_file.name} - {e}"
-                    )
+                    console.print(f"  [{Styles.ERROR}]✗[/{Styles.ERROR}] {wf_file.name} - {e}")
     except Exception as e:
         console.print(Messages.error(f"Error during export: {e}"))
         return
@@ -254,4 +250,3 @@ def export(output, force):
     console.print(
         f"\n[{Styles.DIM}]Learn more: https://als-apg.github.io/osprey/contributing/03_ai-assisted-development.html[/{Styles.DIM}]\n"
     )
-

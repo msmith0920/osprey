@@ -143,9 +143,9 @@ class TestStatePreservationIntegration:
 
             # The second argument should be the reducer function
             metadata = args[1:]
-            assert (
-                preserve_once_set in metadata
-            ), "request field should have preserve_once_set reducer in metadata"
+            assert preserve_once_set in metadata, (
+                "request field should have preserve_once_set reducer in metadata"
+            )
 
     def test_state_creation_includes_request(self):
         """Test that _create_internal_state includes request field.

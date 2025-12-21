@@ -168,12 +168,12 @@ class TestControlSystemTaskExtractionPrompt:
 
         # Verify BPM terminology clarification is present
         assert "BPM" in prompt, "Prompt should mention BPM"
-        assert (
-            "Beam Position Monitor" in prompt
-        ), "Prompt should clarify BPM = Beam Position Monitor"
-        assert (
-            "NOT beats per minute" in prompt or "not beats per minute" in prompt.lower()
-        ), "Prompt should explicitly state BPM is NOT beats per minute"
+        assert "Beam Position Monitor" in prompt, (
+            "Prompt should clarify BPM = Beam Position Monitor"
+        )
+        assert "NOT beats per minute" in prompt or "not beats per minute" in prompt.lower(), (
+            "Prompt should explicitly state BPM is NOT beats per minute"
+        )
 
     @patch("osprey.infrastructure.task_extraction_node.get_chat_completion")
     def test_control_system_terminology_present(self, mock_llm, sample_messages):
@@ -237,9 +237,9 @@ class TestControlSystemTaskExtractionPrompt:
         ), "Prompt should contain control system specific guidelines section"
 
         # Check for channel reference resolution guidance
-        assert (
-            "channel" in prompt.lower() and "reference" in prompt.lower()
-        ), "Prompt should mention channel reference resolution"
+        assert "channel" in prompt.lower() and "reference" in prompt.lower(), (
+            "Prompt should mention channel reference resolution"
+        )
 
     @patch("osprey.infrastructure.task_extraction_node.get_chat_completion")
     def test_framework_defaults_not_present(self, mock_llm, sample_messages):

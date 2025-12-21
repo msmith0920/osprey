@@ -80,18 +80,18 @@ class TestOptionalLevelNavigation:
         # or a direct signal (Heartbeat, Status) without needing NOTHING_FOUND logic
 
         # Direct signals (leaf nodes) should be in subdevice options
-        assert (
-            "Heartbeat" in subdevice_names
-        ), "Heartbeat should appear in options (it's a direct signal at device level)"
-        assert (
-            "Status" in subdevice_names
-        ), "Status should appear in options (it's a direct signal at device level)"
-        assert (
-            "Mode" in subdevice_names
-        ), "Mode should appear in options (it's a direct signal at device level)"
-        assert (
-            "Config" in subdevice_names
-        ), "Config should appear in options (it's a direct signal at device level)"
+        assert "Heartbeat" in subdevice_names, (
+            "Heartbeat should appear in options (it's a direct signal at device level)"
+        )
+        assert "Status" in subdevice_names, (
+            "Status should appear in options (it's a direct signal at device level)"
+        )
+        assert "Mode" in subdevice_names, (
+            "Mode should appear in options (it's a direct signal at device level)"
+        )
+        assert "Config" in subdevice_names, (
+            "Config should appear in options (it's a direct signal at device level)"
+        )
 
         # Actual subdevices (container nodes) should also be in the list
         assert "PSU" in subdevice_names, "PSU is a subdevice container, should be in list"
@@ -101,14 +101,14 @@ class TestOptionalLevelNavigation:
         # CH has _expansion, so it appears as CH-1, CH-2 (not "CH")
         assert "CH-1" in subdevice_names, "CH-1 is an expanded instance, should be in list"
         assert "CH-2" in subdevice_names, "CH-2 is an expanded instance, should be in list"
-        assert (
-            "CH" not in subdevice_names
-        ), "CH (base container) should NOT be in list (has _expansion)"
+        assert "CH" not in subdevice_names, (
+            "CH (base container) should NOT be in list (has _expansion)"
+        )
 
         # Verify all 9 options are returned (4 direct signals + 3 subdevices + 2 CH instances)
-        assert (
-            len(subdevice_names) == 9
-        ), f"Expected 9 options (4 direct + 3 subdevices + 2 CH instances), got {len(subdevice_names)}"
+        assert len(subdevice_names) == 9, (
+            f"Expected 9 options (4 direct + 3 subdevices + 2 CH instances), got {len(subdevice_names)}"
+        )
 
     def test_subdevice_vs_signal_distinction(self, optional_levels_db):
         """
@@ -154,9 +154,9 @@ class TestOptionalLevelNavigation:
             print(f"🐛 Missing direct signals: {expected_direct_signals - direct_signals_present}")
 
         # Verify all expected options appear
-        assert (
-            set(subdevice_names) == expected_all
-        ), f"Expected {expected_all}, got {set(subdevice_names)}"
+        assert set(subdevice_names) == expected_all, (
+            f"Expected {expected_all}, got {set(subdevice_names)}"
+        )
 
     def test_channel_map_has_direct_signals(self, optional_levels_db):
         """
@@ -280,9 +280,9 @@ class TestChannelBuildingWithOptionalLevels:
         assert not channel.endswith("_"), f"Channel has trailing underscore: {channel}"
 
         # Verify correct channel name
-        assert (
-            channel == "CTRL:MAIN:MC-01:Heartbeat"
-        ), f"Expected 'CTRL:MAIN:MC-01:Heartbeat', got '{channel}'"
+        assert channel == "CTRL:MAIN:MC-01:Heartbeat", (
+            f"Expected 'CTRL:MAIN:MC-01:Heartbeat', got '{channel}'"
+        )
 
     def test_build_channel_with_one_optional_included(self, optional_levels_db):
         """
@@ -309,9 +309,9 @@ class TestChannelBuildingWithOptionalLevels:
         # Should work with optional suffix omitted
         assert len(channels) == 1, f"Should build exactly one channel, got {len(channels)}"
         channel = channels[0]
-        assert (
-            channel == "CTRL:MAIN:MC-01:PSU:Voltage"
-        ), f"Expected 'CTRL:MAIN:MC-01:PSU:Voltage', got '{channel}'"
+        assert channel == "CTRL:MAIN:MC-01:PSU:Voltage", (
+            f"Expected 'CTRL:MAIN:MC-01:PSU:Voltage', got '{channel}'"
+        )
 
     def test_build_channel_with_explicit_empty_optionals(self, optional_levels_db):
         """
@@ -344,14 +344,14 @@ class TestChannelBuildingWithOptionalLevels:
         # Verify no separator artifacts (cleanup is applied automatically)
         assert "::" not in channel, f"Channel should not have double colons: '{channel}'"
         assert not channel.endswith(":"), f"Channel should not have trailing colon: '{channel}'"
-        assert not channel.endswith(
-            "_"
-        ), f"Channel should not have trailing underscore: '{channel}'"
+        assert not channel.endswith("_"), (
+            f"Channel should not have trailing underscore: '{channel}'"
+        )
 
         # Verify correct channel name
-        assert (
-            channel == "CTRL:MAIN:MC-01:Heartbeat"
-        ), f"Expected 'CTRL:MAIN:MC-01:Heartbeat', got '{channel}'"
+        assert channel == "CTRL:MAIN:MC-01:Heartbeat", (
+            f"Expected 'CTRL:MAIN:MC-01:Heartbeat', got '{channel}'"
+        )
         print("✅ CORRECT: Separator cleanup applied automatically")
 
 

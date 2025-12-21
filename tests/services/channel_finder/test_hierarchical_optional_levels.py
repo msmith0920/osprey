@@ -1352,9 +1352,9 @@ class TestExpansionAtOptionalLevel:
         # (Even if build_channels returns it, validation should fail)
         if channels:
             # If the build process returns something, it should NOT validate
-            assert (
-                expansion_at_optional_db.validate_channel(channels[0]) is False
-            ), f"Channel {channels[0]} should NOT validate (uses base container 'CH')"
+            assert expansion_at_optional_db.validate_channel(channels[0]) is False, (
+                f"Channel {channels[0]} should NOT validate (uses base container 'CH')"
+            )
 
         # Explicitly verify the specific invalid channel
         assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH:Gain_RB") is False
@@ -1415,9 +1415,9 @@ class TestExpansionAtOptionalLevel:
         expected_count = 28
 
         actual_count = len(expansion_at_optional_db.channel_map)
-        assert (
-            actual_count == expected_count
-        ), f"Expected {expected_count} channels (using expanded instances), got {actual_count}"
+        assert actual_count == expected_count, (
+            f"Expected {expected_count} channels (using expanded instances), got {actual_count}"
+        )
 
     def test_build_channels_from_selections_with_expanded_instance_preserves_separator_override(
         self, expansion_at_optional_db

@@ -289,8 +289,7 @@ class MiddleLayerDatabase(BaseDatabase):
         if family not in self.data[system]:
             families = [f["name"] for f in self.list_families(system)]
             raise ValueError(
-                f"Family '{family}' not found in system '{system}'. "
-                f"Available families: {families}"
+                f"Family '{family}' not found in system '{system}'. Available families: {families}"
             )
 
         family_data = self.data[system][family]

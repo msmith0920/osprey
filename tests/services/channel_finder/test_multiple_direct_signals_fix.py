@@ -106,15 +106,15 @@ class TestMultipleDirectSignalsFix:
         # Verify Status and Heartbeat are leaves
         for leaf_name in ["Status", "Heartbeat"]:
             node = current_node.get(leaf_name)
-            assert optional_levels_db._is_leaf_node(
-                node, level_idx + 1
-            ), f"{leaf_name} should be a leaf"
+            assert optional_levels_db._is_leaf_node(node, level_idx + 1), (
+                f"{leaf_name} should be a leaf"
+            )
 
         # Verify PSU is NOT a leaf (it's a container)
         psu_node = current_node.get("PSU")
-        assert not optional_levels_db._is_leaf_node(
-            psu_node, level_idx + 1
-        ), "PSU should NOT be a leaf (it's a container)"
+        assert not optional_levels_db._is_leaf_node(psu_node, level_idx + 1), (
+            "PSU should NOT be a leaf (it's a container)"
+        )
 
         # Build channels for leaves
         leaf_channels = []
@@ -159,9 +159,9 @@ class TestMultipleDirectSignalsFix:
         # Verify both are containers (not leaves)
         for container_name in ["PSU", "ADC"]:
             node = current_node.get(container_name)
-            assert not optional_levels_db._is_leaf_node(
-                node, level_idx + 1
-            ), f"{container_name} should be a container, not a leaf"
+            assert not optional_levels_db._is_leaf_node(node, level_idx + 1), (
+                f"{container_name} should be a container, not a leaf"
+            )
 
         # Both should have signals within them
         for container_name in ["PSU", "ADC"]:
@@ -192,9 +192,9 @@ class TestMultipleDirectSignalsFix:
         # Verify all are leaf nodes
         for signal_name in all_direct_signals:
             node = current_node.get(signal_name)
-            assert optional_levels_db._is_leaf_node(
-                node, level_idx + 1
-            ), f"{signal_name} should be a leaf node"
+            assert optional_levels_db._is_leaf_node(node, level_idx + 1), (
+                f"{signal_name} should be a leaf node"
+            )
 
         # Build channels for all
         all_channels = []
@@ -273,9 +273,9 @@ class TestMultipleDirectSignalsFix:
         suffix_options = optional_levels_db.get_options_at_level("suffix", y_selections)
         print(f"  Suffix options for Y: {[opt['name'] for opt in suffix_options]}")
         assert len(suffix_options) > 0, "Y should have suffix options available"
-        assert any(
-            opt["name"] == "RB" for opt in suffix_options
-        ), "RB should be available as a suffix"
+        assert any(opt["name"] == "RB" for opt in suffix_options), (
+            "RB should be available as a suffix"
+        )
 
         # Test 5: Build channels with both signal and suffix specified
         print("\nTest 5: Build channels with Y and RB suffix")
@@ -284,9 +284,9 @@ class TestMultipleDirectSignalsFix:
         built_channels = optional_levels_db.build_channels_from_selections(y_rb_selections)
         print(f"  Built channels: {built_channels}")
         assert len(built_channels) == 1, "Should generate exactly one channel for Y_RB"
-        assert (
-            built_channels[0] == "CTRL:DIAG:BPM-01:Y_RB"
-        ), f"Should build Y_RB with underscore separator, got {built_channels[0]}"
+        assert built_channels[0] == "CTRL:DIAG:BPM-01:Y_RB", (
+            f"Should build Y_RB with underscore separator, got {built_channels[0]}"
+        )
 
         # Test 6: Verify separator override is applied
         print("\nTest 6: Verify underscore separator (not colon)")
@@ -310,9 +310,9 @@ class TestMultipleDirectSignalsFix:
 
         print(f"  All built Y_RB channels: {all_built_channels}")
         for expected_channel in expected_channels:
-            assert (
-                expected_channel in all_built_channels
-            ), f"Expected channel {expected_channel} should be in built channels"
+            assert expected_channel in all_built_channels, (
+                f"Expected channel {expected_channel} should be in built channels"
+            )
 
         print("\n✓ All tests passed!")
 

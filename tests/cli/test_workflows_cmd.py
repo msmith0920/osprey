@@ -123,7 +123,9 @@ class TestExportCommand:
         assert (target / "README.md").exists()
 
     @patch("osprey.cli.workflows_cmd.get_workflows_source_path")
-    def test_export_default_location(self, mock_get_path, cli_runner, mock_workflows_path, tmp_path):
+    def test_export_default_location(
+        self, mock_get_path, cli_runner, mock_workflows_path, tmp_path
+    ):
         """Test that export uses default ./osprey-workflows/ location."""
         mock_get_path.return_value = mock_workflows_path
 
@@ -152,7 +154,9 @@ class TestExportCommand:
         assert "Overwrite" in result.output or "cancelled" in result.output.lower()
 
     @patch("osprey.cli.workflows_cmd.get_workflows_source_path")
-    def test_export_force_skips_prompt(self, mock_get_path, cli_runner, mock_workflows_path, tmp_path):
+    def test_export_force_skips_prompt(
+        self, mock_get_path, cli_runner, mock_workflows_path, tmp_path
+    ):
         """Test that --force flag skips confirmation prompt."""
         mock_get_path.return_value = mock_workflows_path
         target = tmp_path / "existing"
@@ -220,4 +224,3 @@ class TestWorkflowsGroupCommand:
         assert "export" in result.output.lower()
         assert "list" in result.output.lower()
         assert "workflow" in result.output.lower()
-
