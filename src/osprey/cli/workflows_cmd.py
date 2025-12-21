@@ -100,7 +100,7 @@ def list():
     for wf in workflows_list:
         try:
             # Read first line (title) from each workflow
-            with open(wf, "r", encoding="utf-8") as f:
+            with open(wf, encoding="utf-8") as f:
                 lines = f.readlines()
                 title = None
                 in_frontmatter = False
@@ -122,7 +122,7 @@ def list():
                 else:
                     console.print(f"  [{Styles.SUCCESS}]•[/{Styles.SUCCESS}] {wf.name}")
 
-        except Exception as e:
+        except Exception:
             # Fallback: just show filename
             console.print(f"  [{Styles.SUCCESS}]•[/{Styles.SUCCESS}] {wf.name} [{Styles.DIM}](read error)[/{Styles.DIM}]")
 

@@ -5,7 +5,7 @@ installed package and that the list command displays available workflows.
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from click.testing import CliRunner

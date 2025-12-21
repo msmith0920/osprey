@@ -2108,7 +2108,6 @@ def handle_workflows_action():
     Exports AI workflow markdown files to a local directory for easy
     access by AI coding assistants.
     """
-    from osprey.cli.workflows_cmd import export as export_workflows
     from osprey.cli.workflows_cmd import get_workflows_source_path
 
     console.print(f"\n{Messages.header('Export AI Workflow Files')}")

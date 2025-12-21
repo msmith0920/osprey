@@ -174,15 +174,15 @@ async def test_middle_layer_pipeline_sample(e2e_project_factory):
     # Ensure channel_finder section exists
     if "channel_finder" not in config:
         config["channel_finder"] = {}
-    
+
     config["channel_finder"]["pipeline_mode"] = "middle_layer"
-    
+
     # Limit to first 5 queries for faster execution
     if "benchmark" not in config["channel_finder"]:
         config["channel_finder"]["benchmark"] = {}
     if "execution" not in config["channel_finder"]["benchmark"]:
         config["channel_finder"]["benchmark"]["execution"] = {}
-    
+
     config["channel_finder"]["benchmark"]["execution"]["query_selection"] = {"start": 0, "end": 5}
 
     with open(config_path, "w") as f:
