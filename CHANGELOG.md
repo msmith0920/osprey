@@ -37,8 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - CLI screenshots and integration examples
   - End-to-end benchmark tests validating complete integration
 - **Channel Finder - Sample Data**: Middle layer database and benchmarks
-  - 174-channel sample database covering 4 systems (SR, VAC, BR, BTS)
-  - 15 device families with full metadata
+  - 2,033-channel sample database covering 3 systems (SR, BR, BTS)
+  - 20 device families with full metadata
   - 35-query benchmark dataset (20% coverage ratio - best of all pipelines)
   - Realistic accelerator physics context
 - **Channel Finder - Tools**: Middle layer support across all CLI tools

@@ -21,8 +21,8 @@
   - MMLConverter utility for Python MML exports to JSON
 
 - **Sample Database & Benchmarks**: Production-ready testing infrastructure
-  - 174-channel sample database covering 4 systems (SR, VAC, BR, BTS)
-  - 15 device families with full metadata
+  - 2,033-channel sample database covering 3 systems (SR, BR, BTS)
+  - 20 device families with full metadata
   - 35-query benchmark dataset (20% coverage ratio - best of all pipelines)
   - Realistic accelerator physics context
 
