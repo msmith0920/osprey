@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Documentation**: Fixed double slash typos in image paths causing 404 errors on GitHub Pages for in-context and hierarchical channel finder CLI screenshots
+
 ## [0.9.9] - 2025-12-22
 
 ### Fixed

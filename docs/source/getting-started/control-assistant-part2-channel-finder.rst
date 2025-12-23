@@ -143,7 +143,7 @@ That's it—no code changes required. The template includes complete implementat
 
 
 
-      .. figure:: //_static/screenshots/channel_finder_in_context_cli.png
+      .. figure:: /_static/screenshots/channel_finder_in_context_cli.png
          :alt: In-Context Channel Finder CLI in action
          :align: center
          :width: 100%
@@ -721,7 +721,7 @@ That's it—no code changes required. The template includes complete implementat
 
       **Best for:** Large systems (thousands+ channels), facilities with well-defined hierarchical organization, systems where context window size becomes a constraint.
 
-      .. figure:: //_static/screenshots/channel_finder_hierachical_cli.png
+      .. figure:: /_static/screenshots/channel_finder_hierachical_cli.png
          :alt: Hierarchical Channel Finder CLI in action
          :align: center
          :width: 100%
