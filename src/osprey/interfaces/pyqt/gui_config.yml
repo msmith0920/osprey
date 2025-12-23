@@ -1,4 +1,4 @@
-project_root: /home/phoebus/MLS/gitstuff/osprey-framework/osprey
+project_root: /home/phoebus/MLS/gitstuff/osprey-framework/osprey-96/osprey
 build_dir: ./_agent_data
 models:
   classifier:
@@ -66,17 +66,21 @@ routing:
     adaptive_ttl: true
     probabilistic_expiration: true
     event_driven: true
-  semantic_analysis:
-    enabled: true
-    similarity_threshold: 0.5
-    topic_similarity_threshold: 0.6
-    max_context_history: 20
+  enable_semantic_context: true
+  semantic_similarity_threshold: 0.5
+  semantic_topic_threshold: 0.6
+  max_context_history: 20
   orchestration:
     max_parallel: 3
   analytics:
     max_history: 1000
   feedback:
-    enabled: false
+    enabled: true
+  semantic_analysis:
+    enabled: true
+    similarity_threshold: 0.5
+    topic_similarity_threshold: 0.6
+    max_context_history: 20
 gui:
   use_persistent_conversations: true
   conversation_storage_mode: json
@@ -114,3 +118,8 @@ file_paths:
   execution_plans_dir: execution_plans
   conversations: conversations
   registry_exports_dir: registry_exports
+memory_monitoring:
+  enabled: true
+  warning_threshold_mb: 500
+  critical_threshold_mb: 2000
+  check_interval_seconds: 5

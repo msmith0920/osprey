@@ -18,7 +18,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Set, Callable
 from collections import defaultdict
-from pathlib import Path
 
 from osprey.utils.logger import get_logger
 

@@ -13,13 +13,11 @@ Key Features:
 """
 
 from typing import Dict, List, Tuple, Optional, TYPE_CHECKING
-import logging
 
 from osprey.utils.logger import get_logger
 
 if TYPE_CHECKING:
     from osprey.base.capability import Capability
-    from osprey.interfaces.pyqt.project_manager import CapabilityMetadata
 
 logger = get_logger("capability_registry")
 

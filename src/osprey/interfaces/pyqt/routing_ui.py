@@ -4,7 +4,6 @@ This module handles the display of routing decisions and collection of user feed
 for the multi-project routing system.
 """
 
-from typing import Optional, List
 from osprey.utils.logger import get_logger
 
 logger = get_logger("routing_ui")

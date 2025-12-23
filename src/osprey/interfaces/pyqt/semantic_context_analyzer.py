@@ -14,7 +14,7 @@ Key Features:
 
 import numpy as np
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Tuple, Set
+from typing import Optional, List, Tuple
 from collections import defaultdict
 import time
 
@@ -163,7 +163,7 @@ class IntentRecognizer:
         """Initialize intent recognizer."""
         logger.info("Initialized IntentRecognizer")
     
-    def recognize_intent(self, query: str, context: List[str] = None) -> str:
+    def recognize_intent(self, query: str, context: Optional[List[str]] = None) -> str:
         """Recognize intent from query.
         
         Args:

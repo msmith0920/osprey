@@ -8,9 +8,6 @@ This module handles all conversation display operations including:
 - Handling different storage modes (JSON/PostgreSQL)
 """
 
-from datetime import datetime
-from pathlib import Path
-from typing import Optional
 from PyQt5.QtGui import QColor
 
 from osprey.utils.logger import get_logger
@@ -70,17 +67,17 @@ class ConversationDisplayManager:
                 logger.info(f"Loading {len(conv.messages)} messages from JSON storage")
                 for msg in conv.messages:
                     if msg.type == 'user':
-                        self.gui._append_colored_message(f"👤 You: {msg.content}", "#D8BFD8")
+                        self.gui._append_colored_message(f"👤 You: {msg.content}", "#D8BFD8", auto_open_plots=False)
                     else:
                         # Check if message has special formatting
                         if msg.formatting == 'orchestrated':
                             # Apply orchestrated formatting
-                            self.gui._append_colored_message(f"🤖 Combined Answer:", "#00FF00")
-                            self.gui._append_colored_message("", "#FFFFFF")  # Empty line
+                            self.gui._append_colored_message(f"🤖 Combined Answer:", "#00FF00", auto_open_plots=False)
+                            self.gui._append_colored_message("", "#FFFFFF", auto_open_plots=False)  # Empty line
                             self.gui.orchestration_ui._display_formatted_result(msg.content)
                         else:
-                            # Regular message
-                            self.gui._append_colored_message(f"🤖 {msg.content}", "#FFFFFF")
+                            # Regular message - DON'T auto-open plots for historical messages
+                            self.gui._append_colored_message(f"🤖 {msg.content}", "#FFFFFF", auto_open_plots=False)
             elif storage_mode == 'postgresql' and self.gui.settings_manager.get('use_persistent_conversations', True) and self.gui.graph:
                 # Load from PostgreSQL checkpointer
                 logger.info("Loading messages from PostgreSQL checkpointer")
@@ -124,10 +121,10 @@ class ConversationDisplayManager:
                     for msg in messages:
                         if hasattr(msg, 'content') and msg.content:
                             if hasattr(msg, 'type') and msg.type == 'human':
-                                self.gui._append_colored_message(f"👤 You: {msg.content}", "#D8BFD8")
+                                self.gui._append_colored_message(f"👤 You: {msg.content}", "#D8BFD8", auto_open_plots=False)
                                 message_count += 1
                             else:
-                                self.gui._append_colored_message(f"🤖 {msg.content}", "#FFFFFF")
+                                self.gui._append_colored_message(f"🤖 {msg.content}", "#FFFFFF", auto_open_plots=False)
                                 message_count += 1
                     
                     logger.info(f"Loaded {message_count} messages from checkpointer")
@@ -152,9 +149,9 @@ class ConversationDisplayManager:
         try:
             for msg in messages:
                 if msg['type'] == 'user':
-                    self.gui._append_colored_message(f"👤 You: {msg['content']}", "#D8BFD8")
+                    self.gui._append_colored_message(f"👤 You: {msg['content']}", "#D8BFD8", auto_open_plots=False)
                 else:
-                    self.gui._append_colored_message(msg['content'], "#FFFFFF")
+                    self.gui._append_colored_message(msg['content'], "#FFFFFF", auto_open_plots=False)
             
             logger.debug(f"Loaded {len(messages)} messages from memory")
         except Exception as e:
@@ -258,17 +255,17 @@ class ConversationDisplayManager:
                 
                 for msg in conv.messages:
                     if msg.type == 'user':
-                        self.gui._append_colored_message(f"👤 You: {msg.content}", "#D8BFD8")
+                        self.gui._append_colored_message(f"👤 You: {msg.content}", "#D8BFD8", auto_open_plots=False)
                     else:
                         # Check if message has special formatting
                         if msg.formatting == 'orchestrated':
                             # Apply orchestrated formatting
-                            self.gui._append_colored_message(f"🤖 Combined Answer:", "#00FF00")
-                            self.gui._append_colored_message("", "#FFFFFF")  # Empty line
+                            self.gui._append_colored_message(f"🤖 Combined Answer:", "#00FF00", auto_open_plots=False)
+                            self.gui._append_colored_message("", "#FFFFFF", auto_open_plots=False)  # Empty line
                             self.gui.orchestration_ui._display_formatted_result(msg.content)
                         else:
-                            # Regular message
-                            self.gui._append_colored_message(f"🤖 {msg.content}", "#FFFFFF")
+                            # Regular message - DON'T auto-open plots for historical messages
+                            self.gui._append_colored_message(f"🤖 {msg.content}", "#FFFFFF", auto_open_plots=False)
                 
                 self.gui.add_status(f"✅ Loaded {message_count} messages", "base")
                 

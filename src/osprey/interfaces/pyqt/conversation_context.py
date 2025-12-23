@@ -11,7 +11,7 @@ Key Features:
 - Configurable context window size
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Optional, Dict
 import time
 from collections import Counter

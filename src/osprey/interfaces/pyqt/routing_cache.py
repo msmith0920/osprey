@@ -13,8 +13,8 @@ Key Features:
 - Advanced invalidation strategies (event-driven, probabilistic)
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
 import time
 from collections import OrderedDict
 import re

@@ -22,6 +22,7 @@ from osprey.utils.logger import get_logger
 from osprey.interfaces.pyqt.llm_client import SimpleLLMClient
 from osprey.interfaces.pyqt.routing_cache import RoutingCache, CacheStatistics
 from osprey.interfaces.pyqt.conversation_context import ConversationContext
+from osprey.interfaces.pyqt.semantic_context_analyzer import SemanticContextAnalyzer
 from osprey.interfaces.pyqt.multi_project_orchestrator import (
     MultiProjectOrchestrator,
     OrchestrationPlan,
@@ -78,8 +79,11 @@ class MultiProjectRouter:
         enable_probabilistic_expiration: bool = True,
         enable_event_driven_invalidation: bool = True,
         enable_conversation_context: bool = True,
+        enable_semantic_context: bool = False,
         context_max_history: int = 10,
         context_confidence_boost: float = 0.2,
+        semantic_similarity_threshold: float = 0.5,
+        semantic_topic_threshold: float = 0.6,
         enable_orchestration: bool = True,
         orchestration_max_parallel: int = 3,
         enable_analytics: bool = True,
@@ -101,8 +105,11 @@ class MultiProjectRouter:
             enable_probabilistic_expiration: Enable probabilistic early expiration (default: True).
             enable_event_driven_invalidation: Enable event-driven invalidation (default: True).
             enable_conversation_context: Whether to enable conversation-aware routing (default: True).
+            enable_semantic_context: Whether to use semantic context analyzer instead of simple context (default: False).
             context_max_history: Maximum conversation history to track (default: 10).
             context_confidence_boost: Confidence boost for topic continuity (default: 0.2).
+            semantic_similarity_threshold: Similarity threshold for semantic context (default: 0.5).
+            semantic_topic_threshold: Topic similarity threshold for semantic clustering (default: 0.6).
             enable_orchestration: Whether to enable multi-project orchestration (default: True).
             orchestration_max_parallel: Maximum parallel sub-query executions (default: 3).
             enable_analytics: Whether to enable routing analytics (default: True).
@@ -161,9 +168,26 @@ class MultiProjectRouter:
             self.cache = None
             self.logger.info("Initialized MultiProjectRouter with caching disabled")
         
-        # Initialize conversation context
+        # Initialize conversation/semantic context
         self.context_enabled = enable_conversation_context
-        if self.context_enabled:
+        self.semantic_enabled = enable_semantic_context
+        
+        if self.semantic_enabled:
+            # Use semantic context analyzer for advanced routing
+            self.conversation_context = SemanticContextAnalyzer(
+                max_history=context_max_history,
+                similarity_threshold=semantic_similarity_threshold,
+                topic_similarity_threshold=semantic_topic_threshold,
+                enable_intent_recognition=True
+            )
+            self.logger.info(
+                f"Initialized semantic context analyzer "
+                f"(max_history={context_max_history}, "
+                f"similarity_threshold={semantic_similarity_threshold}, "
+                f"topic_threshold={semantic_topic_threshold})"
+            )
+        elif self.context_enabled:
+            # Use simple conversation context
             self.conversation_context = ConversationContext(
                 max_history=context_max_history,
                 confidence_boost=context_confidence_boost
@@ -341,17 +365,35 @@ class MultiProjectRouter:
                     if feedback_reasoning:
                         decision.reasoning += f"; {feedback_reasoning}"
             
-            # Apply conversation context boost if enabled
-            if self.context_enabled and self.conversation_context:
-                boost = self.conversation_context.get_confidence_boost(decision.project_name)
-                if boost > 0:
-                    original_confidence = decision.confidence
-                    decision.confidence = min(1.0, decision.confidence + boost)
-                    decision.reasoning += f" (conversation context boost: +{boost:.0%})"
-                    self.logger.info(
-                        f"Applied conversation context boost: "
-                        f"{original_confidence:.2f} → {decision.confidence:.2f}"
-                    )
+            # Apply conversation/semantic context boost if enabled
+            if self.conversation_context:
+                if self.semantic_enabled:
+                    # Use semantic context boost
+                    should_boost, boost_amount, boost_reason = \
+                        self.conversation_context.should_boost_project(
+                            query, decision.project_name
+                        )
+                    
+                    if should_boost:
+                        original_confidence = decision.confidence
+                        decision.confidence = min(1.0, decision.confidence + boost_amount)
+                        decision.reasoning += f" ({boost_reason})"
+                        self.logger.info(
+                            f"Applied semantic context boost: "
+                            f"{original_confidence:.2f} → {decision.confidence:.2f} "
+                            f"({boost_reason})"
+                        )
+                else:
+                    # Use simple conversation context boost
+                    boost = self.conversation_context.get_confidence_boost(decision.project_name)
+                    if boost > 0:
+                        original_confidence = decision.confidence
+                        decision.confidence = min(1.0, decision.confidence + boost)
+                        decision.reasoning += f" (conversation context boost: +{boost:.0%})"
+                        self.logger.info(
+                            f"Applied conversation context boost: "
+                            f"{original_confidence:.2f} → {decision.confidence:.2f}"
+                        )
             
             self._last_routing_explanation = decision.reasoning
             
@@ -366,14 +408,23 @@ class MultiProjectRouter:
                     alternative_projects=decision.alternative_projects
                 )
             
-            # Add to conversation context
-            if self.context_enabled and self.conversation_context:
-                self.conversation_context.add_query(
-                    query=query,
-                    project_name=decision.project_name,
-                    confidence=decision.confidence,
-                    reasoning=decision.reasoning
-                )
+            # Add to conversation/semantic context
+            if self.conversation_context:
+                if self.semantic_enabled:
+                    # Semantic context uses 'project' parameter
+                    self.conversation_context.add_query(
+                        query=query,
+                        project=decision.project_name,
+                        confidence=decision.confidence
+                    )
+                else:
+                    # Simple context uses 'project_name' parameter
+                    self.conversation_context.add_query(
+                        query=query,
+                        project_name=decision.project_name,
+                        confidence=decision.confidence,
+                        reasoning=decision.reasoning
+                    )
             
             # Record analytics
             if self.analytics_enabled and self.analytics:
@@ -701,7 +752,8 @@ class MultiProjectRouter:
         ]
         
         # Add conversation context if available
-        if self.context_enabled and self.conversation_context:
+        if self.conversation_context and not self.semantic_enabled:
+            # Only simple context has get_context_for_routing
             context_info = self.conversation_context.get_context_for_routing()
             
             if context_info.get("has_history"):
@@ -751,8 +803,10 @@ class MultiProjectRouter:
         ])
         
         # Add conversation context consideration
-        if self.context_enabled and self.conversation_context and self.conversation_context.has_active_topic():
-            prompt_parts.append("5. Conversation context and topic continuity (if the query relates to the current topic)")
+        if self.conversation_context and not self.semantic_enabled:
+            # Only simple context has has_active_topic
+            if self.conversation_context.has_active_topic():
+                prompt_parts.append("5. Conversation context and topic continuity (if the query relates to the current topic)")
         
         prompt_parts.extend([
             "",

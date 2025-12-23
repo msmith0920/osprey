@@ -13,7 +13,7 @@ Key Features:
 - Query similarity matching
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 from collections import defaultdict, Counter

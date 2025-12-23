@@ -11,10 +11,10 @@ Handles all GUI settings including:
 - Loading from and saving to config files
 """
 
+from dataclasses import dataclass
 import yaml
 from pathlib import Path
 from typing import Dict, Any, Optional
-from dataclasses import dataclass, field, asdict
 
 from osprey.utils.logger import get_logger
 
@@ -127,6 +127,12 @@ class SettingsManager:
         self.development = DevelopmentSettings()
         self.routing = RoutingSettings()
         
+        # Memory monitoring settings (not in a dataclass, stored directly)
+        self.memory_monitor_enabled = True
+        self.memory_warning_threshold_mb = 500
+        self.memory_critical_threshold_mb = 1000
+        self.memory_check_interval_seconds = 5
+        
         # Load from config if provided
         if config_path:
             self.load_from_config(config_path)
@@ -201,6 +207,14 @@ class SettingsManager:
             'max_context_history': self.routing.max_context_history,
             'orchestration_max_parallel': self.routing.orchestration_max_parallel,
             'analytics_max_history': self.routing.analytics_max_history,
+        })
+        
+        # Memory monitoring
+        settings.update({
+            'memory_monitor_enabled': self.memory_monitor_enabled,
+            'memory_warning_threshold_mb': self.memory_warning_threshold_mb,
+            'memory_critical_threshold_mb': self.memory_critical_threshold_mb,
+            'memory_check_interval_seconds': self.memory_check_interval_seconds,
         })
         
         return settings
@@ -301,6 +315,16 @@ class SettingsManager:
             self.routing.orchestration_max_parallel = settings_dict['orchestration_max_parallel']
         if 'analytics_max_history' in settings_dict:
             self.routing.analytics_max_history = settings_dict['analytics_max_history']
+        
+        # Memory monitoring settings (missing from original implementation)
+        if 'memory_monitor_enabled' in settings_dict:
+            self.memory_monitor_enabled = settings_dict['memory_monitor_enabled']
+        if 'memory_warning_threshold_mb' in settings_dict:
+            self.memory_warning_threshold_mb = settings_dict['memory_warning_threshold_mb']
+        if 'memory_critical_threshold_mb' in settings_dict:
+            self.memory_critical_threshold_mb = settings_dict['memory_critical_threshold_mb']
+        if 'memory_check_interval_seconds' in settings_dict:
+            self.memory_check_interval_seconds = settings_dict['memory_check_interval_seconds']
     
     def load_from_config(self, config_path: str) -> bool:
         """
@@ -395,6 +419,13 @@ class SettingsManager:
             
             feedback = routing.get('feedback', {})
             self.gui.enable_routing_feedback = feedback.get('enabled', True)
+            
+            # Load memory monitoring settings
+            memory_monitoring = config_data.get('memory_monitoring', {})
+            self.memory_monitor_enabled = memory_monitoring.get('enabled', True)
+            self.memory_warning_threshold_mb = memory_monitoring.get('warning_threshold_mb', 500)
+            self.memory_critical_threshold_mb = memory_monitoring.get('critical_threshold_mb', 1000)
+            self.memory_check_interval_seconds = memory_monitoring.get('check_interval_seconds', 5)
             
             logger.info(f"Loaded settings from {config_file}")
             return True
@@ -534,6 +565,15 @@ class SettingsManager:
                 config_data['routing']['feedback'] = {}
             
             config_data['routing']['feedback']['enabled'] = self.gui.enable_routing_feedback
+            
+            # Update memory monitoring section
+            if 'memory_monitoring' not in config_data:
+                config_data['memory_monitoring'] = {}
+            
+            config_data['memory_monitoring']['enabled'] = self.memory_monitor_enabled
+            config_data['memory_monitoring']['warning_threshold_mb'] = self.memory_warning_threshold_mb
+            config_data['memory_monitoring']['critical_threshold_mb'] = self.memory_critical_threshold_mb
+            config_data['memory_monitoring']['check_interval_seconds'] = self.memory_check_interval_seconds
             
             # Write back to file
             with open(config_file, 'w') as f:

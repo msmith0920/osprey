@@ -15,7 +15,6 @@ Key Features:
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Set
-import logging
 import yaml
 
 from osprey.utils.logger import get_logger

@@ -8,6 +8,7 @@ from osprey.interfaces.pyqt.gui_components.tabs.analytics_tab import AnalyticsTa
 from osprey.interfaces.pyqt.gui_components.tabs.llm_details_tab import LLMDetailsTab
 from osprey.interfaces.pyqt.gui_components.tabs.tool_usage_tab import ToolUsageTab
 from osprey.interfaces.pyqt.gui_components.tabs.projects_tab import ProjectsTab
+from osprey.interfaces.pyqt.gui_components.tabs.memory_tab import MemoryTab
 
 __all__ = [
     'SystemInfoTab',
@@ -15,4 +16,5 @@ __all__ = [
     'LLMDetailsTab',
     'ToolUsageTab',
     'ProjectsTab',
+    'MemoryTab',
 ]

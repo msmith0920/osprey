@@ -17,14 +17,8 @@ Features:
 # GUI Version
 __version__ = "0.1.0"
 
-import asyncio
 import sys
 import os
-import json
-import uuid
-from typing import Optional, Any, Dict, List
-from pathlib import Path
-from datetime import datetime
 
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
@@ -34,34 +28,27 @@ from PyQt5.QtWidgets import (
     QInputDialog, QTableWidget, QTableWidgetItem, QHeaderView, QScrollArea,
     QGroupBox, QDoubleSpinBox
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer, pyqtSlot, Q_ARG
+from PyQt5.QtCore import QThread, pyqtSignal, pyqtSlot, Qt, QTimer, QEvent
 from PyQt5.QtGui import QFont, QTextCursor, QColor, QPalette, QTextOption
 
 # Import event bus and enums for refactored architecture
 from osprey.interfaces.pyqt.event_bus import EventBus
 from osprey.interfaces.pyqt.enums import EventTypes, LLMEventType, Colors
+from osprey.interfaces.pyqt.gui_utils import create_dark_palette
+from pathlib import Path
+from datetime import datetime
 
 # Load environment variables
 from dotenv import load_dotenv
 load_dotenv()
 
-from langgraph.checkpoint.memory import MemorySaver
 
-from osprey.registry import initialize_registry, get_registry
-from osprey.graph import create_graph, create_async_postgres_checkpointer
-from osprey.infrastructure.gateway import Gateway
-from osprey.utils.config import get_full_configuration, get_config_value
 from osprey.utils.logger import get_logger
-from osprey.interfaces.pyqt.project_discovery import (
-    discover_projects,
-    create_unified_config,
-    create_unified_registry
-)
+from osprey.utils.config import get_full_configuration, get_config_value
+from osprey.registry.manager import get_registry
 from osprey.interfaces.pyqt.model_preferences import ModelPreferencesStore
-from osprey.interfaces.pyqt.model_config_dialog import ModelConfigDialog
 from osprey.interfaces.pyqt.help_dialog import show_help_dialog
 from osprey.interfaces.pyqt.about_dialog import show_about_dialog
-from osprey.interfaces.pyqt.gui_utils import create_dark_palette, load_config_safe
 from osprey.interfaces.pyqt.collapsible_widget import MessageGroupWidget
 from osprey.interfaces.pyqt.project_manager import ProjectManager
 from osprey.interfaces.pyqt.capability_registry import CapabilityRegistry
@@ -69,10 +56,8 @@ from osprey.interfaces.pyqt.multi_project_router import MultiProjectRouter
 from osprey.interfaces.pyqt.conversation_manager import ConversationManager
 from osprey.interfaces.pyqt.settings_manager import SettingsManager
 from osprey.interfaces.pyqt.worker_thread import AgentWorker
-from osprey.interfaces.pyqt.orchestration_worker import OrchestrationWorker
 from osprey.interfaces.pyqt.settings_dialog import SettingsDialog
 from osprey.interfaces.pyqt.message_formatter import MessageFormatter
-from osprey.interfaces.pyqt.checkpointer_manager import CheckpointerManager
 from osprey.interfaces.pyqt.routing_ui import RoutingUIHandler
 from osprey.interfaces.pyqt.orchestration_ui import OrchestrationUIHandler
 from osprey.interfaces.pyqt.conversation_display import ConversationDisplayManager
@@ -86,7 +71,8 @@ from osprey.interfaces.pyqt.gui_components.tabs import (
     AnalyticsTab,
     LLMDetailsTab,
     ToolUsageTab,
-    ProjectsTab
+    ProjectsTab,
+    MemoryTab
 )
 
 logger = get_logger("pyqt_gui")
@@ -112,7 +98,6 @@ class OspreyGUI(QMainWindow):
         super().__init__()
         # If no config path provided, use the GUI-specific config file
         if config_path is None:
-            import os
             gui_config = Path(__file__).parent / "gui_config.yml"
             if gui_config.exists():
                 config_path = str(gui_config)
@@ -129,7 +114,22 @@ class OspreyGUI(QMainWindow):
         self.model_preferences = ModelPreferencesStore()  # Model preferences manager
         
         # Phase 1 Components - Multi-Project Support
-        self.project_manager = ProjectManager()
+        # Initialize ProjectManager with project_root from config if available
+        project_search_paths = None
+        if config_path:
+            try:
+                import yaml
+                with open(config_path, 'r') as f:
+                    config_data = yaml.safe_load(f)
+                    if 'project_root' in config_data:
+                        project_root = Path(config_data['project_root'])
+                        if project_root.exists():
+                            project_search_paths = [project_root]
+                            logger.info(f"Using project_root from config: {project_root}")
+            except Exception as e:
+                logger.warning(f"Could not read project_root from config: {e}")
+        
+        self.project_manager = ProjectManager(project_search_paths=project_search_paths)
         self.capability_registry = CapabilityRegistry()
         # Initialize router - will be configured with settings after UI setup
         self.router = None
@@ -444,7 +444,9 @@ class OspreyGUI(QMainWindow):
     
     def _handle_display_message(self, data: dict):
         """Handle display message event from event bus."""
-        self._append_colored_message(data['message'], data['color'])
+        # Auto-open plots for new agent messages (not historical ones)
+        auto_open = data.get('auto_open_plots', True)  # Default to True for new messages
+        self._append_colored_message(data['message'], data['color'], auto_open_plots=auto_open)
     
     def _handle_display_error(self, data: dict):
         """Handle display error event from event bus."""
@@ -491,7 +493,10 @@ class OspreyGUI(QMainWindow):
                 enable_event_driven_invalidation=self.settings_manager.get('enable_event_driven_invalidation', True),
                 # Conversation context settings
                 enable_conversation_context=True,
+                enable_semantic_context=self.settings_manager.get('enable_semantic_context', False),
                 context_max_history=self.settings_manager.get('max_context_history', 20),
+                semantic_similarity_threshold=self.settings_manager.get('semantic_similarity_threshold', 0.5),
+                semantic_topic_threshold=self.settings_manager.get('semantic_topic_threshold', 0.6),
                 # Orchestration settings
                 enable_orchestration=True,
                 orchestration_max_parallel=self.settings_manager.get('orchestration_max_parallel', 3),
@@ -514,7 +519,6 @@ class OspreyGUI(QMainWindow):
     def eventFilter(self, obj, event):
         """Event filter to handle Enter/Shift+Enter in input field."""
         from PyQt5.QtCore import QEvent
-        from PyQt5.QtGui import QKeyEvent
         
         if obj == self.input_field and event.type() == QEvent.KeyPress:
             key_event = event
@@ -570,6 +574,10 @@ class OspreyGUI(QMainWindow):
         # System Information tab - using extracted tab class
         self.system_info_tab = SystemInfoTab(self)
         tab_widget.addTab(self.system_info_tab, "System Information")
+        
+        # Memory Monitoring tab - using extracted tab class
+        self.memory_tab = MemoryTab(self)
+        tab_widget.addTab(self.memory_tab, "💾 Memory")
         
         # Analytics Dashboard tab - using extracted tab class
         self.analytics_tab = AnalyticsTab(self)
@@ -1773,10 +1781,117 @@ class OspreyGUI(QMainWindow):
             widget = self.conversation_display
         
         MessageFormatter.append_formatted_text(text, color, widget, prefix, suffix)
-    
-    def _append_colored_message(self, message, color):
-        """Append a colored message to the conversation display."""
+    def _append_colored_message(self, message, color, auto_open_plots=False):
+        """Append a colored message to the conversation display with image detection.
+        
+        Args:
+            message: The message text to display
+            color: Color hex code for the message
+            auto_open_plots: If True, automatically open plot viewer for new plots (default: False)
+        """
+        from osprey.interfaces.pyqt.image_display import ImageDisplayHandler, ImageViewerDialog
+        
+        # First, append the text message
         self._append_formatted_text(message, color)
+        
+        # Check if message contains image references
+        if ImageDisplayHandler.should_display_inline(message):
+            # Extract image paths from the message
+            image_paths = ImageDisplayHandler.extract_image_paths(message)
+            
+            if image_paths:
+                try:
+                    logger.info(f"Found {len(image_paths)} image(s) to display")
+                    
+                    # Add a separator before the plot viewer
+                    self._append_formatted_text(
+                        "\n" + "─" * 80,
+                        "#3F3F46",
+                        prefix="",
+                        suffix="\n"
+                    )
+                    
+                    # Create and insert plot viewer widget
+                    # Since QTextEdit doesn't support embedded widgets, we'll add
+                    # a visual indicator and provide file paths
+                    
+                    for idx, image_path in enumerate(image_paths, 1):
+                        self._append_formatted_text(
+                            f"\n📊 Plot {idx}: {image_path.name}",
+                            "#00FFFF",
+                            prefix="",
+                            suffix="\n"
+                        )
+                        self._append_formatted_text(
+                            f"   📍 Location: {image_path}",
+                            "#808080",
+                            prefix="",
+                            suffix="\n"
+                        )
+                        
+                        # Check if file exists
+                        if image_path.exists():
+                            # Get image dimensions
+                            try:
+                                from PyQt5.QtGui import QPixmap
+                                pixmap = QPixmap(str(image_path))
+                                if not pixmap.isNull():
+                                    self._append_formatted_text(
+                                        f"   📐 Size: {pixmap.width()}×{pixmap.height()}px",
+                                        "#808080",
+                                        prefix="",
+                                        suffix="\n"
+                                    )
+                            except:
+                                pass
+                            
+                            self._append_formatted_text(
+                                f"   ✅ File exists - Double-click path above to open",
+                                "#00FF00",
+                                prefix="",
+                                suffix="\n"
+                            )
+                        else:
+                            self._append_formatted_text(
+                                f"   ⚠️  File not found",
+                                "#FFA500",
+                                prefix="",
+                                suffix="\n"
+                            )
+                    
+                    # Add separator after plots
+                    self._append_formatted_text(
+                        "─" * 80 + "\n",
+                        "#3F3F46",
+                        prefix="",
+                        suffix="\n"
+                    )
+                    
+                    logger.info(f"Displayed {len(image_paths)} plot reference(s)")
+                    
+                    # AUTOMATICALLY OPEN PLOT VIEWER WINDOW for the first valid image
+                    # BUT ONLY if auto_open_plots is True (i.e., this is a NEW message from the agent)
+                    if auto_open_plots:
+                        valid_images = [p for p in image_paths if p.exists()]
+                        if valid_images:
+                            logger.info(f"Auto-opening plot viewer for {valid_images[0]}")
+                            # Open the first image in a modeless dialog
+                            dialog = ImageViewerDialog(valid_images[0], self)
+                            dialog.show()
+                            
+                            # If there are multiple images, inform the user
+                            if len(valid_images) > 1:
+                                self._append_formatted_text(
+                                    f"\n💡 Tip: {len(valid_images)} plot(s) generated. First plot opened automatically. "
+                                    f"Click paths above to view others.\n",
+                                    "#FFD700",
+                                    prefix="",
+                                    suffix="\n"
+                                )
+                    
+                except Exception as e:
+                    logger.error(f"Error displaying images: {e}")
+    
     
     
     
@@ -1916,6 +2031,11 @@ class OspreyGUI(QMainWindow):
             level_name = "DEBUG" if debug_mode else "INFO"
             self.add_status(f"Settings updated and saved - Logging level: {level_name}", "base")
             
+            # Update Memory tab threshold display if it exists
+            if hasattr(self, 'memory_tab') and self.memory_tab:
+                self.memory_tab.update_threshold_display()
+                self.add_status("Memory monitoring thresholds updated", "base")
+            
             # Reinitialize router if routing settings changed
             if routing_settings_changed:
                 self.add_status("Routing settings changed - reinitializing router...", "base")
@@ -1960,40 +2080,6 @@ class OspreyGUI(QMainWindow):
                 logger.warning(f"Failed to save settings to {config_file}")
                 return
             
-            # ALSO update individual project config files if we're using unified config
-            import yaml
-            debug_mode = self.settings_manager.get('debug_mode', False)
-            if 'unified_config' in str(config_file) and self.discovered_projects:
-                logger.info("Updating individual project config files...")
-                for project in self.discovered_projects:
-                    try:
-                        project_config_path = Path(project['config_path'])
-                        if project_config_path.exists():
-                            with open(project_config_path, 'r') as f:
-                                project_config = yaml.safe_load(f) or {}
-                            
-                            # Update development section in project config
-                            if 'development' not in project_config:
-                                project_config['development'] = {}
-                            
-                            project_config['development']['debug'] = debug_mode
-                            project_config['development']['raise_raw_errors'] = self.settings_manager.get('raise_raw_errors', False)
-                            
-                            # Update prompts section
-                            if 'prompts' not in project_config['development']:
-                                project_config['development']['prompts'] = {}
-                            
-                            project_config['development']['prompts']['print_all'] = self.settings_manager.get('print_prompts', False)
-                            project_config['development']['prompts']['show_all'] = self.settings_manager.get('show_prompts', False)
-                            project_config['development']['prompts']['latest_only'] = self.settings_manager.get('prompts_latest_only', True)
-                            
-                            # Write back to project config
-                            with open(project_config_path, 'w') as f:
-                                yaml.dump(project_config, f, default_flow_style=False, sort_keys=False, indent=2)
-                            
-                            logger.info(f"Updated {project['name']} config: {project_config_path}")
-                    except Exception as e:
-                        logger.warning(f"Failed to update {project['name']} config: {e}")
             
         except Exception as e:
             logger.error(f"Failed to save settings to config file: {e}")

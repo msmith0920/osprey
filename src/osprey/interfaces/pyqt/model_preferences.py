@@ -7,8 +7,6 @@ are not saved to disk.
 """
 
 from typing import Dict, List, Optional
-from pathlib import Path
-import yaml
 
 from osprey.interfaces.pyqt.gui_utils import load_config_safe
 

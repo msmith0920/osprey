@@ -9,8 +9,6 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget,
     QTextBrowser, QPushButton, QWidget
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont, QPalette, QColor
 
 from osprey.interfaces.pyqt.gui_utils import create_dark_palette, HELP_DIALOG_CSS
 
@@ -290,30 +288,45 @@ class HelpDialog(QDialog):
                 <li><b>Config Path:</b> Location of the active configuration file.</li>
                 <li><b>Capabilities:</b> Number of available capabilities.</li>
                 <li><b>Session Details:</b> Technical information for troubleshooting.</li>
+                <li><b>View Modes:</b> Toggle between Grouped and List view.</li>
+            </ul>
+            
+            <h3>Memory Tab (💾)</h3>
+            <p>Monitor memory usage of framework processes:</p>
+            <ul>
+                <li><b>System Memory:</b> Overall system memory usage with progress bar.</li>
+                <li><b>Framework Total:</b> Combined memory of all framework processes.</li>
+                <li><b>Memory Trend:</b> Real-time trend analysis (increasing/stable/decreasing).</li>
+                <li><b>Process Details:</b> Breakdown by process type (GUI, containers, etc.).</li>
+                <li><b>Threshold Alerts:</b> Visual warnings when memory exceeds limits.</li>
+                <li><b>Controls:</b> Pause/Resume monitoring and manual refresh.</li>
+            </ul>
+            
+            <h3>Analytics Tab (📊)</h3>
+            <p>View usage statistics and performance metrics:</p>
+            <ul>
+                <li><b>Query Routing:</b> Statistics on project/capability selection.</li>
+                <li><b>Cache Performance:</b> Hit/miss rates for routing cache.</li>
+                <li><b>Response Times:</b> Performance metrics over time.</li>
+                <li><b>Capability Usage:</b> Frequency of capability invocations.</li>
             </ul>
             
             <h3>Menu Bar Features</h3>
             <p><b>File Menu:</b></p>
             <ul>
-                <li>New Conversation - Start fresh</li>
+                <li>New Conversation - Start fresh conversation</li>
                 <li>Clear Conversation - Remove all messages from current conversation</li>
                 <li>Exit - Close the application</li>
             </ul>
             
             <p><b>Settings Menu:</b></p>
             <ul>
-                <li>Framework Settings - Configure behavior and features</li>
-            </ul>
-            
-            <p><b>Multi-Project Menu:</b></p>
-            <ul>
-                <li>Discover Projects - Scan for Osprey projects</li>
-                <li>Generate Unified Config - Combine multiple projects</li>
-                <li>Load Unified Config - Use combined configuration</li>
+                <li>Framework Settings - Configure behavior, features, and performance</li>
             </ul>
             
             <p><b>Help Menu:</b></p>
             <ul>
+                <li>Help Documentation (F1) - Open this comprehensive help guide</li>
                 <li>About - Version and system information</li>
             </ul>
         """)
@@ -416,8 +429,9 @@ class HelpDialog(QDialog):
             
             <h3>Accessing Settings</h3>
             <p>Open settings via: <b>Settings → Framework Settings</b></p>
+            <p>Settings are organized into multiple tabs for easy navigation.</p>
             
-            <h3>Available Settings</h3>
+            <h3>Agent Control Settings</h3>
             
             <h4>Planning Mode</h4>
             <ul>
@@ -435,24 +449,79 @@ class HelpDialog(QDialog):
                 <li><b>Security:</b> Keep disabled unless you need write access.</li>
             </ul>
             
-            <h4>Approval Mode</h4>
+            <h4>Task Extraction Bypass</h4>
+            <ul>
+                <li><b>Purpose:</b> Skip LLM-based task extraction for faster processing.</li>
+                <li><b>When Enabled:</b> Uses full conversation context directly.</li>
+                <li><b>Use Case:</b> Enable for simple queries or performance optimization.</li>
+            </ul>
+            
+            <h4>Capability Selection Bypass</h4>
+            <ul>
+                <li><b>Purpose:</b> Skip capability classification and activate all capabilities.</li>
+                <li><b>When Enabled:</b> All registered capabilities are available.</li>
+                <li><b>Use Case:</b> Enable when you want all capabilities active.</li>
+            </ul>
+            
+            <h3>Approval Settings</h3>
+            
+            <h4>Global Approval Mode</h4>
             <p>Control when human approval is required:</p>
             <ul>
                 <li><b>Disabled:</b> No approval required (fastest, use with caution).</li>
-                <li><b>Selective:</b> Approval required for specific capabilities 
+                <li><b>Selective:</b> Approval required for specific capabilities
                 (balanced approach).</li>
-                <li><b>All Capabilities:</b> Approval required for every action 
+                <li><b>All Capabilities:</b> Approval required for every action
                 (safest, slowest).</li>
             </ul>
+            
+            <h4>Python Execution Approval</h4>
+            <ul>
+                <li><b>Purpose:</b> Control approval for Python code execution.</li>
+                <li><b>Modes:</b> Disabled, EPICS Writes Only, or All Code.</li>
+            </ul>
+            
+            <h4>Memory Approval</h4>
+            <ul>
+                <li><b>Purpose:</b> Require approval before storing information in memory.</li>
+            </ul>
+            
+            <h3>Execution Limits</h3>
             
             <h4>Max Execution Time</h4>
             <ul>
                 <li><b>Purpose:</b> Timeout for capability execution.</li>
                 <li><b>Range:</b> 10 to 3600 seconds.</li>
                 <li><b>Default:</b> 300 seconds (5 minutes).</li>
-                <li><b>Recommendation:</b> Increase for long-running operations, 
+                <li><b>Recommendation:</b> Increase for long-running operations,
                 decrease for quick tasks.</li>
             </ul>
+            
+            <h4>Max Reclassifications</h4>
+            <ul>
+                <li><b>Purpose:</b> Limit retry attempts when capability selection fails.</li>
+                <li><b>Default:</b> 3 attempts.</li>
+            </ul>
+            
+            <h4>Max Planning Attempts</h4>
+            <ul>
+                <li><b>Purpose:</b> Limit retry attempts for orchestration planning.</li>
+                <li><b>Default:</b> 3 attempts.</li>
+            </ul>
+            
+            <h4>Max Step Retries</h4>
+            <ul>
+                <li><b>Purpose:</b> Limit retry attempts for individual execution steps.</li>
+                <li><b>Default:</b> 2 attempts.</li>
+            </ul>
+            
+            <h4>Max Concurrent Classifications</h4>
+            <ul>
+                <li><b>Purpose:</b> Control parallel capability classification.</li>
+                <li><b>Default:</b> 5 concurrent classifications.</li>
+            </ul>
+            
+            <h3>GUI Settings</h3>
             
             <h4>Save Conversation History</h4>
             <ul>
@@ -460,6 +529,82 @@ class HelpDialog(QDialog):
                 <li><b>When Enabled:</b> Conversations saved to PostgreSQL or local files.</li>
                 <li><b>When Disabled:</b> Conversations lost when application closes.</li>
                 <li><b>Storage:</b> Uses PostgreSQL if available, otherwise JSON files.</li>
+            </ul>
+            
+            <h4>Message Storage Mode</h4>
+            <ul>
+                <li><b>Options:</b> JSON (local files) or PostgreSQL (database).</li>
+                <li><b>Default:</b> JSON for simplicity.</li>
+            </ul>
+            
+            <h4>Redirect Output to GUI</h4>
+            <ul>
+                <li><b>Purpose:</b> Show execution output in the GUI interface.</li>
+                <li><b>Recommended:</b> Keep enabled for better visibility.</li>
+            </ul>
+            
+            <h4>Group System Messages</h4>
+            <ul>
+                <li><b>Purpose:</b> Organize system messages by category in System Information tab.</li>
+            </ul>
+            
+            <h4>Suppress Terminal Output</h4>
+            <ul>
+                <li><b>Purpose:</b> Reduce console logging when running GUI.</li>
+            </ul>
+            
+            <h4>Enable Routing Feedback</h4>
+            <ul>
+                <li><b>Purpose:</b> Show which project/capability was selected for queries.</li>
+            </ul>
+            
+            <h3>Development/Debug Settings</h3>
+            
+            <h4>Debug Mode</h4>
+            <ul>
+                <li><b>Purpose:</b> Enable DEBUG level logging for troubleshooting.</li>
+                <li><b>When Enabled:</b> More detailed logs in Status Log and terminal.</li>
+            </ul>
+            
+            <h4>Verbose Logging</h4>
+            <ul>
+                <li><b>Purpose:</b> Additional detailed logging output.</li>
+            </ul>
+            
+            <h4>Save Prompts to Files</h4>
+            <ul>
+                <li><b>Purpose:</b> Save LLM prompts to files for inspection.</li>
+                <li><b>Location:</b> _agent_data/prompts/ directory.</li>
+            </ul>
+            
+            <h4>Show Prompts in Console</h4>
+            <ul>
+                <li><b>Purpose:</b> Display prompts in terminal output.</li>
+            </ul>
+            
+            <h4>Memory Monitoring</h4>
+            <ul>
+                <li><b>Enable Memory Monitor:</b> Track memory usage of framework processes.</li>
+                <li><b>Warning Threshold:</b> Alert when memory exceeds limit (default: 500 MB).</li>
+                <li><b>Critical Threshold:</b> Critical alert level (default: 1000 MB).</li>
+                <li><b>Check Interval:</b> How often to check memory (default: 5 seconds).</li>
+            </ul>
+            
+            <h3>Advanced Routing Settings</h3>
+            
+            <h4>Routing Cache</h4>
+            <ul>
+                <li><b>Enable Routing Cache:</b> Cache routing decisions for similar queries.</li>
+                <li><b>Cache Size:</b> Maximum number of cached entries.</li>
+                <li><b>Cache TTL:</b> Time-to-live for cache entries in seconds.</li>
+                <li><b>Similarity Threshold:</b> How similar queries must be to use cache.</li>
+            </ul>
+            
+            <h4>Semantic Context Analysis</h4>
+            <ul>
+                <li><b>Enable Semantic Analysis:</b> Use semantic similarity for routing.</li>
+                <li><b>Topic Similarity:</b> Threshold for topic matching.</li>
+                <li><b>Max Context History:</b> Number of previous messages to analyze.</li>
             </ul>
             
             <h3>Applying Settings</h3>

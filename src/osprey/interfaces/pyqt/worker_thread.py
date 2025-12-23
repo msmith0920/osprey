@@ -5,7 +5,7 @@ This module provides the AgentWorker class which handles agent processing
 in a background thread to keep the GUI responsive.
 """
 
-from typing import Any, Dict, Optional
+from typing import Dict, Any
 from PyQt5.QtCore import pyqtSignal
 
 from osprey.interfaces.pyqt.base_worker import BaseWorker

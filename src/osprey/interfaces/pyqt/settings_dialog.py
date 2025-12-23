@@ -352,6 +352,49 @@ class SettingsDialog(QDialog):
         
         dev_layout.addLayout(dev_form)
         
+        # Memory Monitoring Section
+        memory_group = QGroupBox("Memory Monitoring")
+        memory_layout = QFormLayout()
+        
+        self.memory_monitor_enabled_checkbox = QCheckBox()
+        self.memory_monitor_enabled_checkbox.setChecked(
+            self.current_settings.get('memory_monitor_enabled', True)
+        )
+        self.memory_monitor_enabled_checkbox.setToolTip(
+            "Enable automatic memory monitoring in Memory tab"
+        )
+        memory_layout.addRow("Enable Memory Monitor:", self.memory_monitor_enabled_checkbox)
+        
+        self.memory_warning_threshold_spin = QSpinBox()
+        self.memory_warning_threshold_spin.setRange(100, 10000)
+        self.memory_warning_threshold_spin.setValue(
+            self.current_settings.get('memory_warning_threshold_mb', 500)
+        )
+        self.memory_warning_threshold_spin.setSuffix(" MB")
+        self.memory_warning_threshold_spin.setToolTip("Warning threshold for framework memory usage")
+        memory_layout.addRow("Warning Threshold:", self.memory_warning_threshold_spin)
+        
+        self.memory_critical_threshold_spin = QSpinBox()
+        self.memory_critical_threshold_spin.setRange(200, 20000)
+        self.memory_critical_threshold_spin.setValue(
+            self.current_settings.get('memory_critical_threshold_mb', 1000)
+        )
+        self.memory_critical_threshold_spin.setSuffix(" MB")
+        self.memory_critical_threshold_spin.setToolTip("Critical threshold for framework memory usage")
+        memory_layout.addRow("Critical Threshold:", self.memory_critical_threshold_spin)
+        
+        self.memory_check_interval_spin = QSpinBox()
+        self.memory_check_interval_spin.setRange(1, 60)
+        self.memory_check_interval_spin.setValue(
+            self.current_settings.get('memory_check_interval_seconds', 5)
+        )
+        self.memory_check_interval_spin.setSuffix(" seconds")
+        self.memory_check_interval_spin.setToolTip("How often to update memory statistics")
+        memory_layout.addRow("Check Interval:", self.memory_check_interval_spin)
+        
+        memory_group.setLayout(memory_layout)
+        dev_layout.addWidget(memory_group)
+        
         # Add warning message
         warning_label = QLabel(
             "⚠️ Warning: Debug settings may impact performance and generate large log files.\n"
@@ -575,6 +618,12 @@ class SettingsDialog(QDialog):
             'print_prompts': self.print_prompts_checkbox.isChecked(),
             'show_prompts': self.show_prompts_checkbox.isChecked(),
             'prompts_latest_only': self.prompts_latest_only_checkbox.isChecked(),
+            
+            # Memory Monitoring Settings
+            'memory_monitor_enabled': self.memory_monitor_enabled_checkbox.isChecked(),
+            'memory_warning_threshold_mb': self.memory_warning_threshold_spin.value(),
+            'memory_critical_threshold_mb': self.memory_critical_threshold_spin.value(),
+            'memory_check_interval_seconds': self.memory_check_interval_spin.value(),
             
             # Advanced Routing Settings (Phase 2.4)
             'enable_routing_cache': self.enable_routing_cache_checkbox.isChecked(),

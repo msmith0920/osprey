@@ -5,8 +5,8 @@ for the Osprey framework and its key dependencies.
 """
 
 import importlib.metadata as metadata
-from typing import Dict, Optional
 import sys
+from typing import Any, Dict
 
 
 def get_osprey_version() -> str:
@@ -87,7 +87,7 @@ def get_python_version() -> str:
     return f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
 
-def get_all_versions() -> Dict[str, any]:
+def get_all_versions() -> Dict[str, Any]:
     """Get comprehensive version information.
     
     Returns:

@@ -14,7 +14,6 @@ The key innovation is context isolation - projects never share state.
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional
-import logging
 
 from osprey.utils.logger import get_logger
 
@@ -245,7 +244,6 @@ class ProjectContextManager:
             )
             
             # Step 1: Create isolated ConfigBuilder
-            from osprey.utils.config import ConfigBuilder
             import osprey.utils.config as config_module
             
             # Save current default config to restore later (maintain isolation)

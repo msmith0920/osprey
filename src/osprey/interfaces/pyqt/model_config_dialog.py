@@ -8,7 +8,6 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QComboBox, QFormLayout, QMessageBox
 )
-from PyQt5.QtCore import Qt
 
 from osprey.interfaces.pyqt.model_preferences import ModelPreferencesStore
 

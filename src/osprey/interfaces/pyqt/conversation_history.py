@@ -8,7 +8,6 @@ This module handles conversation history persistence:
 - Managing conversation storage modes
 """
 
-from pathlib import Path
 from datetime import datetime
 from osprey.utils.logger import get_logger
 from osprey.interfaces.pyqt.gui_utils import get_gui_data_dir

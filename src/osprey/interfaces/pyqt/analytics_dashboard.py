@@ -15,13 +15,12 @@ Key Features:
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget,
     QTableWidgetItem, QPushButton, QGroupBox, QScrollArea,
-    QHeaderView, QComboBox, QProgressBar
+    QHeaderView, QComboBox
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont, QColor
 
 from typing import Optional, TYPE_CHECKING
-from datetime import datetime
 
 if TYPE_CHECKING:
     from osprey.interfaces.pyqt.routing_analytics import RoutingAnalytics

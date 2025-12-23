@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Callable, Optional
 from osprey.utils.logger import get_logger
 from osprey.interfaces.pyqt.event_bus import EventBus
-from osprey.interfaces.pyqt.enums import EventTypes, Colors, MessageType
+from osprey.interfaces.pyqt.enums import EventTypes, Colors
 
 logger = get_logger("message_handlers")
 
@@ -68,9 +68,11 @@ class MessageHandlers:
             color = Colors.AGENT_MESSAGE
         
         # Publish event to display message
+        # Auto-open plots for NEW agent messages (not historical ones)
         self.event_bus.publish('display_message', {
             'message': message,
-            'color': color
+            'color': color,
+            'auto_open_plots': True  # Enable auto-open for new agent responses
         })
     
     def on_status_update(self, status: str, component: str = "base", model_info: Optional[dict] = None):

@@ -13,17 +13,15 @@ Key Features:
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Any, Tuple, TYPE_CHECKING
 from enum import Enum
+from typing import List, Dict, Optional, Any, TYPE_CHECKING
 import time
-import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from osprey.utils.logger import get_logger
 from osprey.interfaces.pyqt.llm_client import SimpleLLMClient
 
 if TYPE_CHECKING:
-    from osprey.interfaces.pyqt.multi_project_router import RoutingDecision
     from osprey.interfaces.pyqt.project_manager import ProjectContext
 
 logger = get_logger("multi_project_orchestrator")

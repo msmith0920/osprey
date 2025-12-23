@@ -5,7 +5,6 @@ This module handles checkpointer creation and PostgreSQL setup for conversation 
 
 import os
 import socket
-from pathlib import Path
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtCore import QTimer
 
