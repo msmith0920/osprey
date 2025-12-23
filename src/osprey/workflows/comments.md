@@ -1,3 +1,12 @@
+---
+workflow: inline-comments-guidelines
+category: documentation
+applies_when: [writing_code, code_review, complex_logic, business_rules]
+estimated_time: reference as needed
+ai_ready: true
+related: [docstrings, update-documentation, pre-merge-cleanup]
+---
+
 # Inline Code Comments Guidelines for Professional Python Development
 
 Comprehensive guidelines for writing clear, purposeful inline code comments that enhance code maintainability and team collaboration without cluttering the codebase.

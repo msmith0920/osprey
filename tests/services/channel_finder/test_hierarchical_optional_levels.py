@@ -9,7 +9,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 from src.osprey.templates.apps.control_assistant.services.channel_finder.databases.hierarchical import (
     HierarchicalChannelDatabase,
 )
@@ -1011,3 +1010,463 @@ class TestOptionalLevelsEdgeCases:
                 assert not (ch.endswith("_") and not ch.endswith("_RB"))
         finally:
             Path(db_path).unlink()
+
+
+class TestDirectSignalsAtOptionalLevels:
+    """Test that optional levels show both containers and direct signals (leaf nodes).
+
+    This tests the behavior where at an optional level like 'subdevice', the database
+    presents BOTH:
+    - Container nodes (subdevices like PSU, ADC, etc.)
+    - Leaf nodes (direct signals like Heartbeat, Status, etc.)
+
+    This allows the LLM to naturally select either a subdevice to navigate deeper,
+    or a direct signal that skips the optional level entirely.
+    """
+
+    @pytest.fixture
+    def direct_signals_db_content(self):
+        """Database with direct signals and subdevices at same level."""
+        return {
+            "hierarchy": {
+                "levels": [
+                    {"name": "system", "type": "tree"},
+                    {"name": "subsystem", "type": "tree"},
+                    {"name": "device", "type": "instances"},
+                    {"name": "subdevice", "type": "tree", "optional": True},
+                    {"name": "signal", "type": "tree"},
+                    {"name": "suffix", "type": "tree", "optional": True},
+                ],
+                "naming_pattern": "{system}:{subsystem}:{device}:{subdevice}:{signal}:{suffix}",
+            },
+            "tree": {
+                "CTRL": {
+                    "_description": "Control System",
+                    "MAIN": {
+                        "_description": "Main Control",
+                        "DEVICE": {
+                            "_expansion": {
+                                "_type": "range",
+                                "_pattern": "MC-{:02d}",
+                                "_range": [1, 2],
+                            },
+                            "_description": "Main control devices",
+                            # Direct signals (no subdevice)
+                            "Status": {"_description": "Device status"},
+                            "Heartbeat": {"_description": "Device heartbeat"},
+                            # Subdevice with signals
+                            "PSU": {
+                                "_description": "Power Supply",
+                                "Voltage": {"_description": "Output voltage"},
+                                "Current": {"_description": "Output current"},
+                            },
+                            # Subdevice with signals
+                            "ADC": {
+                                "_description": "ADC",
+                                "Value": {"_description": "ADC value"},
+                            },
+                        },
+                    },
+                },
+            },
+        }
+
+    @pytest.fixture
+    def direct_signals_db(self, direct_signals_db_content):
+        """Create temporary database with direct signals."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(direct_signals_db_content, f)
+            db_path = f.name
+
+        try:
+            db = HierarchicalChannelDatabase(db_path)
+            yield db
+        finally:
+            Path(db_path).unlink()
+
+    def test_optional_level_shows_both_containers_and_leaves(self, direct_signals_db):
+        """Optional level should show BOTH subdevices (containers) AND direct signals (leaves)."""
+        # Navigate to subdevice level
+        selections = {"system": "CTRL", "subsystem": "MAIN", "device": "MC-01"}
+        options = direct_signals_db.get_options_at_level("subdevice", selections)
+
+        # Should include BOTH containers and leaf nodes
+        option_names = {opt["name"] for opt in options}
+
+        # Containers (subdevices)
+        assert "PSU" in option_names, "Should include PSU subdevice container"
+        assert "ADC" in option_names, "Should include ADC subdevice container"
+
+        # Leaf nodes (direct signals)
+        assert "Status" in option_names, "Should include Status direct signal"
+        assert "Heartbeat" in option_names, "Should include Heartbeat direct signal"
+
+        # Should have all 4 options
+        assert len(options) == 4
+
+    def test_direct_signal_channels_generated_correctly(self, direct_signals_db):
+        """Direct signals should generate channels that skip the optional subdevice level."""
+        # Build channels for direct signal
+        selections = {
+            "system": "CTRL",
+            "subsystem": "MAIN",
+            "device": "MC-01",
+            "signal": "Heartbeat",
+        }
+        channels = direct_signals_db.build_channels_from_selections(selections)
+
+        # Should generate channel without subdevice
+        assert len(channels) == 1
+        assert channels[0] == "CTRL:MAIN:MC-01:Heartbeat"
+
+    def test_subdevice_signal_channels_generated_correctly(self, direct_signals_db):
+        """Subdevice signals should generate channels with subdevice included."""
+        # Build channels for subdevice signal
+        selections = {
+            "system": "CTRL",
+            "subsystem": "MAIN",
+            "device": "MC-01",
+            "subdevice": "PSU",
+            "signal": "Voltage",
+        }
+        channels = direct_signals_db.build_channels_from_selections(selections)
+
+        # Should generate channel WITH subdevice
+        assert len(channels) == 1
+        assert channels[0] == "CTRL:MAIN:MC-01:PSU:Voltage"
+
+    def test_all_channels_validate(self, direct_signals_db):
+        """All generated channels (direct and subdevice) should validate."""
+        # Direct signals
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-01:Status")
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-01:Heartbeat")
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-02:Status")
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-02:Heartbeat")
+
+        # Subdevice signals
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-01:PSU:Voltage")
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-01:PSU:Current")
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-01:ADC:Value")
+        assert direct_signals_db.validate_channel("CTRL:MAIN:MC-02:PSU:Voltage")
+
+    def test_channel_count_includes_both_direct_and_subdevice(self, direct_signals_db):
+        """Total channel count should include both direct signals and subdevice signals."""
+        # 2 devices * (2 direct signals + 2 PSU signals + 1 ADC signal) = 2 * 5 = 10
+        assert len(direct_signals_db.channel_map) == 10
+
+    def test_get_channel_returns_correct_data(self, direct_signals_db):
+        """Getting channel data should work for both direct and subdevice signals."""
+        # Direct signal
+        status_data = direct_signals_db.get_channel("CTRL:MAIN:MC-01:Status")
+        assert status_data is not None
+        assert status_data["address"] == "CTRL:MAIN:MC-01:Status"
+
+        # Subdevice signal
+        psu_data = direct_signals_db.get_channel("CTRL:MAIN:MC-01:PSU:Voltage")
+        assert psu_data is not None
+        assert psu_data["address"] == "CTRL:MAIN:MC-01:PSU:Voltage"
+
+
+class TestExpansionAtOptionalLevel:
+    """
+    Test expansion behavior at optional tree levels.
+
+    BUG: When a node with _expansion is defined at an optional tree level,
+    the base container name should NOT appear as a selectable option.
+    Only the expanded instances should be presented.
+    """
+
+    @pytest.fixture
+    def expansion_at_optional_db_content(self):
+        """
+        Database with expansion at optional tree level.
+
+        Structure:
+        - system: CTRL (tree)
+        - subsystem: MAIN (tree)
+        - device: MC-01, MC-02 (instances)
+        - subdevice: PSU, ADC, MOTOR, CH-1, CH-2 (optional tree with expansion)
+          - PSU, ADC, MOTOR: regular containers (no expansion)
+          - CH: container with expansion to CH-1, CH-2
+        - signal: varies by subdevice (tree)
+        - suffix: RB, SP (optional tree)
+        """
+        return {
+            "hierarchy": {
+                "levels": [
+                    {"name": "system", "type": "tree"},
+                    {"name": "subsystem", "type": "tree"},
+                    {"name": "device", "type": "instances"},
+                    {"name": "subdevice", "type": "tree", "optional": True},
+                    {"name": "signal", "type": "tree"},
+                    {"name": "suffix", "type": "tree", "optional": True},
+                ],
+                "naming_pattern": "{system}:{subsystem}:{device}:{subdevice}:{signal}:{suffix}",
+            },
+            "tree": {
+                "CTRL": {
+                    "_description": "Control System",
+                    "MAIN": {
+                        "_description": "Main Subsystem",
+                        "DEVICE": {
+                            "_expansion": {
+                                "_type": "range",
+                                "_pattern": "MC-{:02d}",
+                                "_range": [1, 2],
+                            },
+                            "_description": "Main control devices",
+                            # Regular subdevices (no expansion)
+                            "PSU": {
+                                "_description": "Power Supply",
+                                "Voltage": {"_description": "Output voltage"},
+                                "Current": {"_description": "Output current"},
+                            },
+                            "ADC": {
+                                "_description": "ADC",
+                                "Value": {
+                                    "_separator": "_",
+                                    "_is_leaf": True,
+                                    "_description": "ADC value",
+                                    "RB": {"_description": "Readback"},
+                                    "SP": {"_description": "Setpoint"},
+                                },
+                            },
+                            "MOTOR": {
+                                "_description": "Motor",
+                                "Position": {"_description": "Motor position"},
+                            },
+                            # Subdevice with expansion (BUG LOCATION)
+                            "CH": {
+                                "_expansion": {
+                                    "_type": "range",
+                                    "_pattern": "CH-{}",
+                                    "_range": [1, 2],
+                                },
+                                "_description": "Hardware channel modules",
+                                "Input": {"_description": "Input value"},
+                                "Gain": {
+                                    "_separator": "_",
+                                    "_is_leaf": True,
+                                    "_description": "Gain amplification",
+                                    "RB": {"_description": "Gain readback"},
+                                    "SP": {"_description": "Gain setpoint"},
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        }
+
+    @pytest.fixture
+    def expansion_at_optional_db(self, expansion_at_optional_db_content):
+        """Create temporary database with expansion at optional level."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(expansion_at_optional_db_content, f)
+            db_path = f.name
+
+        try:
+            db = HierarchicalChannelDatabase(db_path)
+            yield db
+        finally:
+            Path(db_path).unlink()
+
+    def test_expansion_at_optional_level_not_included_as_option(self, expansion_at_optional_db):
+        """
+        BUG TEST: Base container with _expansion should NOT appear in options.
+
+        At the optional 'subdevice' level, we should see:
+        - PSU (regular container) ✓
+        - ADC (regular container) ✓
+        - MOTOR (regular container) ✓
+        - CH-1 (expanded instance) ✓
+        - CH-2 (expanded instance) ✓
+
+        We should NOT see:
+        - CH (base container) ✗
+        """
+        selections = {"system": "CTRL", "subsystem": "MAIN", "device": "MC-01"}
+        options = expansion_at_optional_db.get_options_at_level("subdevice", selections)
+
+        option_names = {opt["name"] for opt in options}
+
+        # Regular containers should appear
+        assert "PSU" in option_names, "PSU (regular container) should appear"
+        assert "ADC" in option_names, "ADC (regular container) should appear"
+        assert "MOTOR" in option_names, "MOTOR (regular container) should appear"
+
+        # Base container with expansion should NOT appear
+        assert "CH" not in option_names, (
+            "BUG: Base container 'CH' should NOT appear as selectable option. "
+            "Only expanded instances CH-1 and CH-2 should be selectable."
+        )
+
+        # Expanded instances SHOULD appear
+        assert "CH-1" in option_names, "CH-1 (expanded instance) should appear"
+        assert "CH-2" in option_names, "CH-2 (expanded instance) should appear"
+
+        # Total count should be 5: PSU, ADC, MOTOR, CH-1, CH-2
+        assert len(options) == 5, f"Expected 5 options, got {len(options)}: {option_names}"
+
+    def test_expansion_at_optional_level_builds_valid_channels(self, expansion_at_optional_db):
+        """
+        Expanded instances should generate valid channels in the channel map.
+
+        Note: This test verifies that the channels exist in the channel map,
+        which is populated during database initialization and correctly applies
+        separator overrides.
+        """
+        # Verify CH-1 channels exist and validate
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-1:Gain_RB") is True
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-1:Gain_SP") is True
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-1:Input") is True
+
+        # Verify CH-2 channels exist and validate
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-2:Gain_RB") is True
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-2:Gain_SP") is True
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-2:Input") is True
+
+        # Verify both devices (MC-01 and MC-02)
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-02:CH-1:Gain_RB") is True
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-02:CH-2:Gain_RB") is True
+
+    def test_base_container_name_does_not_build_valid_channels(self, expansion_at_optional_db):
+        """
+        Using base container name 'CH' should NOT build valid channels.
+
+        This test demonstrates the bug: if the LLM incorrectly selects 'CH',
+        it will build an invalid channel name.
+        """
+        # Try to use CH (base container) instead of CH-1/CH-2
+        selections = {
+            "system": "CTRL",
+            "subsystem": "MAIN",
+            "device": "MC-01",
+            "subdevice": "CH",  # ❌ Should not be selectable
+            "signal": "Gain",
+            "suffix": "RB",
+        }
+        channels = expansion_at_optional_db.build_channels_from_selections(selections)
+
+        # The invalid channel CTRL:MAIN:MC-01:CH:Gain_RB should NOT validate
+        # (Even if build_channels returns it, validation should fail)
+        if channels:
+            # If the build process returns something, it should NOT validate
+            assert expansion_at_optional_db.validate_channel(channels[0]) is False, (
+                f"Channel {channels[0]} should NOT validate (uses base container 'CH')"
+            )
+
+        # Explicitly verify the specific invalid channel
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH:Gain_RB") is False
+
+    def test_expansion_preserves_regular_containers(self, expansion_at_optional_db):
+        """Regular containers without expansion should work normally."""
+        # Select PSU (regular container, no expansion)
+        selections = {
+            "system": "CTRL",
+            "subsystem": "MAIN",
+            "device": "MC-01",
+            "subdevice": "PSU",
+            "signal": "Voltage",
+        }
+        channels = expansion_at_optional_db.build_channels_from_selections(selections)
+
+        assert len(channels) == 1
+        assert channels[0] == "CTRL:MAIN:MC-01:PSU:Voltage"
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:PSU:Voltage") is True
+
+    def test_all_expanded_channels_exist_in_channel_map(self, expansion_at_optional_db):
+        """All expanded channels should be generated and in channel map."""
+        # CH-1 channels
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-1:Input")
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-1:Gain")
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-1:Gain_RB")
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-1:Gain_SP")
+
+        # CH-2 channels
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-2:Input")
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-2:Gain")
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-2:Gain_RB")
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH-2:Gain_SP")
+
+        # Both devices (MC-01 and MC-02)
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-02:CH-1:Gain_RB")
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-02:CH-2:Gain_RB")
+
+    def test_base_container_channels_do_not_exist(self, expansion_at_optional_db):
+        """Channels using base container 'CH' should NOT exist in channel map."""
+        # These should all be invalid
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH:Input") is False
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH:Gain") is False
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH:Gain_RB") is False
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-01:CH:Gain_SP") is False
+        assert expansion_at_optional_db.validate_channel("CTRL:MAIN:MC-02:CH:Gain_RB") is False
+
+    def test_channel_count_uses_expanded_instances(self, expansion_at_optional_db):
+        """Total channel count should use expanded instances, not base container."""
+        # Expected channels per device:
+        # - PSU: Voltage, Current = 2
+        # - ADC: Value, Value_RB, Value_SP = 3
+        # - MOTOR: Position = 1
+        # - CH-1: Input, Gain, Gain_RB, Gain_SP = 4
+        # - CH-2: Input, Gain, Gain_RB, Gain_SP = 4
+        # Total per device: 2 + 3 + 1 + 4 + 4 = 14
+        # Total for 2 devices: 14 * 2 = 28
+        expected_count = 28
+
+        actual_count = len(expansion_at_optional_db.channel_map)
+        assert actual_count == expected_count, (
+            f"Expected {expected_count} channels (using expanded instances), got {actual_count}"
+        )
+
+    def test_build_channels_from_selections_with_expanded_instance_preserves_separator_override(
+        self, expansion_at_optional_db
+    ):
+        """
+        REGRESSION TEST: build_channels_from_selections should preserve separator overrides
+        when given an expanded instance like 'CH-1'.
+
+        Context:
+        - The optional_levels.json database has 'CH' with expansion to CH-1, CH-2
+        - Inside the 'CH' container, 'Gain' has _separator: "_" (use underscore, not colon)
+        - The channel map correctly creates: CTRL:MAIN:MC-01:CH-1:Gain_RB ✅
+        - But build_channels_from_selections with subdevice: "CH-1" used to build:
+          CTRL:MAIN:MC-01:CH-1:Gain:RB ❌ (wrong - uses colon instead of underscore)
+
+        Root cause:
+        - When navigating the tree with "CH-1", the method can't find that literal key
+          (only "CH" exists with the expansion definition)
+        - This caused it to lose access to separator override metadata
+
+        This test verifies the fix: expanded instances should correctly resolve to their
+        container node and preserve all separator overrides.
+        """
+        # Build channels using the expanded instance directly
+        selections = {
+            "system": "CTRL",
+            "subsystem": "MAIN",
+            "device": "MC-01",
+            "subdevice": "CH-1",  # Expanded instance (tree only has "CH")
+            "signal": "Gain",
+            "suffix": "RB",
+        }
+
+        channels = expansion_at_optional_db.build_channels_from_selections(selections)
+
+        # Should build the channel with the underscore separator (not colon)
+        assert len(channels) == 1
+        channel = channels[0]
+
+        # The separator override from Gain's _separator: "_" should be applied
+        expected = "CTRL:MAIN:MC-01:CH-1:Gain_RB"  # Underscore, not colon!
+        assert channel == expected, (
+            f"Separator override not applied correctly.\n"
+            f"Expected: {expected}\n"
+            f"Got:      {channel}\n"
+            f"The 'Gain' node has _separator: '_', so RB should connect with underscore"
+        )
+
+        # Also verify with CH-2
+        selections["subdevice"] = "CH-2"
+        channels = expansion_at_optional_db.build_channels_from_selections(selections)
+        assert channels[0] == "CTRL:MAIN:MC-01:CH-2:Gain_RB"

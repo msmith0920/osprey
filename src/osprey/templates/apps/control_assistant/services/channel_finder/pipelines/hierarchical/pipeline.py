@@ -8,7 +8,7 @@ import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # Use Osprey's config system
 from osprey.utils.config import _get_config
@@ -159,7 +159,7 @@ class HierarchicalPipeline(BasePipeline):
         for i, atomic_query in enumerate(atomic_queries, 1):
             # For single query, keep it concise since we already know the task from capability logs
             if len(atomic_queries) == 1:
-                logger.info(f"[bold cyan]Stage 2:[/bold cyan] Navigating hierarchy...")
+                logger.info("[bold cyan]Stage 2:[/bold cyan] Navigating hierarchy...")
             else:
                 logger.info(
                     f"[bold cyan]Stage 2 - Query {i}/{len(atomic_queries)}:[/bold cyan] {atomic_query}"
@@ -281,9 +281,33 @@ class HierarchicalPipeline(BasePipeline):
         # Get available options at this level
         options = self.database.get_options_at_level(level, selections)
 
+        # Get level configuration
+        level_config = self.database.hierarchy_config["levels"][level]
+        is_optional = level_config.get("optional", False)
+
         if not options:
-            logger.warning(f"{indent}[yellow]No options available at level {level}[/yellow]")
-            return []
+            # NO OPTIONS AT THIS LEVEL
+            # If this is an optional level, skip it and continue
+            if is_optional:
+                logger.info(
+                    f"{indent}[yellow]No options available at level {level} - skipping optional level[/yellow]"
+                )
+                # If no more levels, build channels from current selections
+                if not next_levels:
+                    return self.database.build_channels_from_selections(selections)
+                # Otherwise continue to next level
+                return await self._navigate_recursive(
+                    query=query,
+                    remaining_levels=next_levels,
+                    selections=selections,
+                    branch_path=branch_path,
+                    branch_num=branch_num,
+                    total_branches=total_branches,
+                )
+            else:
+                # Required level has no options - this is an error
+                logger.warning(f"{indent}[yellow]No options available at level {level}[/yellow]")
+                return []
 
         logger.info(f"{indent}Level: {level}")
         logger.info(f"{indent}  Available options: {len(options)}")
@@ -292,15 +316,57 @@ class HierarchicalPipeline(BasePipeline):
         selected = await self._select_at_level(query, level, options, selections)
 
         if not selected:
-            logger.warning(f"{indent}  [yellow]No selection made at level {level}[/yellow]")
-            return []
+            # OPTIONAL LEVEL HANDLING: If this is an optional level and NOTHING_FOUND was returned,
+            # skip this level and continue to the next level
+            if is_optional:
+                logger.info(f"{indent}  [yellow]→ Skipping optional level '{level}'[/yellow]")
+                # Continue to next level without adding this level to selections
+                return await self._navigate_recursive(
+                    query=query,
+                    remaining_levels=next_levels,
+                    selections=selections,  # Don't add current level
+                    branch_path=branch_path,
+                    branch_num=branch_num,
+                    total_branches=total_branches,
+                )
+            else:
+                logger.warning(f"{indent}  [yellow]No selection made at level {level}[/yellow]")
+                return []
 
         logger.info(
             f"{indent}  → Selected: {selected[:3] if len(selected) > 3 else selected}{'...' if len(selected) > 3 else ''}"
         )
 
+        # DIRECT SIGNAL DETECTION AT OPTIONAL LEVELS:
+        # If this is an optional level and the selection is a leaf node (direct signal),
+        # treat it as if it belongs to the next level and skip the current optional level.
+        if is_optional and len(selected) == 1:
+            # Check if the selected option is a leaf node
+            current_node = self.database._navigate_to_node(level, selections)
+            if current_node:
+                selected_node = current_node.get(selected[0])
+                level_idx = self.database.hierarchy_levels.index(level)
+                if selected_node and self.database._is_leaf_node(selected_node, level_idx + 1):
+                    # This is a direct signal! Skip optional level and add to next level instead
+                    logger.info(
+                        f"{indent}  [cyan]→ '{selected[0]}' is a direct signal - skipping optional level '{level}'[/cyan]"
+                    )
+                    # Find the next non-optional level to assign this selection to
+                    next_level = next_levels[0] if next_levels else None
+                    if next_level:
+                        new_selections = selections.copy()
+                        new_selections[next_level] = selected
+                        # Skip both current optional level AND the next level (since we just filled it)
+                        return await self._navigate_recursive(
+                            query=query,
+                            remaining_levels=next_levels[1:],  # Skip next level
+                            selections=new_selections,
+                            branch_path=branch_path,
+                            branch_num=branch_num,
+                            total_branches=total_branches,
+                        )
+
         # Determine if we should branch based on level type
-        level_config = self.database.hierarchy_config["levels"][level]
         # Tree levels allow branching, instance levels don't
         allow_branching = level_config["type"] == "tree"
 
@@ -324,7 +390,46 @@ class HierarchicalPipeline(BasePipeline):
                     f"{indent}  [bold cyan]Branch {i}/{num_branches}:[/bold cyan] {branch_path_str}"
                 )
 
-                # Create new selections dict with single value
+                # OPTIONAL LEVEL LEAF DETECTION IN BRANCHING:
+                # For each branch, check if the selection is a leaf node at an optional level.
+                # If so, skip the optional level and assign to next level instead.
+                # This handles the case where multiple direct signals are selected together.
+                if is_optional and next_levels:
+                    current_node = self.database._navigate_to_node(level, selections)
+                    if current_node:
+                        selected_node = current_node.get(single_selection)
+                        level_idx = self.database.hierarchy_levels.index(level)
+                        if selected_node and self.database._is_leaf_node(
+                            selected_node, level_idx + 1
+                        ):
+                            # This branch is a direct signal! Skip optional level
+                            logger.info(
+                                f"{indent}    [cyan]→ '{single_selection}' is a direct signal - skipping optional level '{level}'[/cyan]"
+                            )
+                            # Create selections that skip this optional level
+                            branch_selections = selections.copy()
+                            next_level = next_levels[0]
+                            branch_selections[next_level] = single_selection
+
+                            # Navigate with next level skipped (since we just filled it)
+                            branch_results = await self._navigate_recursive(
+                                query=query,
+                                remaining_levels=next_levels[1:],
+                                selections=branch_selections,
+                                branch_path=new_branch_path,
+                                branch_num=i,
+                                total_branches=num_branches,
+                            )
+
+                            # Log branch completion
+                            logger.info(
+                                f"{indent}    [green]✓[/green] Branch {i}/{num_branches}: Found {len(branch_results)} channel(s)"
+                            )
+
+                            all_results.extend(branch_results)
+                            continue  # Skip normal branch processing
+
+                # Normal branch processing (not a leaf or not optional)
                 branch_selections = selections.copy()
                 branch_selections[level] = single_selection
 
@@ -460,13 +565,16 @@ class HierarchicalPipeline(BasePipeline):
         else:
             path_str = "ROOT"
 
+        # Check if this level is optional
+        level_config = self.database.hierarchy_config["levels"][level]
+        is_optional = level_config.get("optional", False)
+
         # Get level-specific instructions if available
         level_instruction = ""
         if self.hierarchical_context and level in self.hierarchical_context:
             level_instruction = f"\n{self.hierarchical_context[level].strip()}\n"
         else:
             # Fallback guidance based on level type for arbitrary hierarchies
-            level_config = self.database.hierarchy_config["levels"][level]
             if level_config["type"] == "instances":
                 level_instruction = f"""
 Select specific instance(s) of {level} based on the query.
@@ -493,6 +601,35 @@ Select multiple when the query spans multiple categories or is ambiguous.
 Select the {level} option that best matches the query context.
 """
 
+        # Add optional level guidance if applicable
+        optional_level_guidance = ""
+        if is_optional:
+            optional_level_guidance = f"""
+⚠️  OPTIONAL LEVEL NOTICE:
+This '{level}' level is OPTIONAL in the hierarchy and can be skipped if not relevant to the query.
+
+IMPORTANT: Some channels exist at the parent level and skip this {level} level entirely.
+If the query asks for something that is NOT specifically related to any of the {level}
+options shown above, you should skip this level by selecting '{NOTHING_FOUND_MARKER}'.
+
+WHEN TO SKIP (select '{NOTHING_FOUND_MARKER}'):
+- The query asks for something that is NOT specifically mentioned in any of the {level} descriptions above
+- The query does not specify any {level}-specific terminology or features
+- The query explicitly asks to skip this level (e.g., "skip {level}", "directly at device level")
+- None of the {level} options have descriptions that match what the user is asking for
+- The user's query terms do not appear in ANY of the {level} option names or descriptions
+
+WHEN NOT TO SKIP:
+- The query explicitly mentions a specific {level} name shown in the options above
+- One or more option descriptions clearly match what the query is asking for
+- The query uses terms that appear in the {level} option descriptions
+- The query uses general terms like "all" that could apply to multiple {level} options
+
+CRITICAL: Read the option descriptions carefully. If what the user is asking for does NOT
+appear in any of the option descriptions, it likely exists at a different level and you
+should select '{NOTHING_FOUND_MARKER}' to skip this level.
+"""
+
         # Add facility description for system-level navigation (provides device naming conventions)
         facility_context = ""
         if level == "system" and self.facility_description:
@@ -509,6 +646,7 @@ Previous Path: {path_str}
 Available Options ({len(options)} total):
 {options_str}
 {level_instruction}
+{optional_level_guidance}
 Instructions:
 1. Select one or more options that best match the query
 2. You can select multiple options if the query is ambiguous or uses words like "all" or "both"
@@ -525,7 +663,7 @@ If no options are relevant, use '{NOTHING_FOUND_MARKER}'."""
 
         return prompt
 
-    def _get_single_selection(self, selections: dict, key: str) -> Optional[str]:
+    def _get_single_selection(self, selections: dict, key: str) -> str | None:
         """Get single selection value (handle lists by taking first element)."""
         value = selections.get(key)
         if isinstance(value, list):
@@ -549,8 +687,7 @@ If no options are relevant, use '{NOTHING_FOUND_MARKER}'."""
                 )
 
         notes = (
-            f"Processed query using hierarchical navigation. "
-            f"Found {len(channel_infos)} channels."
+            f"Processed query using hierarchical navigation. Found {len(channel_infos)} channels."
         )
 
         return ChannelFinderResult(

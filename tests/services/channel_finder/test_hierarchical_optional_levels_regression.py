@@ -75,38 +75,51 @@ class TestOptionalLevelNavigation:
         print(f"Subdevice options returned: {subdevice_names}")
         print(f"Number of options: {len(subdevice_names)}")
 
-        # Direct signals should NOT be in subdevice options
-        assert (
-            "Heartbeat" not in subdevice_names
-        ), "Heartbeat should not appear as subdevice (it's a direct signal)"
-        assert (
-            "Status" not in subdevice_names
-        ), "Status should not appear as subdevice (it's a direct signal)"
-        assert (
-            "Mode" not in subdevice_names
-        ), "Mode should not appear as subdevice (it's a direct signal)"
-        assert (
-            "Config" not in subdevice_names
-        ), "Config should not appear as subdevice (it's a direct signal)"
+        # NEW BEHAVIOR: Direct signals SHOULD be included at optional levels
+        # This allows the LLM to naturally select either a subdevice (PSU, ADC)
+        # or a direct signal (Heartbeat, Status) without needing NOTHING_FOUND logic
 
-        # Only actual subdevices should be in the list
-        assert "PSU" in subdevice_names, "PSU is a real subdevice, should be in list"
-        assert "ADC" in subdevice_names, "ADC is a real subdevice, should be in list"
-        assert "MOTOR" in subdevice_names, "MOTOR is a real subdevice, should be in list"
-        assert "CH" in subdevice_names, "CH is a real subdevice, should be in list"
+        # Direct signals (leaf nodes) should be in subdevice options
+        assert "Heartbeat" in subdevice_names, (
+            "Heartbeat should appear in options (it's a direct signal at device level)"
+        )
+        assert "Status" in subdevice_names, (
+            "Status should appear in options (it's a direct signal at device level)"
+        )
+        assert "Mode" in subdevice_names, (
+            "Mode should appear in options (it's a direct signal at device level)"
+        )
+        assert "Config" in subdevice_names, (
+            "Config should appear in options (it's a direct signal at device level)"
+        )
 
-        # Verify only 4 subdevices are returned
-        assert len(subdevice_names) == 4, f"Expected 4 subdevices, got {len(subdevice_names)}"
+        # Actual subdevices (container nodes) should also be in the list
+        assert "PSU" in subdevice_names, "PSU is a subdevice container, should be in list"
+        assert "ADC" in subdevice_names, "ADC is a subdevice container, should be in list"
+        assert "MOTOR" in subdevice_names, "MOTOR is a subdevice container, should be in list"
+
+        # CH has _expansion, so it appears as CH-1, CH-2 (not "CH")
+        assert "CH-1" in subdevice_names, "CH-1 is an expanded instance, should be in list"
+        assert "CH-2" in subdevice_names, "CH-2 is an expanded instance, should be in list"
+        assert "CH" not in subdevice_names, (
+            "CH (base container) should NOT be in list (has _expansion)"
+        )
+
+        # Verify all 9 options are returned (4 direct signals + 3 subdevices + 2 CH instances)
+        assert len(subdevice_names) == 9, (
+            f"Expected 9 options (4 direct + 3 subdevices + 2 CH instances), got {len(subdevice_names)}"
+        )
 
     def test_subdevice_vs_signal_distinction(self, optional_levels_db):
         """
-        Verify correct distinction between subdevices and direct signals.
+        Verify that optional levels show both containers and leaf nodes.
 
         At device level MC-01, there are:
-        - DIRECT signals (no subdevice): Status, Heartbeat, Mode, Config
-        - Subdevice nodes (have children): PSU, ADC, MOTOR, CH
+        - DIRECT signals (leaf nodes, no subdevice): Status, Heartbeat, Mode, Config
+        - Subdevice nodes (containers with children): PSU, ADC, MOTOR, CH
 
-        Only actual subdevices should appear as subdevice options.
+        NEW BEHAVIOR: Optional levels now show BOTH containers AND leaf nodes.
+        This allows the LLM to naturally select either without needing NOTHING_FOUND logic.
         """
         selections_to_device = {"system": "CTRL", "subsystem": "MAIN", "device": "MC-01"}
 
@@ -116,35 +129,34 @@ class TestOptionalLevelNavigation:
         )
         subdevice_names = [opt["name"] for opt in subdevice_options]
 
-        # Expected: Only actual subdevices should appear
-        expected_subdevices = {"PSU", "ADC", "MOTOR", "CH"}
+        # Expected: BOTH containers and leaf nodes
+        # Note: CH has _expansion, so it appears as CH-1, CH-2 (not "CH")
+        expected_containers = {"PSU", "ADC", "MOTOR", "CH-1", "CH-2"}
+        expected_direct_signals = {"Heartbeat", "Status", "Mode", "Config"}
+        expected_all = expected_containers | expected_direct_signals
 
-        # NOT expected: Direct signals should NOT appear as subdevices
-        unexpected_in_subdevices = {"Heartbeat", "Status", "Mode", "Config"}
+        print("\n=== Subdevice Options (NEW BEHAVIOR) ===")
+        print(f"Expected containers: {expected_containers}")
+        print(f"Expected direct signals: {expected_direct_signals}")
+        print(f"\nActual options: {set(subdevice_names)}")
 
-        print("\n=== Subdevice vs Signal Distinction ===")
-        print(f"Expected subdevices only: {expected_subdevices}")
-        print(f"Should NOT be in subdevices: {unexpected_in_subdevices}")
-        print(f"\nActual subdevice options: {set(subdevice_names)}")
+        # Verify NEW behavior: both containers and leaves appear
+        containers_present = expected_containers.intersection(set(subdevice_names))
+        direct_signals_present = expected_direct_signals.intersection(set(subdevice_names))
 
-        # Verify correct behavior
-        wrong_nodes_appearing = unexpected_in_subdevices.intersection(set(subdevice_names))
-        if wrong_nodes_appearing:
-            print(
-                f"\n🐛 REGRESSION: These signals are wrongly appearing as subdevices: {wrong_nodes_appearing}"
-            )
+        if (
+            containers_present == expected_containers
+            and direct_signals_present == expected_direct_signals
+        ):
+            print("\n✅ CORRECT: Both containers and direct signals appear at optional level")
         else:
-            print("\n✅ CORRECT: No signals appearing as subdevices")
+            print(f"\n🐛 Missing containers: {expected_containers - containers_present}")
+            print(f"🐛 Missing direct signals: {expected_direct_signals - direct_signals_present}")
 
-        # Verify only actual subdevices appear
-        assert (
-            set(subdevice_names) == expected_subdevices
-        ), f"Expected {expected_subdevices}, got {set(subdevice_names)}"
-
-        # Verify no signals appear as subdevices
-        assert (
-            len(wrong_nodes_appearing) == 0
-        ), f"Signals should not appear as subdevices, found: {wrong_nodes_appearing}"
+        # Verify all expected options appear
+        assert set(subdevice_names) == expected_all, (
+            f"Expected {expected_all}, got {set(subdevice_names)}"
+        )
 
     def test_channel_map_has_direct_signals(self, optional_levels_db):
         """
@@ -212,7 +224,8 @@ class TestOptionalLevelNavigation:
 
         # Get signal options directly (skipping optional subdevice)
         signal_options = optional_levels_db.get_options_at_level(
-            "signal", selections_to_device  # No subdevice selected
+            "signal",
+            selections_to_device,  # No subdevice selected
         )
 
         signal_names = [opt["name"] for opt in signal_options]
@@ -267,9 +280,9 @@ class TestChannelBuildingWithOptionalLevels:
         assert not channel.endswith("_"), f"Channel has trailing underscore: {channel}"
 
         # Verify correct channel name
-        assert (
-            channel == "CTRL:MAIN:MC-01:Heartbeat"
-        ), f"Expected 'CTRL:MAIN:MC-01:Heartbeat', got '{channel}'"
+        assert channel == "CTRL:MAIN:MC-01:Heartbeat", (
+            f"Expected 'CTRL:MAIN:MC-01:Heartbeat', got '{channel}'"
+        )
 
     def test_build_channel_with_one_optional_included(self, optional_levels_db):
         """
@@ -296,9 +309,9 @@ class TestChannelBuildingWithOptionalLevels:
         # Should work with optional suffix omitted
         assert len(channels) == 1, f"Should build exactly one channel, got {len(channels)}"
         channel = channels[0]
-        assert (
-            channel == "CTRL:MAIN:MC-01:PSU:Voltage"
-        ), f"Expected 'CTRL:MAIN:MC-01:PSU:Voltage', got '{channel}'"
+        assert channel == "CTRL:MAIN:MC-01:PSU:Voltage", (
+            f"Expected 'CTRL:MAIN:MC-01:PSU:Voltage', got '{channel}'"
+        )
 
     def test_build_channel_with_explicit_empty_optionals(self, optional_levels_db):
         """
@@ -331,14 +344,14 @@ class TestChannelBuildingWithOptionalLevels:
         # Verify no separator artifacts (cleanup is applied automatically)
         assert "::" not in channel, f"Channel should not have double colons: '{channel}'"
         assert not channel.endswith(":"), f"Channel should not have trailing colon: '{channel}'"
-        assert not channel.endswith(
-            "_"
-        ), f"Channel should not have trailing underscore: '{channel}'"
+        assert not channel.endswith("_"), (
+            f"Channel should not have trailing underscore: '{channel}'"
+        )
 
         # Verify correct channel name
-        assert (
-            channel == "CTRL:MAIN:MC-01:Heartbeat"
-        ), f"Expected 'CTRL:MAIN:MC-01:Heartbeat', got '{channel}'"
+        assert channel == "CTRL:MAIN:MC-01:Heartbeat", (
+            f"Expected 'CTRL:MAIN:MC-01:Heartbeat', got '{channel}'"
+        )
         print("✅ CORRECT: Separator cleanup applied automatically")
 
 

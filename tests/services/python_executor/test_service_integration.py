@@ -228,7 +228,7 @@ class TestErrorHandling:
             # May succeed after retry or may fail - depends on retry limit
             # The important thing is it tries multiple times
             try:
-                result = await service.ainvoke(request, config)
+                await service.ainvoke(request, config)
                 # If it succeeded, generator was called multiple times
                 assert mock_gen.call_count >= 1
             except Exception:
@@ -307,7 +307,7 @@ class TestAnalysisAndSecurity:
             # This should trigger approval workflow or execute
             # depending on configuration
             try:
-                result = await service.ainvoke(request, config)
+                await service.ainvoke(request, config)
                 # If executed, verify code was analyzed
                 assert mock_gen.call_count >= 1
             except Exception:
@@ -340,7 +340,7 @@ class TestAnalysisAndSecurity:
 
             # Read operations should not require approval
             try:
-                result = await service.ainvoke(request, config)
+                await service.ainvoke(request, config)
                 assert mock_gen.call_count >= 1
             except Exception:
                 # May fail due to missing module, but should attempt execution
@@ -439,13 +439,13 @@ class TestApprovalWorkflow:
             from osprey.services.python_executor.exceptions import CodeRuntimeError
 
             with pytest.raises(CodeRuntimeError) as exc_info:
-                result = await service.ainvoke(request, config)
+                await service.ainvoke(request, config)
 
             # Verify the error message indicates approval was needed
             error_msg = str(exc_info.value)
-            assert (
-                "approval" in error_msg.lower() or "execution failed" in error_msg.lower()
-            ), f"Expected approval-related error, got: {error_msg}"
+            assert "approval" in error_msg.lower() or "execution failed" in error_msg.lower(), (
+                f"Expected approval-related error, got: {error_msg}"
+            )
 
             # The test successfully verified that approval is triggered when enabled!
             # In a real scenario, the workflow would be resumed with approval Command
@@ -519,9 +519,9 @@ class TestApprovalWorkflow:
             result_state = await service.get_compiled_graph().ainvoke(internal_state, config)
 
             # Verify approval is required
-            assert result_state.get(
-                "requires_approval"
-            ), f"EPICS write operations should require approval. State: {result_state.get('analysis_result')}"
+            assert result_state.get("requires_approval"), (
+                f"EPICS write operations should require approval. State: {result_state.get('analysis_result')}"
+            )
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -592,12 +592,12 @@ class TestApprovalWorkflow:
             interrupted_state = await service.get_compiled_graph().ainvoke(internal_state, config)
 
             # Verify we hit the approval interrupt
-            assert interrupted_state.get(
-                "requires_approval"
-            ), "Should require approval for EPICS write operations"
-            assert interrupted_state.get(
-                "approval_interrupt_data"
-            ), "Should have approval interrupt data"
+            assert interrupted_state.get("requires_approval"), (
+                "Should require approval for EPICS write operations"
+            )
+            assert interrupted_state.get("approval_interrupt_data"), (
+                "Should have approval interrupt data"
+            )
 
             # CRITICAL: Verify request field is present BEFORE resume
             assert "request" in interrupted_state, "Request field should exist before resume"
@@ -611,26 +611,26 @@ class TestApprovalWorkflow:
             final_state = await service.get_compiled_graph().ainvoke(resume_command, config)
 
             # CRITICAL: Verify request field is STILL present after resume
-            assert (
-                "request" in final_state
-            ), "Request field should be preserved during resume (Issue #2 fix)"
-            assert (
-                final_state["request"] == request
-            ), "Request should still match original after resume"
+            assert "request" in final_state, (
+                "Request field should be preserved during resume (Issue #2 fix)"
+            )
+            assert final_state["request"] == request, (
+                "Request should still match original after resume"
+            )
 
             # Verify execution completed successfully
             # Note: May fail due to missing epics module, but should attempt execution
             # The key is that it didn't crash with KeyError: 'request'
-            assert final_state.get("approved") == True, "Approval status should be set"
+            assert final_state.get("approved"), "Approval status should be set"
 
             # If execution succeeded, verify results
             if final_state.get("is_successful"):
-                assert (
-                    final_state.get("execution_result") is not None
-                ), "Should have execution results on success"
-                assert (
-                    final_state.get("generated_code") is not None
-                ), "Should have generated code on success"
+                assert final_state.get("execution_result") is not None, (
+                    "Should have execution results on success"
+                )
+                assert final_state.get("generated_code") is not None, (
+                    "Should have generated code on success"
+                )
 
     @pytest.mark.asyncio
     @pytest.mark.integration
@@ -704,10 +704,10 @@ class TestApprovalWorkflow:
             final_state = await service.get_compiled_graph().ainvoke(reject_command, config)
 
             # Verify clean termination
-            assert final_state.get("approved") == False, "Approval should be rejected"
-            assert not final_state.get(
-                "is_successful"
-            ), "Execution should not succeed when rejected"
+            assert not final_state.get("approved"), "Approval should be rejected"
+            assert not final_state.get("is_successful"), (
+                "Execution should not succeed when rejected"
+            )
 
             # Verify request is still preserved even in rejection path
             assert "request" in final_state, "Request field should be preserved even when rejected"
@@ -846,7 +846,7 @@ class TestStateManagement:
             full_config = get_full_configuration()
             config = {"thread_id": "test_preserve", "configurable": full_config}
 
-            result = await service.ainvoke(request, config)
+            await service.ainvoke(request, config)
 
             # Verify request data was passed to generator
             assert mock_gen.last_request.user_query == original_query

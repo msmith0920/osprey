@@ -1,3 +1,12 @@
+---
+workflow: docstring-guidelines
+category: documentation
+applies_when: [writing_code, code_review, new_functions, api_design]
+estimated_time: reference as needed
+ai_ready: true
+related: [comments, update-documentation, pre-merge-cleanup]
+---
+
 # DocString Guidelines for Professional Python Development
 
 Comprehensive guidelines for writing clear, consistent Sphinx-format docstrings that provide meaningful documentation for any Python codebase.
@@ -389,3 +398,9 @@ Examples:
 - [ ] **Examples actually work** when copied and executed
 
 This approach ensures your documentation is thorough enough to be genuinely useful while remaining focused and practical for day-to-day development.
+
+## See Also
+
+- [ai-code-review.md](ai-code-review.md) — Review API consistency before writing docstrings
+- [pre-merge-cleanup.md](pre-merge-cleanup.md) — Ensure all new functions have docstrings
+- [comments.md](comments.md) — When to use inline comments vs docstrings

@@ -1,15 +1,6 @@
 Getting Started
 ===============
 
-.. admonition:: 🚧 Early Access Documentation
-   :class: warning
-
-   This documentation is part of an early access release and is **under active development**.
-   Many sections are still being written, edited, or reorganized.
-   Expect **inconsistencies**, missing content, outdated references, and broken cross-links.
-
-   We welcome feedback! If you find issues or have suggestions, please open an issue on our GitHub page.
-
 Welcome to Osprey Framework! This comprehensive guide will take you from zero to building production-ready control system agents, with working results at every step.
 
 **What You'll Accomplish**

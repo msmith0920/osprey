@@ -8,8 +8,138 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **License**: Added explicit "BSD 3-Clause License" header to LICENSE.txt for clarity
+
+### Documentation
+- Updated Hello World tutorial to reflect current weather capability implementation with natural language location handling
+- Fixed version picker showing non-existent versioned directories causing 404 errors
+  - Updated docs workflow to only list actually deployed versions (stable and latest/development)
+  - Removed all individual version tag entries from versions.json until versioned directories are implemented
+- Fixed double slash typos in image paths causing 404 errors on GitHub Pages for in-context and hierarchical channel finder CLI screenshots
+- Added "Viewing Exported Workflows" section to AI-assisted development guide showing example output of exported workflow files
+- Removed v0.9.2+ migration guide (no longer needed as framework has fully transitioned to instance method pattern)
+  - Cleaned up all cross-references to migration guide across documentation
+  - Streamlined architecture overview sections in main index and developer guides
+  - Updated main index diagram from workflow to architecture overview
+- Added academic reference (Hellert et al. 2025, arXiv:2512.18779) for semantic channel finding theoretical framework
+
+## [0.9.9] - 2025-12-22
+
+### Fixed
+- **Testing**: Fixed middle layer benchmark test assertion to use `queries_evaluated` instead of `total_queries` field from benchmark results
+
+### Changed
+- **Workflows**: Moved AI workflow files from `docs/workflows/` to `src/osprey/workflows/` for package bundling
+  - Workflows now distributed with installed package
+  - Enables version-locked workflow documentation
+- **Documentation**: Updated workflow references to use `@osprey-workflows/` path
+  - Added workflow export instructions to AI-assisted development guide
+  - Updated all @-mention examples across documentation
+
+### Added
+- **CLI**: New `osprey workflows` command to export AI workflow files
+  - `osprey workflows export` - Export workflows to local directory (default: ./osprey-workflows/)
+  - `osprey workflows list` - List all available workflow files
+  - Interactive menu integration for easy access
+- **Documentation - AI Workflows**: Channel Finder workflow guides for AI-assisted development
+  - New workflow files: pipeline selection guide and database builder guide with AI prompts and code references
+  - Workflow cards in AI-assisted development guide linking to pipeline selection and database building workflows
+  - AI-assisted workflow dropdowns in tutorial "Build Your Database" sections for all three pipelines (in-context, hierarchical, middle layer)
+  - AI-assisted pipeline selection dropdown before pipeline tab-set in tutorial
+  - Enhanced workflows with guidance for AI assistants to read database format code and examples before giving advice
+  - Code reference sections showing AI how to use source files for evidence-based recommendations
+- **Documentation**: Comprehensive middle layer pipeline guide in Sphinx docs
+  - Complete tutorial with architecture comparison and usage examples
+  - CLI screenshots and integration examples
+  - End-to-end benchmark tests validating complete integration
+- **Channel Finder - Sample Data**: Middle layer database and benchmarks
+  - 2,033-channel sample database covering 3 systems (SR, BR, BTS)
+  - 20 device families with full metadata
+  - 35-query benchmark dataset (20% coverage ratio - best of all pipelines)
+  - Realistic accelerator physics context
+- **Channel Finder - Tools**: Middle layer support across all CLI tools
+  - Database preview tool with tree visualization for functional hierarchy
+  - CLI query interface with middle_layer pipeline support
+  - Benchmark runner with middle_layer dataset support
+- **Templates - Channel Finder**: Middle layer configuration support
+  - Conditional config generation for middle_layer pipeline
+  - Dynamic AVAILABLE_PIPELINES list based on enabled pipelines
+  - Database and benchmark paths auto-configured
+- **Channel Finder - Middle Layer Testing**: Comprehensive tool and utility tests
+  - 480 lines of tests covering all database query tools
+  - Tests for prompt loader with middle_layer support
+  - Tests for MML converter utility enhancements
+- **Channel Finder - Middle Layer**: React agent prompts for functional navigation
+  - Query splitter prompt for decomposing complex queries
+  - System prompt with database exploration tools
+- **Registry Manager**: Silent initialization mode for clean CLI output
+  - Suppress INFO/DEBUG logging during initialization when `silent=True`
+  - Useful for CLI tools that need clean output without verbose registry logs
+- **Channel Finder: Middle Layer Pipeline**: Complete React agent-based channel finder pipeline for MATLAB Middle Layer (MML) databases with System→Family→Field hierarchy; includes MiddleLayerDatabase with O(1) validation and device/sector filtering, MiddleLayerPipeline with 5 database query tools (list_systems, list_families, inspect_fields, list_channel_names, get_common_names), MMLConverter utility for converting Python MML exports to JSON, optional _description fields at all levels for enhanced LLM guidance, comprehensive test suite (14 tests), sample database, and complete documentation
+
+### Changed
+- **CLI - Project Initialization**: Enhanced channel finder selection
+  - Added middle_layer option to interactive menu
+  - Changed default from "both" to "all" (now includes all three pipelines)
+  - Updated descriptions for clarity: in_context (<200 channels), hierarchical (pattern-based), middle_layer (functional)
+- **Channel Finder - Middle Layer Pipeline**: Migrated from Pydantic-AI to LangGraph
+  - Now uses LangGraph's create_react_agent for improved agent behavior
+  - Converted tools from Pydantic-AI format to LangChain StructuredTool
+  - Enhanced structured output with ChannelSearchResult model
+  - Better error handling and agent state management
+
+### Fixed
+- **Build Scripts**: Removed trailing whitespace from configuration and script files
+- **Testing: Channel Finder test path correction**: Fixed incorrect database path in `test_multiple_direct_signals_fix.py` to point to correct example database location
+- **Channel Finder: Multiple direct signal selection**: Fixed leaf node detection to properly handle multiple direct signals (e.g., "status and heartbeat") selected together at optional levels
+- **Channel Finder: Optional levels LLM awareness**: Enhanced database descriptions and prompts to better distinguish direct signals from subdevice-specific signals
+- **Channel Finder: Separator overrides**: Fixed `build_channels_from_selections()` to respect `_separator` metadata from tree nodes via new `_collect_separator_overrides()` method
+- **Channel Finder: Separator overrides with expanded instances**: Fixed `_collect_separator_overrides()` navigation through expanded instance names (e.g., `CH-1`) by checking `_expansion` definitions to find container nodes
+- **Channel Finder: Navigation through expanded instances**: Fixed `_navigate_to_node()` and `_extract_tree_options()` to properly handle expanded instances at optional levels - base containers with `_expansion` no longer appear as selectable options, and navigation through expanded instance names works correctly
+
+### Removed
+- **Documentation**: Obsolete markdown tutorials for middle layer
+  - Content migrated to Sphinx documentation (control-assistant-part2-channel-finder.rst)
+
+## [0.9.8] - 2025-12-19
+
+### Added
+- **Testing: Hello World Weather template coverage**: Added comprehensive unit test suite for hello_world_weather template including mock weather API validation, response formatting, and error handling scenarios
+- **Hello World Weather: LLM-based location extraction**: Added structured output parser using LLM to extract locations from natural language queries, replacing simple string matching with intelligent parsing that handles nicknames, abbreviations, and defaults to "local" when no location is specified
+- **Documentation Version Switcher**: PyData Sphinx Theme version switcher for GitHub Pages with multi-version documentation support; workflow dynamically generates `versions.json` from git tags and preserves historical versions in separate directories (e.g., `/v0.9.7/`, `/latest/`)
+- **Developer Workflows System**: New `docs/workflows/` directory with 10 comprehensive workflow guides (pre-merge cleanup, commit organization, release process, testing strategy, AI code review, docstrings, comments, documentation updates) featuring YAML frontmatter metadata and AI assistant integration prompts
+- **Custom Sphinx Extension**: `workflow_autodoc.py` extension with `.. workflow-summary::` and `.. workflow-list::` directives for auto-documenting workflow files from markdown with YAML frontmatter, including custom CSS styling
+- **Testing: Workflow autodoc extension**: Comprehensive test suite for custom Sphinx extension including frontmatter parsing, directive rendering, and integration tests with actual workflow files
+- **Contributing Guide**: Professional `CONTRIBUTING.md` with quick start guide, branch naming conventions, code standards summary, and links to comprehensive documentation
+- **CI/CD Infrastructure**: Comprehensive GitHub Actions CI pipeline with parallel jobs for testing (Python 3.11 & 3.12, Ubuntu & macOS), linting (Ruff), type checking (mypy), documentation builds, and package validation
+- **Pre-commit Hooks**: `.pre-commit-config.yaml` with Ruff linting/formatting, file quality checks (trailing whitespace, merge conflicts, large files), and optional mypy type checking
+- **Dependabot Configuration**: Automated weekly dependency updates for Python packages and GitHub Actions with intelligent grouping (development, Sphinx, LangChain dependencies)
+- **Release Automation**: `.github/workflows/release.yml` for automated PyPI publishing using trusted publishing (OIDC), version verification, and optional TestPyPI deployment
+- **Pre-merge Check Script**: `scripts/premerge_check.sh` automated scanning for debug code, commented code, hardcoded secrets, missing CHANGELOG entries, incomplete docstrings, and unlinked TODOs
+- **Code Coverage Reporting**: Codecov integration in CI pipeline with coverage reports uploaded for Python 3.11 Ubuntu runs
+- **Status Badges**: README.md badges for CI status, documentation, code coverage, PyPI version, Python version support, and license
+
+### Changed
+- **Code Quality: Comprehensive Linting Cleanup**: Fixed multiple code quality issues across 47 files - B904 exception chaining (30 instances), E722 bare except clauses (5 instances), B007 unused loop variables (4 instances), formatting issues; removed B904 from ruff ignore list and added intentional per-file ignores for test files and example scripts; all changes verified with full test suite (968 unit + 15 e2e tests passing)
+- **Code Formatting**: Applied automated Ruff formatting across codebase - modernized type hints to Python 3.10+ style (`Optional[T]` → `T | None`, `List[T]` → `list[T]`), normalized quotes, cleaned whitespace, and removed unused imports; no functional changes
+- **Documentation Workflows**: Migrated workflow files from `docs/resources/other/` to `docs/workflows/` with updated references throughout; workflows now feature consistent YAML frontmatter for machine parsing and AI integration
+- **Documentation Structure**: Reorganized contributing documentation from placeholder to comprehensive guide with 6 dedicated sections (Getting Started, Git & GitHub, Code Standards, Developer Workflows, AI-Assisted Development, Community Guidelines) using sphinx-design cards and grids
+- **Contributing Guide**: Restructured `docs/source/contributing/index.rst` from placeholder to comprehensive 400+ line guide with learning paths, AI integration examples, workflow categories, and automation tools documentation
+- **CI Pipeline**: Enhanced documentation job to create preview artifacts for pull requests with 7-day retention; added clear separation between CI checks (`.github/workflows/ci.yml`) and deployment (`.github/workflows/docs.yml`)
+- **Development Dependencies**: Added `pytest-cov` to `[dev]` optional dependencies in `pyproject.toml` for code coverage reporting in CI pipeline
+- **Hello World Weather: Mock API simplification**: Refactored mock weather API to accept any location string and generate random weather data, removing hardcoded city list and enabling flexible location support for tutorial demonstrations
 - **Documentation: Citation update**: Updated paper citation to reflect new title "Osprey: Production-Ready Agentic AI for Safety-Critical Control Systems"
 - **Documentation: Framework name cleanup**: Replaced all remaining references to "Alpha Berkeley Framework" with "Osprey Framework" across README, templates, documentation, and test files
+- **Testing: E2E hello_world_weather tutorial test**: Enhanced test to exercise both weather AND Python capabilities with a multi-step query that validates configuration defaults, context passing, and code generation/execution workflows
+- **Hello World Weather Template**: Enhanced mock weather API with improved error handling and response formatting; updated tutorial documentation for better clarity
+
+### Fixed
+- **Configuration: Execution defaults for Python code generation**: Added missing code generator configuration defaults to `ConfigBuilder._get_execution_defaults()`. Now includes `code_generator: "basic"` and corresponding generators configuration, preventing "Unknown provider: None" errors when using Python capabilities in projects with minimal configuration
+- **Hello World Weather Template**: Fixed template conditional to include execution infrastructure configuration while excluding only EPICS-specific settings, ensuring Python code generation works out-of-the-box
+- **Testing: CI workflow autodoc test collection**: Fixed `ModuleNotFoundError: No module named 'sphinx'` in CI by adding `pytest.importorskip` to `tests/documentation/test_workflow_autodoc.py`; Sphinx is only required for documentation builds and is not part of `[dev]` dependencies, so workflow autodoc tests now gracefully skip when Sphinx is unavailable
+
+### Removed
+- **Documentation: Local server launcher**: Removed `docs/launch_docs.py` script; users should use standard Sphinx commands (`make html` and `python -m http.server`) for local documentation builds and serving
 
 ## [0.9.7] - 2025-12-14
 

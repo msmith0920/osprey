@@ -417,7 +417,7 @@ class Pipeline:
         phase = chunk.get("phase", "")
         complete = chunk.get("complete", False)
         error = chunk.get("error", False)
-        warning = chunk.get("warning", False)
+        chunk.get("warning", False)
 
         logger.debug(f"Status event captured: '{message}' from {component}")
 
@@ -802,7 +802,6 @@ class Pipeline:
             asyncio.set_event_loop(loop)
 
             try:
-
                 # Gateway handles all preprocessing
                 result = loop.run_until_complete(
                     self._gateway.process_message(user_message, self._graph, config)
@@ -1030,8 +1029,8 @@ class Pipeline:
                     # Extract figure information
                     capability = figure_entry.get("capability", "unknown")
                     figure_path = figure_entry["figure_path"]
-                    display_name = figure_entry.get("display_name", f"Figure {i}")
-                    metadata = figure_entry.get("metadata", {})
+                    figure_entry.get("display_name", f"Figure {i}")
+                    figure_entry.get("metadata", {})
                     created_at = figure_entry.get("created_at", "unknown")
 
                     # Convert figure to static URL serving
@@ -1228,7 +1227,7 @@ class Pipeline:
 
         try:
             parts = command.split()
-            cmd = parts[0]  # /logs
+            parts[0]  # /logs
 
             yield self._create_status_event("Fetching container logs...", False)
             # Add log entry directly to buffer for immediate feedback
@@ -1254,10 +1253,20 @@ class Pipeline:
 
                 else:
                     yield self._create_status_event("", True)
-                    yield "**Log Commands:**\n\n" "• `/logs` - Show last 100 lines\n" "• `/logs 50` - Show last 50 lines\n" "• `/logs help` - Show this help"
+                    yield (
+                        "**Log Commands:**\n\n"
+                        "• `/logs` - Show last 100 lines\n"
+                        "• `/logs 50` - Show last 50 lines\n"
+                        "• `/logs help` - Show this help"
+                    )
             else:
                 yield self._create_status_event("", True)
-                yield "**Log Commands:**\n\n" "• `/logs` - Show last 100 lines\n" "• `/logs 50` - Show last 50 lines\n" "• `/logs help` - Show this help"
+                yield (
+                    "**Log Commands:**\n\n"
+                    "• `/logs` - Show last 100 lines\n"
+                    "• `/logs 50` - Show last 50 lines\n"
+                    "• `/logs help` - Show this help"
+                )
 
         except Exception as e:
             logger.exception(f"Error handling log command: {e}")

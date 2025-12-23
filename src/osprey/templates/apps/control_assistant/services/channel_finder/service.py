@@ -7,7 +7,6 @@ Supports pluggable custom pipelines and databases via registration.
 
 import logging
 from pathlib import Path
-from typing import Optional, Type
 
 # Use Osprey's config system
 from osprey.utils.config import _get_config, get_provider_config
@@ -16,9 +15,15 @@ from .core.base_database import BaseDatabase
 from .core.base_pipeline import BasePipeline
 from .core.exceptions import ConfigurationError, DatabaseLoadError, PipelineModeError
 from .core.models import ChannelFinderResult
-from .databases import FlatChannelDatabase, HierarchicalChannelDatabase, TemplateChannelDatabase
+from .databases import (
+    FlatChannelDatabase,
+    HierarchicalChannelDatabase,
+    MiddleLayerDatabase,
+    TemplateChannelDatabase,
+)
 from .pipelines.hierarchical import HierarchicalPipeline
 from .pipelines.in_context import InContextPipeline
+from .pipelines.middle_layer import MiddleLayerPipeline
 from .utils.prompt_loader import load_prompts
 
 logger = logging.getLogger(__name__)
@@ -63,11 +68,11 @@ class ChannelFinderService:
     """
 
     # Class-level registries for custom implementations
-    _custom_pipelines: dict[str, Type[BasePipeline]] = {}
-    _custom_databases: dict[str, Type[BaseDatabase]] = {}
+    _custom_pipelines: dict[str, type[BasePipeline]] = {}
+    _custom_databases: dict[str, type[BaseDatabase]] = {}
 
     @classmethod
-    def register_pipeline(cls, name: str, pipeline_class: Type[BasePipeline]) -> None:
+    def register_pipeline(cls, name: str, pipeline_class: type[BasePipeline]) -> None:
         """
         Register a custom pipeline implementation.
 
@@ -102,14 +107,14 @@ class ChannelFinderService:
         """
         if not issubclass(pipeline_class, BasePipeline):
             raise TypeError(
-                f"Pipeline class must inherit from BasePipeline. " f"Got: {pipeline_class.__name__}"
+                f"Pipeline class must inherit from BasePipeline. Got: {pipeline_class.__name__}"
             )
 
         cls._custom_pipelines[name] = pipeline_class
         logger.info(f"Registered custom pipeline: {name} ({pipeline_class.__name__})")
 
     @classmethod
-    def register_database(cls, name: str, database_class: Type[BaseDatabase]) -> None:
+    def register_database(cls, name: str, database_class: type[BaseDatabase]) -> None:
         """
         Register a custom database implementation.
 
@@ -144,7 +149,7 @@ class ChannelFinderService:
         """
         if not issubclass(database_class, BaseDatabase):
             raise TypeError(
-                f"Database class must inherit from BaseDatabase. " f"Got: {database_class.__name__}"
+                f"Database class must inherit from BaseDatabase. Got: {database_class.__name__}"
             )
 
         cls._custom_databases[name] = database_class
@@ -161,6 +166,7 @@ class ChannelFinderService:
         pipelines = {
             "in_context": "Built-in: Semantic search with full database context",
             "hierarchical": "Built-in: Iterative navigation through hierarchy",
+            "middle_layer": "Built-in: React agent with database query tools (MML style)",
         }
 
         for name, pipeline_class in cls._custom_pipelines.items():
@@ -183,6 +189,7 @@ class ChannelFinderService:
             "legacy": "Built-in: Alias for 'flat' (backward compatibility)",
             "template": "Built-in: Template-based expansion with dual presentation",
             "hierarchical": "Built-in: Tree structure for large hierarchies",
+            "middle_layer": "Built-in: MML functional hierarchy (System→Family→Field)",
         }
 
         for name, db_class in cls._custom_databases.items():
@@ -239,6 +246,12 @@ class ChannelFinderService:
         elif pipeline_mode == "hierarchical":
             # Built-in hierarchical pipeline
             self.pipeline = self._init_hierarchical_pipeline(
+                config, db_path, model_config, **kwargs
+            )
+
+        elif pipeline_mode == "middle_layer":
+            # Built-in middle layer pipeline
+            self.pipeline = self._init_middle_layer_pipeline(
                 config, db_path, model_config, **kwargs
             )
 
@@ -376,7 +389,7 @@ class ChannelFinderService:
             config.get("channel_finder", {}).get("pipelines", {}).get("hierarchical", {})
         )
         db_config = hierarchical_config.get("database", {})
-        processing_config = hierarchical_config.get("processing", {})
+        hierarchical_config.get("processing", {})
 
         # Determine database path
         if db_path is None:
@@ -425,6 +438,68 @@ class ChannelFinderService:
 
         # Initialize pipeline
         return HierarchicalPipeline(
+            database=database,
+            model_config=model_config,
+            facility_name=facility_name,
+            facility_description=facility_description,
+            **kwargs,
+        )
+
+    def _init_middle_layer_pipeline(self, config: dict, db_path: str, model_config: dict, **kwargs):
+        """Initialize middle layer pipeline."""
+        # Get middle_layer specific config
+        middle_layer_config = (
+            config.get("channel_finder", {}).get("pipelines", {}).get("middle_layer", {})
+        )
+        db_config = middle_layer_config.get("database", {})
+
+        # Determine database path
+        if db_path is None:
+            db_path = db_config.get("path")
+            if not db_path:
+                raise ConfigurationError("No database path provided for middle_layer pipeline")
+            db_path = self._resolve_path(db_path)
+
+        # Load middle_layer database (custom first, then built-in)
+        db_type = db_config.get("type", "middle_layer")
+
+        try:
+            if db_type in self._custom_databases:
+                # Custom database - pass full db_config for custom parameters
+                database_class = self._custom_databases[db_type]
+                database = database_class(db_path, **db_config)
+                logger.info(f"Loaded custom database: {db_type} ({database_class.__name__})")
+
+            elif db_type == "middle_layer":
+                database = MiddleLayerDatabase(db_path)
+
+            else:
+                available = list(self.list_available_databases().keys())
+                raise ConfigurationError(
+                    f"Unknown database type: '{db_type}'. "
+                    f"Available databases: {', '.join(available)}. "
+                    f"Middle layer pipeline typically uses 'middle_layer' database type."
+                )
+        except FileNotFoundError as e:
+            raise DatabaseLoadError(f"Database file not found: {db_path}") from e
+
+        # Load facility config
+        facility_config = config.get("facility", {})
+        facility_name = facility_config.get("name", "control system")
+
+        # Load facility description from loaded prompts module
+        facility_description = ""
+        prompts_module = load_prompts(config)
+        if hasattr(prompts_module, "system") and hasattr(
+            prompts_module.system, "facility_description"
+        ):
+            facility_description = prompts_module.system.facility_description
+            logger.info(
+                f"[dim]✓ Loaded facility context from prompts ({len(facility_description)} chars)[/dim]"
+            )
+
+        # Initialize pipeline
+        return MiddleLayerPipeline(
             database=database,
             model_config=model_config,
             facility_name=facility_name,

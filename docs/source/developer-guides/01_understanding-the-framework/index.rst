@@ -21,28 +21,25 @@ The Osprey Framework is a production-ready architecture for deploying agentic AI
 |  **Production Deployment Example**: This diagram illustrates the framework architecture using capabilities from the :doc:`ALS Accelerator Assistant <../../example-applications/als-assistant>` - our production deployment at Lawrence Berkeley National Laboratory's Advanced Light Source particle accelerator.
 
 
-Framework Architecture Overview
-===============================
+Processing Pipeline
+-------------------
 
-The framework processes every conversation through a structured pipeline that transforms natural language into reliable, orchestrated execution plans:
+All user interactions—from CLI, web interfaces, or external integrations—flow through a unified :doc:`Gateway <../04_infrastructure-components/01_gateway-architecture>` that normalizes input and coordinates the processing pipeline. The framework converts natural-language requests into transparent, executable plans through four stages:
 
-**1. Unified Entry Point**
-   All user interactions flow through a single Gateway that normalizes input from CLI, web interfaces, and external integrations.
+**1. Task Extraction**
+   :doc:`Converts conversational context <../04_infrastructure-components/02_task-extraction-system>` into structured, actionable objectives. Transforms arbitrarily long chat history and external data sources into a well-defined current task with explicit requirements and context. Integrates facility-specific data from channel databases, archiver systems, operational memory, and knowledge bases to enrich task understanding.
 
-**2. Comprehensive Task Extraction**
-   Transforms arbitrarily long chat history and external data sources into a well-defined current task with actionable requirements and context.
+**2. Classification**
+   :doc:`Dynamically selects relevant capabilities <../04_infrastructure-components/03_classification-and-routing>` from your domain-specific toolkit. LLM-powered binary classification for each capability ensures only relevant prompts are used in downstream processes, preventing prompt explosion as facilities expand their capability inventories.
 
-**3. Task Classification System**
-   LLM-powered classification for each capability ensures only relevant prompts are used in downstream processes, providing efficient prompt management.
+**3. Orchestration**
+   :doc:`Generates complete execution plans <../04_infrastructure-components/04_orchestrator-planning>` with explicit dependencies and human oversight. Plans are created upfront before any capability execution begins, enabling operator review of all proposed control system operations and preventing capability hallucination.
 
-**4. Upfront Orchestration**
-   Complete execution plans are generated before any capability execution begins, preventing hallucination and ensuring reliable outcomes.
-
-**5. Controlled Execution**
-   Plans execute step-by-step with checkpoints, human approval workflows, and comprehensive error handling.
+**4. Execution**
+   Executes capabilities with checkpointing, artifact management, and comprehensive safety enforcement. Pattern detection and static analysis identify hardware writes, PV boundary checking verifies setpoints against facility-defined limits, and approval workflows ensure operator oversight before any control system interaction. Plans execute step-by-step with LangGraph interrupts for human approval and containerized isolation for generated code.
 
 Framework Functions
-===================
+-------------------
 
 .. tab-set::
 

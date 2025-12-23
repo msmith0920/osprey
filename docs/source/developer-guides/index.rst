@@ -2,15 +2,6 @@
 Developer Guides
 ================
 
-.. admonition:: 🚧 Early Access Documentation
-   :class: warning
-
-   This documentation is part of an early access release and is **under active development**.
-   Many sections are still being written, edited, or reorganized.
-   Expect **inconsistencies**, missing content, outdated references, and broken cross-links.
-
-   We welcome feedback! If you find issues or have suggestions, please open an issue on our GitHub page.
-
 **Comprehensive learning-oriented guides** for deploying agentic AI in large-scale control system environments. These guides combine architectural understanding with practical implementation patterns, taking you from basic concepts to production control room deployment.
 
 .. dropdown:: 🎯 Learning Paths & Quick Navigation
@@ -144,7 +135,7 @@ Developer Guides
 Guide Categories
 ================
 
-.. grid:: 1 1 3 3
+.. grid:: 1 1 2 2
    :gutter: 3
    :class-container: guides-section-grid
 
@@ -166,20 +157,6 @@ Guide Categories
 
       Master capability development, state management, and testing workflows. Get productive immediately with convention-based patterns.
 
-   .. grid-item-card:: 🔄 Migration Guide
-      :link: migration-guide-instance-methods
-      :link-type: doc
-      :class-header: bg-secondary text-white
-      :class-body: text-center
-      :shadow: md
-
-      **Upgrading from v0.9.1 and earlier**
-
-      Migrate legacy static method capabilities to the new instance method pattern with helper methods (v0.9.2+).
-
-.. grid:: 1 1 2 2
-   :gutter: 3
-   :class-container: guides-section-grid
 
    .. grid-item-card:: ⚙️ Core Framework Systems
       :link: 03_core-framework-systems/index
@@ -228,7 +205,6 @@ Guide Categories
    * :doc:`02_quick-start-patterns/02_state-and-context-essentials` - AgentState, ContextManager, and data sharing patterns
    * :doc:`02_quick-start-patterns/03_running-and-testing` - Gateway testing, CLI workflows, and debugging techniques
    * :doc:`02_quick-start-patterns/04_mcp-capability-generation` - Generate capabilities from MCP servers (prototype)
-   * :doc:`migration-guide-instance-methods` - **Migration Guide:** Upgrade from v0.9.1 static methods → v0.9.2+ instance methods
 
    **⚙️ Core Framework Systems**
 
@@ -258,7 +234,6 @@ Guide Categories
    :maxdepth: 2
    :hidden:
 
-   migration-guide-instance-methods
    01_understanding-the-framework/index
    02_quick-start-patterns/index
    03_core-framework-systems/index

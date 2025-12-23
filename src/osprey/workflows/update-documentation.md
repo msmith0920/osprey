@@ -1,8 +1,38 @@
+---
+workflow: update-documentation
+category: documentation
+applies_when: [after_code_change, before_commit, api_change, behavior_change]
+estimated_time: 15-30 minutes
+ai_ready: true
+related: [docstrings, comments, pre-merge-cleanup]
+---
+
 # Documentation Update Workflow - Keeping Docs in Sync with Code
 
-This document provides a comprehensive workflow for identifying and updating documentation when code changes occur. It ensures documentation remains 100% professional, accurate, and synchronized with the codebase.
+> **📦 TL;DR**: Changed public API? → Update docstring + CHANGELOG + affected examples. Internal refactoring? → Maybe just CHANGELOG. Breaking change? → Everything + migration guide. **Use the decision tree below to determine scope.**
+
+This document provides a comprehensive workflow for identifying and updating documentation when code changes occur. It ensures documentation remains professional, accurate, and synchronized with the codebase.
 
 **🎯 DEFAULT SCOPE: This workflow analyzes UNCOMMITTED changes (not yet pushed to git) by default.** This catches documentation needs before code is committed.
+
+## 🤖 AI Quick Start
+
+**For AI assistants (recommended):**
+
+```
+@docs/workflows/update-documentation.md
+
+I have uncommitted changes. Please:
+1. Analyze what changed using git diff
+2. Determine documentation impact using the decision tree
+3. Update only the necessary documentation (apply proportionality)
+4. Verify the documentation builds
+```
+
+**For specific analyses:**
+- `"Check if my changes need documentation updates"`
+- `"I modified [specific file], what docs need updating?"`
+- `"Guide me through updating docs for a breaking API change"`
 
 ## ⚡ Quick Start
 
@@ -26,7 +56,7 @@ git diff
 # 4. Verify documentation builds
 cd docs && make clean html && make linkcheck
 
-# 5. Check pre-commit checklist (Section 7 below)
+# 5. Check pre-commit checklist (see Section 7 below)
 ```
 
 **Critical Checkpoints:**
@@ -65,7 +95,36 @@ START: What changed?
 
 **Rule of Thumb**: If a user wouldn't notice or care about the change, don't create extensive documentation.
 
+### 📋 One-Page Quick Reference
+
+**Print or bookmark this section for daily use:**
+
+| What Changed | Minimum Docs Required | Check These Locations |
+|--------------|----------------------|----------------------|
+| Private function (`_name`) | None | Maybe internal comment |
+| Pure refactoring | None or CHANGELOG note | - |
+| Bug fix (restores docs) | CHANGELOG | - |
+| New param (with default) | Docstring + CHANGELOG | Examples that use it |
+| Behavior change (public) | Docstring + Examples + CHANGELOG | All usage examples |
+| New feature/class | Docstring + API ref + CHANGELOG | Getting Started if major |
+| Breaking change | Everything + Migration guide | **All** examples + guides |
+| Type hint change | Docstring + Examples | Type checking examples |
+| Config option added | Docstring + CHANGELOG | `config.yml` examples |
+| Import path changed | All import examples + CHANGELOG | README, tutorials, guides |
+| Error message changed | Error handling docs | Troubleshooting guides |
+| Decorator modified | All decorator examples | Developer guides |
+| CLI output changed | CLI docs + Examples | User guides |
+
+**Critical checks before commit:**
+- [ ] Docstrings updated? (`grep -r "def modified_function"`)
+- [ ] CHANGELOG entry added?
+- [ ] Examples still work? (`cd docs && make html`)
+- [ ] Links valid? (`make linkcheck`)
+- [ ] Cross-references correct?
+
 For complete guidance, read the full document below.
+
+---
 
 ## 📑 Table of Contents
 
@@ -85,11 +144,9 @@ For complete guidance, read the full document below.
 5. [Hidden Documentation Locations](#hidden-documentation-locations)
 6. [Documentation by File Type](#documentation-by-file-type)
 7. [Pre-Commit Checklist](#pre-commit-checklist)
-8. [Automated Detection Script](#automated-detection-script)
-9. [Common Scenarios and Solutions](#common-scenarios-and-solutions)
-10. [Cross-File Impact Analysis](#cross-file-impact-analysis)
-11. [Critical Warning Signs](#critical-warning-signs)
-12. [Summary: The Golden Rule](#summary-the-golden-rule)
+8. [Cross-File Impact Analysis](#cross-file-impact-analysis)
+9. [Critical Warning Signs](#critical-warning-signs)
+10. [Summary: The Golden Rule](#summary-the-golden-rule)
 
 ## 🎯 Purpose and Philosophy
 
@@ -127,6 +184,8 @@ This workflow focuses on:
 - **No** → CHANGELOG entry only (or skip if truly internal)
 - **Yes, but it's backward compatible** → Update docstring and examples that directly use it
 - **Yes, and it breaks compatibility** → Full documentation update including migration guide
+
+---
 
 ## 📋 Step-by-Step Workflow
 
@@ -255,139 +314,40 @@ Changes can affect:
 Follow this order to ensure completeness:
 
 #### **Phase 1: Source Code Documentation**
-
-1. **Update Docstrings First**
-   - Follow DOCSTRINGS.md guidelines
-   - Update function signatures in docstrings
-   - Revise parameter descriptions
-   - Update return value documentation
-   - Add or modify exception documentation
-   - Update examples in docstrings
-
-2. **Update Inline Comments**
-   - Follow COMMENTS.md guidelines
-   - Add comments for complex new logic
-   - Remove outdated comments
-   - Update comments that reference changed behavior
+- Update docstrings (follow DOCSTRINGS.md): signatures, parameters, returns, exceptions, examples
+- Update inline comments (follow COMMENTS.md): add for new logic, remove outdated
 
 #### **Phase 2: API Reference**
-
-3. **Check Auto-Generated API Docs**
-   ```bash
-   # Rebuild API docs to see changes
-   cd docs
-   make clean html
-
-   # Check for warnings about missing documentation
-   make html 2>&1 | grep -i warning
-   ```
-
-4. **Update Manual API Documentation**
-   - Check `docs/source/api_reference/*.rst` files
-   - Update any manual overrides
-   - Add examples for new functionality
-   - Update cross-references
+- Rebuild API docs: `cd docs && make clean html`
+- Check `docs/source/api_reference/*.rst` for manual updates needed
+- Update examples and cross-references
 
 #### **Phase 3: User-Facing Guides**
-
-5. **Update Getting Started Guides**
-   - Installation changes → `installation.rst`
-   - Configuration changes → `configuration.rst`
-   - Quick start changes → `hello-world-tutorial.rst`
-
-6. **Update Developer Guides**
-   - New patterns → Relevant pattern guide
-   - Changed workflows → Workflow documentation
-   - Architecture changes → Architecture guides
-
-7. **Update Example Applications**
-   - Ensure examples use new APIs correctly
-   - Update example code if needed
-   - Verify examples still run
+- Update Getting Started guides if installation/configuration/quick start changed
+- Update Developer guides for new patterns or workflows
+- Update Example applications to use new APIs correctly
 
 #### **Phase 4: Release Documentation**
-
-8. **Update CHANGELOG.md**
-   ```markdown
-   ## [Unreleased]
-
-   ### Added
-   - New capability: `DataAnalysisCapability` for automated data analysis
-   - New parameter `enable_caching` in `RegistryManager.register_provider()`
-
-   ### Changed
-   - `process_message()` now returns structured response dict instead of string
-   - Configuration format updated to support nested capability settings
-
-   ### Fixed
-   - Fixed race condition in concurrent capability execution
-
-   ### Deprecated
-   - `old_process_function()` - Use `new_process_function()` instead
-
-   ### Removed
-   - Support for deprecated `legacy_config_format`
-   ```
-
-9. **Update RELEASE_NOTES.md** (for significant changes)
-   - Add user-facing descriptions
-   - Include migration instructions
-   - Highlight breaking changes
-
-10. **Update README.md** (for major features)
-    - Update feature list
-    - Add new examples
-    - Update badges if needed
+- Add CHANGELOG.md entry (Added/Changed/Fixed/Deprecated/Removed)
+- Update RELEASE_NOTES.md for significant changes
+- Update README.md for major features
 
 ### **Step 5: Quality Assurance**
 
-Perform these checks before considering documentation complete.
-
-#### **Consistency Checks**
-
+**Essential checks:**
 ```bash
-# Check for broken references in RST files
-cd docs
-make linkcheck
-
-# Search for old function names that should be updated
-grep -r "old_function_name" docs/source/
-
-# Check for version-specific references that need updating
-grep -r "v0.8" docs/source/ | grep -i "new in"
-
-# Verify all code examples use consistent imports
-grep -r "^from osprey" docs/source/ | sort | uniq
+cd docs && make linkcheck  # Check for broken references
+grep -r "old_function_name" docs/source/  # Find outdated names
+make html  # Verify build without warnings
 ```
 
-#### **Terminology Consistency**
+**Verify:**
+- [ ] Function/class names consistent across all docs
+- [ ] All `:func:`, `:class:`, `:mod:` references valid
+- [ ] Examples tested and working
+- [ ] Import statements consistent
 
-- **Function name references**: Ensure all docs use the current function name
-- **Parameter names**: Check all references use correct parameter names
-- **Class names**: Verify class name consistency across all docs
-- **Concept terminology**: Ensure consistent use of framework terms (e.g., "capability" vs "node")
-
-#### **Example Validation**
-
-```python
-# Extract and test code examples
-cd docs
-python -c "
-import doctest
-import sys
-# Test docstring examples
-result = doctest.testmod(sys.modules['osprey.registry.manager'])
-print(f'Examples tested: {result.attempted}, Failed: {result.failed}')
-"
-```
-
-#### **Cross-Reference Verification**
-
-- [ ] All `:func:` references point to existing functions
-- [ ] All `:class:` references point to existing classes
-- [ ] All `:mod:` references point to existing modules
-- [ ] All `.. seealso::` links are valid
-- [ ] Internal documentation links work
+---
 
 ## 🔍 Change Analysis Guidelines
 
@@ -471,9 +431,13 @@ def load_config(path):
 
 **Action**: Update docstring `:raises:` section. Update error handling examples.
 
-### **Edge Cases and Gotchas**
+---
 
-#### **Type Hint Changes**
+## ⚠️ Edge Cases and Gotchas
+
+> **🎯 Quick Scan**: This section covers 16 commonly overlooked scenarios. Most critical: **Type hint changes**, **Default value changes**, **Async/await conversions**, **State schema changes**, and **`__all__` exports changes**. Skim the headers and read sections relevant to your changes.
+
+### **Type Hint Changes**
 
 ```python
 # Type hints are part of the API contract
@@ -486,7 +450,7 @@ def process(data: str) -> Optional[dict]:  # Can now return None!
 
 **Action**: Document new return behavior. Update examples showing None handling.
 
-#### **Default Value Changes**
+### **Default Value Changes**
 
 ```python
 # BEFORE
@@ -500,7 +464,7 @@ def configure(timeout=60):  # Different default!
 
 **Action**: Document new default. Add to CHANGELOG. Check if any examples relied on old default.
 
-#### **Dependency on Other Changed Functions**
+### **Dependency on Other Changed Functions**
 
 If function A calls function B, and B changed behavior:
 
@@ -514,7 +478,7 @@ def public_api():
 
 **Action**: Check if public_api's documented behavior is still accurate.
 
-#### **Module Reorganization**
+### **Module Reorganization**
 
 ```python
 # BEFORE
@@ -526,7 +490,7 @@ from osprey.registry import RegistryManager  # Moved to __init__.py
 
 **Action**: Update all import examples. Add backward compatibility note if maintained.
 
-#### **Decorator Changes**
+### **Decorator Changes**
 
 ```python
 # BEFORE
@@ -546,7 +510,7 @@ class MyCapability(BaseCapability):
 - Add to CHANGELOG
 - Check if existing code breaks or needs migration
 
-#### **Class Attribute Changes**
+### **Class Attribute Changes**
 
 ```python
 # BEFORE
@@ -565,25 +529,7 @@ class MyCapability(BaseCapability):
 - Update developer guides showing class structure
 - Add migration guide if breaking
 
-#### **Constants and Configuration Defaults**
-
-```python
-# BEFORE
-MAX_RETRIES = 3
-DEFAULT_TIMEOUT = 30
-
-# AFTER - Values changed!
-MAX_RETRIES = 5
-DEFAULT_TIMEOUT = 60
-```
-
-**Action**:
-- Document in module docstring
-- Update configuration documentation
-- Check all examples that reference these values
-- Add to CHANGELOG explaining rationale
-
-#### **Async/Await Pattern Changes**
+### **Async/Await Pattern Changes**
 
 ```python
 # BEFORE - Synchronous
@@ -602,87 +548,7 @@ async def execute(state):
 - Add to CHANGELOG as breaking change
 - Create migration guide
 
-#### **Property to Method Changes (or vice versa)**
-
-```python
-# BEFORE - Property access
-class Config:
-    @property
-    def settings(self):
-        return self._settings
-
-# AFTER - Method call required!
-class Config:
-    def get_settings(self):
-        return self._settings
-```
-
-**Action**:
-- Update docstring
-- Search for all `config.settings` and change to `config.get_settings()`
-- Breaking change - add migration guide
-- Update all examples
-
-#### **Error Message or Exception Text Changes**
-
-```python
-# BEFORE
-raise ValueError("Invalid configuration")
-
-# AFTER - More specific message
-raise ValueError("Invalid configuration: missing required field 'api_key'")
-```
-
-**Action**:
-- Update error handling examples if they check message content
-- Update troubleshooting guides with new error messages
-- Update integration tests that assert on error messages
-
-#### **Logging Output Changes**
-
-```python
-# BEFORE
-logger.info("Processing started")
-
-# AFTER
-logger.info(f"Processing started for capability: {capability_name}")
-```
-
-**Action**:
-- Update any documentation that shows log output
-- Update troubleshooting guides
-- If log format changed, document new format
-
-#### **Template File Changes** (.j2 files)
-
-```python
-# Changes to docker-compose.yml.j2 or other templates
-```
-
-**Action**:
-- Update deployment documentation
-- Update getting started guides that reference templates
-- Check if example projects need template updates
-- Document new template variables
-
-#### **CLI Output Format Changes**
-
-```bash
-# BEFORE
-osprey deploy
-> Deploying application...
-
-# AFTER
-osprey deploy
-> [2025-01-15 10:30:00] Deploying application...
-```
-
-**Action**:
-- Update CLI documentation with new output format
-- Update troubleshooting guides
-- Update any scripts that parse CLI output
-
-#### **State Schema Changes**
+### **State Schema Changes**
 
 ```python
 # BEFORE
@@ -707,7 +573,7 @@ state = {
 - Update developer guides
 - Breaking change - migration guide essential
 
-#### **__all__ Exports Changes**
+### **__all__ Exports Changes**
 
 ```python
 # BEFORE
@@ -724,7 +590,7 @@ __all__ = ["RegistryManager"]  # register_provider removed
 - Create migration guide
 - Add to CHANGELOG under "Removed"
 
-#### **File Path or Directory Structure Changes**
+### **File Path or Directory Structure Changes**
 
 ```python
 # BEFORE
@@ -740,7 +606,7 @@ from osprey.core.formatting import format_data
 - Add backward compatibility imports if possible
 - Document in migration guide
 
-#### **Initialization Sequence Changes**
+### **Initialization Sequence Changes**
 
 ```python
 # BEFORE
@@ -756,6 +622,8 @@ manager = RegistryManager()  # Now auto-discovers
 - Update all initialization examples
 - Document new behavior in class docstring
 - Note in CHANGELOG under "Changed"
+
+---
 
 ## 🔍 Hidden Documentation Locations
 
@@ -789,6 +657,8 @@ manager = RegistryManager()  # Now auto-discovers
 - **API reference RST files** - May have manual additions
 - **Type stub files (.pyi)** - If they exist
 - **OpenAPI/Schema files** - API specifications
+
+---
 
 ## 📚 Documentation by File Type
 
@@ -861,6 +731,8 @@ manager = RegistryManager()  # Now auto-discovers
 - Deprecated options
 - Configuration validation rules
 
+---
+
 ## ✅ Pre-Commit Checklist
 
 Before committing code changes, verify documentation is complete:
@@ -911,6 +783,8 @@ grep -r "TODO" docs/source/
 grep -r "FIXME" docs/source/
 grep -r "XXX" docs/source/
 ```
+
+---
 
 ## 🔗 Cross-File Impact Analysis
 
@@ -976,6 +850,8 @@ grep -r "register_provider(" src/ docs/
 - [ ] **Check factory functions** that create modified objects
 - [ ] **Verify serialization** if data structures changed
 
+---
+
 ## 🚨 Critical Warning Signs
 
 Watch for these situations that often cause documentation issues:
@@ -1031,9 +907,13 @@ If BaseCapability, BaseProvider, or other base classes change:
 - Verify backward compatibility
 - Test all existing capabilities/providers
 
+---
+
 ## 📖 Summary: The Golden Rule
 
-**"If you changed code that users interact with, you must update documentation that describes that interaction."**
+> **💎 "If you changed code that users interact with, you must update documentation that describes that interaction."**
+>
+> **Corollary**: If users won't notice the change, keep documentation updates minimal or skip them entirely.
 
 ### **The Complete Documentation Update Process**
 
@@ -1076,169 +956,42 @@ When in doubt, follow this systematic approach:
    - Consider having another developer review
    - Test example applications
 
-### **Documentation Quality Principles**
-
-**Completeness**
-- Every public API change documented
-- All parameters and return values explained
-- Examples provided for complex operations
-- Error conditions documented
-
-**Consistency**
-- Terminology used uniformly across all docs
-- Import paths match actual code
-- Examples follow current best practices
-- Version references are accurate
-
-**Clarity**
-- Clear, concise language
-- Examples show realistic use cases
-- Complex concepts explained with context
-- Assumptions stated explicitly
-
-**Maintainability**
-- No historical/migration comments in code (see COMMENTS.md)
-- Docstrings follow DOCSTRINGS.md guidelines
-- Comments follow COMMENTS.md guidelines
-- Documentation structure is logical and navigable
-
-### **When Documentation Is NOT Needed** ✅
-
-**To avoid over-documentation and busywork, SKIP documentation updates for:**
-
-**1. Private/Internal Code**
-- Functions starting with `_` (e.g., `_internal_helper()`)
-- Classes starting with `_` (e.g., `_PrivateCache`)
-- Changes to test files
-- Internal utility functions not exposed in `__all__`
-
-**2. No-Behavior-Change Refactoring**
-```python
-# BEFORE
-def calculate_total(items):
-    sum = 0
-    for item in items:
-        sum += item.price
-    return sum
-
-# AFTER - Refactored but identical behavior
-def calculate_total(items):
-    return sum(item.price for item in items)
-```
-**Documentation needed**: None (maybe CHANGELOG: "Refactored calculation logic")
-
-**3. Bug Fixes That Restore Documented Behavior**
-```python
-# The docstring says it raises ValueError, but code returned None
-# Fix: Now correctly raises ValueError as documented
-```
-**Documentation needed**: CHANGELOG only ("Fixed error handling")
-
-**4. Code Quality Changes**
-- Formatting changes (black, isort, etc.)
-- Adding type hints to already-typed code
-- Renaming internal variables
-- Adding internal comments
-- Fixing typos in internal comments
-
-**5. Performance Optimizations (If Usage Unchanged)**
-```python
-# Changed from O(n²) to O(n) algorithm internally
-# But function signature and behavior identical
-```
-**Documentation needed**: CHANGELOG only ("Improved performance of process_data")
-
-**6. Logging/Debugging Changes**
-- Adding debug-level log statements
-- Improving internal error messages users don't see
-- Adding internal tracing/metrics
-
-**Examples of Changes That DON'T Need Documentation:**
-- ❌ Reformatted code with black
-- ❌ Fixed internal variable name from `tmp` to `temporary_result`
-- ❌ Added `# type: ignore` comment
-- ❌ Optimized internal loop (same output)
-- ❌ Changed `_helper_function()` implementation
-- ❌ Added unit test for existing functionality
-- ❌ Fixed typo in internal comment
-- ❌ Reordered internal imports
-
-**When Uncertain**: Ask yourself, "Would this change affect what a user types or what they receive back?" If no, skip extensive documentation.
-
 ### **Common Mistakes to Avoid**
 
-1. ❌ **Updating code but not examples** - Examples break, users get confused
-2. ❌ **Forgetting CHANGELOG** - Users don't know what changed
-3. ❌ **Not searching for all references** - Inconsistent documentation
-4. ❌ **Assuming obvious changes** - What's obvious to you isn't to users
-5. ❌ **Skipping cross-references** - Links break, navigation fails
-6. ❌ **Not testing examples** - Examples that don't work are worse than none
-7. ❌ **Historical comments in code** - Confuses new users about current system
-8. ❌ **Not checking cascading effects** - Base class changes affect all subclasses
-
-### **Documentation as Part of Definition of Done**
-
-A feature is **NOT complete** until:
-- [ ] All public APIs have complete docstrings
-- [ ] Inline comments explain non-obvious logic
-- [ ] API reference is updated
-- [ ] User guides reflect new functionality
-- [ ] Examples are updated and tested
-- [ ] CHANGELOG is updated
-- [ ] Breaking changes have migration guides
-- [ ] Documentation builds without warnings
-- [ ] All links are valid
-- [ ] Cross-references work correctly
-
-### **Final Thoughts**
-
-Documentation is not an afterthought—it's an **essential part of professional software development**.
-
-**For Users**: Good documentation means they can successfully use your software without asking for help.
-
-**For Maintainers**: Good documentation means you can understand your own code six months later.
-
-**For Contributors**: Good documentation means they can contribute without fear of breaking things.
-
-**For the Project**: Good documentation is the difference between a professional tool and an abandoned experiment.
-
-Taking the time to update documentation properly:
-- ✅ Prevents user confusion and frustration
-- ✅ Reduces support burden
-- ✅ Maintains professional reputation
-- ✅ Enables community contribution
-- ✅ Facilitates project growth
-- ✅ Serves as a contract for API stability
-
-**Remember**: Every hour spent on documentation saves ten hours of support, debugging, and explaining the same things repeatedly.
+- ❌ **Updating code but not examples** - Examples break, users get confused
+- ❌ **Forgetting CHANGELOG** - Users don't know what changed
+- ❌ **Not searching for all references** - Inconsistent documentation
+- ❌ **Skipping cross-references** - Links break, navigation fails
+- ❌ **Not testing examples** - Examples that don't work are worse than none
+- ❌ **Not checking cascading effects** - Base class changes affect all subclasses
 
 ### **Final Sanity Check Before Committing**
 
-Before you commit your changes, ask yourself:
+Before you commit, ask yourself:
 
-1. **Proportionality Check**
-   - *"Am I creating more documentation than the change warrants?"*
-   - Small change = small doc update (or none)
-   - Big change = comprehensive docs
+1. **User Impact**: *"Would users notice this change?"* → If no, minimal/no docs needed
+2. **Breaking Change**: *"Does this break existing code?"* → If yes, migration guide required
+3. **Proportionality**: *"Am I over-documenting?"* → Match documentation effort to change impact
+4. **Consistency**: *"Is this documented like similar changes?"* → Follow existing patterns
 
-2. **User Impact Check**
-   - *"Would users actually notice this change?"*
-   - If no → Minimal or no documentation
-   - If yes → Document it properly
+**Remember**: Every hour on documentation saves ten hours of support and debugging. Good enough is good enough—focus on major features and breaking changes.
 
-3. **Breaking Change Check**
-   - *"Does this break existing user code?"*
-   - If no → You're probably fine with docstring + CHANGELOG
-   - If yes → You need migration guidance
+---
 
-4. **Consistency Check**
-   - *"Are similar changes documented consistently?"*
-   - Check existing documentation style
-   - Match the existing level of detail
+## 🔗 Quick Navigation
 
-**Good enough is good enough.** Perfect documentation for a trivial change is wasted effort. Focus your energy where it matters: major features, breaking changes, and things users will actually interact with.
+- **[↑ Back to Quick Start](#quick-start)** - Fast decision tree
+- **[↑ One-Page Reference](#one-page-quick-reference)** - Bookmark this
+- **[↑ Pre-Commit Checklist](#pre-commit-checklist)** - Before you commit
+- **[↑ Edge Cases](#edge-cases-and-gotchas)** - Common gotchas
+- **[Related: Docstrings Guide](docstrings.md)** - Writing docstrings
+- **[Related: Comments Guide](comments.md)** - Inline comments
+- **[Related: Pre-Merge Cleanup](pre-merge-cleanup.md)** - Final verification
 
 ---
 
 **This workflow document itself follows these principles** - it provides comprehensive, structured guidance while emphasizing proportionality and avoiding documentation busywork.
+
+**Document Version**: 2.0 (December 2024)
+**Maintained By**: Osprey Core Team
 

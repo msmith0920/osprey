@@ -15,10 +15,8 @@ that an LLM or user would experience.
 import json
 import tempfile
 from pathlib import Path
-from typing import Any
 
 import pytest
-
 from src.osprey.templates.apps.control_assistant.services.channel_finder.databases.hierarchical import (
     HierarchicalChannelDatabase,
 )
@@ -242,12 +240,13 @@ class TestHierarchyTraversal:
             assert len(subsystems) == 1
             assert subsystems[0]["name"] == "SUB1"
 
-            # Level 3: Device (optional) - should show only DEV (actual device with children)
-            # SIG2 is a leaf node, so it doesn't appear here (it's a signal, not a device)
+            # Level 3: Device (optional) - NEW BEHAVIOR: Shows both containers AND leaf nodes
+            # Should show both DEV (container) and SIG2 (leaf/direct signal)
+            # This allows LLM to naturally select either without NOTHING_FOUND logic
             devices = db.get_options_at_level("device", {"system": "SYS", "subsystem": "SUB1"})
-            assert len(devices) == 1
+            assert len(devices) == 2
             device_names = {opt["name"] for opt in devices}
-            assert device_names == {"DEV"}
+            assert device_names == {"DEV", "SIG2"}
 
             # Path A: With device (SYS:SUB1:DEV:SIG1)
             signals_with_device = db.get_options_at_level(

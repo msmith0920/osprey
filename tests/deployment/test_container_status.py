@@ -5,8 +5,6 @@ show_status() function, which is critical for users understanding
 their deployment state.
 """
 
-import pytest
-
 # Test data structures mimicking podman ps JSON output
 SAMPLE_CONTAINER_PROJECT_A = {
     "Names": ["projecta-jupyter"],
@@ -127,7 +125,7 @@ class TestServiceNameMatching:
 
         expected_shorts = ["jupyter", "pipelines", "jupyter"]
 
-        for service_path, expected in zip(service_paths, expected_shorts):
+        for service_path, expected in zip(service_paths, expected_shorts, strict=False):
             short_name = service_path.split(".")[-1].lower()
             assert short_name == expected
 

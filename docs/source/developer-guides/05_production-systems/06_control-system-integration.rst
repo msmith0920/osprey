@@ -88,7 +88,6 @@ The Control System Integration system provides a **two-layer abstraction** for w
    - ``PVMetadata`` → ``ChannelMetadata``
 
    **Old names still work** with deprecation warnings (removed in v0.10).
-   See :doc:`../migration-guide-instance-methods` for migration examples.
 
 
 Quick Start: Using Connectors

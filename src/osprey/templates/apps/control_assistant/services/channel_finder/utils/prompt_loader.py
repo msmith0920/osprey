@@ -3,7 +3,7 @@
 import logging
 import sys
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # Use Osprey's config system for path resolution
 from osprey.utils.config import _get_config
@@ -56,7 +56,7 @@ def load_prompts(config: dict) -> Any:
             )
             return prompts
         else:
-            logger.warning(f"⚠ Facility prompts not found or incomplete, falling back to generic")
+            logger.warning("⚠ Facility prompts not found or incomplete, falling back to generic")
     elif prompt_source == "facility":
         logger.warning("⚠ Prompts: facility requested but no facility.path configured")
 
@@ -70,9 +70,7 @@ def load_prompts(config: dict) -> Any:
     )
 
 
-def _try_load_prompts_directly(
-    prompts_path: str, pipeline_mode: str = "in_context"
-) -> Optional[Any]:
+def _try_load_prompts_directly(prompts_path: str, pipeline_mode: str = "in_context") -> Any | None:
     """Try to load prompts module directly from specified path.
 
     Args:
@@ -102,7 +100,11 @@ def _try_load_prompts_directly(
 
         if pipeline_mode == "hierarchical":
             required_files = base_files
+        elif pipeline_mode == "middle_layer":
+            # Middle layer uses React agent, only needs query_splitter
+            required_files = base_files
         else:
+            # in_context and other modes need full prompt set
             required_files = base_files + ["channel_matcher.py", "correction.py"]
 
         missing_files = [f for f in required_files if not (prompts_dir / f).exists()]
@@ -123,7 +125,7 @@ def _try_load_prompts_directly(
             prompts_module = importlib.import_module(module_name)
 
             # Verify it has the required attributes based on pipeline mode
-            if pipeline_mode == "hierarchical":
+            if pipeline_mode in ["hierarchical", "middle_layer"]:
                 required_attrs = ["query_splitter"]
             else:
                 required_attrs = ["query_splitter", "channel_matcher", "correction"]
@@ -146,9 +148,7 @@ def _try_load_prompts_directly(
         return None
 
 
-def _try_load_facility_prompts(
-    facility_path: str, pipeline_mode: str = "in_context"
-) -> Optional[Any]:
+def _try_load_facility_prompts(facility_path: str, pipeline_mode: str = "in_context") -> Any | None:
     """Try to load facility-specific prompts module.
 
     Args:
@@ -175,14 +175,17 @@ def _try_load_facility_prompts(
             return None
 
         # Determine required files based on pipeline mode
-        # Both pipelines need: __init__.py, system.py (facility description), query_splitter.py
+        # All pipelines need: __init__.py, system.py (facility description), query_splitter.py
         base_files = ["__init__.py", "system.py", "query_splitter.py"]
 
         if pipeline_mode == "hierarchical":
             # Hierarchical pipeline uses base files + hierarchical_context.py (loaded separately by pipeline)
             required_files = base_files
+        elif pipeline_mode == "middle_layer":
+            # Middle layer uses React agent, only needs query_splitter (no channel matcher/correction)
+            required_files = base_files
         else:
-            # In-context pipeline needs base files + channel matching and correction
+            # In-context and other pipelines need base files + channel matching and correction
             required_files = base_files + ["channel_matcher.py", "correction.py"]
 
         missing_files = [f for f in required_files if not (prompts_dir / f).exists()]
@@ -202,7 +205,7 @@ def _try_load_facility_prompts(
             prompts_module = importlib.import_module("prompts")
 
             # Verify it has the required attributes based on pipeline mode
-            if pipeline_mode == "hierarchical":
+            if pipeline_mode in ["hierarchical", "middle_layer"]:
                 required_attrs = ["query_splitter"]
             else:
                 required_attrs = ["query_splitter", "channel_matcher", "correction"]

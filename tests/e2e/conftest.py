@@ -14,13 +14,13 @@ from pathlib import Path
 import pytest
 from click.testing import CliRunner
 from langgraph.checkpoint.memory import MemorySaver
-from tests.e2e.judge import LLMJudge, WorkflowResult
 
 from osprey.cli.init_cmd import init
 from osprey.graph import create_graph
 from osprey.infrastructure.gateway import Gateway
 from osprey.registry import get_registry, initialize_registry, reset_registry
 from osprey.utils.config import get_full_configuration
+from tests.e2e.judge import LLMJudge, WorkflowResult
 
 
 # Warn if tests are being run the wrong way
@@ -30,7 +30,7 @@ def pytest_configure(config):
     if config.option.markexpr and "e2e" in config.option.markexpr:
         # Get the invocation directory
         invocation_dir = config.invocation_params.dir
-        e2e_dir = Path(__file__).parent
+        Path(__file__).parent
 
         # If not invoked from tests/e2e/ directory, warn
         if not str(invocation_dir).endswith("tests/e2e"):
@@ -384,7 +384,7 @@ async def e2e_project_factory(tmp_path, request):
 
         if result.exit_code != 0:
             raise RuntimeError(
-                f"Failed to create E2E project: {result.output}\n" f"Exception: {result.exception}"
+                f"Failed to create E2E project: {result.output}\nException: {result.exception}"
             )
 
         project_dir = output_dir / name

@@ -270,6 +270,10 @@ class ConfigBuilder:
         return {
             "execution_method": "local",
             "python_env_path": sys.executable,  # Use current Python interpreter
+            "code_generator": "basic",  # Use basic LLM code generator
+            "generators": {
+                "basic": {"model_config_name": "python_code_generator"}  # Reference models section
+            },
             "modes": {
                 "read_only": {
                     "kernel_name": "python3-readonly",

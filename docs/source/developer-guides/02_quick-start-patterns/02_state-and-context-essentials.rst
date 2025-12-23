@@ -207,7 +207,6 @@ Context classes are Pydantic models that define the structure of data stored in 
               # Store and return state updates using helper method
               return self.store_output_context(context)
 
-   **Note:** This uses the recommended instance method pattern with automatic context management. For the legacy static method pattern, see :doc:`../migration-guide-instance-methods`.
 
 Context Management
 ==================

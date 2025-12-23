@@ -18,30 +18,17 @@ What is Osprey Framework?
 
 The **Osprey Framework** is a production-ready architecture for deploying agentic AI in large-scale, safety-critical control system environments. Built on :doc:`LangGraph's StateGraph foundation <developer-guides/01_understanding-the-framework/03_langgraph-integration>`, it transforms natural language inputs into transparent, auditable execution plans designed for operational safety and reliability.
 
-Developed for scientific facilities managing complex technical infrastructure such as particle accelerators, fusion experiments, beamlines, and large telescopes, Osprey addresses control-specific challenges: :doc:`semantic addressing across large channel namespaces <getting-started/control-assistant-part2-channel-finder>`, :doc:`plan-first orchestration <developer-guides/01_understanding-the-framework/04_orchestrator-first-philosophy>` with hardware-write detection, :doc:`protocol-agnostic integration with control stacks <developer-guides/05_production-systems/06_control-system-integration>` (EPICS, LabVIEW, Tango), and :doc:`mandatory human oversight for safety-critical operations <api_reference/03_production_systems/01_human-approval>`.
+Developed for scientific facilities managing complex technical infrastructure such as particle accelerators, fusion experiments, beamlines, and large telescopes, Osprey addresses control-specific challenges: :doc:`semantic addressing across large channel namespaces <getting-started/control-assistant-part2-channel-finder>`, :doc:`plan-first orchestration <developer-guides/01_understanding-the-framework/04_orchestrator-first-philosophy>` with hardware-write detection, :doc:`protocol-agnostic integration with control stacks <developer-guides/05_production-systems/06_control-system-integration>` (EPICS, LabVIEW, Tango), and :doc:`mandatory human oversight for safety-critical operations <developer-guides/05_production-systems/01_human-approval-workflows>`.
 
-Core Architecture
-------------------
-
-Osprey transforms control room operations through a control-aware architecture designed for safety-critical environments. The framework converts natural-language requests into transparent, executable plans through a four-stage pipeline—Task Extraction, Classification, Orchestration, and Execution—with comprehensive safety enforcement, checkpointing, and artifact tracking:
-
-1. :doc:`Task Extraction <developer-guides/04_infrastructure-components/02_task-extraction-system>` → Convert conversational context into structured, actionable objectives
-
-2. :doc:`Classification <developer-guides/04_infrastructure-components/03_classification-and-routing>` → Dynamically select relevant capabilities from your domain-specific toolkit
-
-3. :doc:`Orchestration <developer-guides/04_infrastructure-components/04_orchestrator-planning>` → Generate complete execution plans with explicit dependencies and human oversight
-
-4. **Execution** → Execute capabilities with checkpointing, artifact management, and safety controls
-
-
-.. figure:: _static/resources/workflow_overview.pdf
+.. figure:: _static/resources/architecture_overview.pdf
    :alt: Osprey Framework Architecture
    :align: center
    :width: 100%
 
-   **Production Deployment Example**: This diagram illustrates the framework architecture using capabilities from the :doc:`ALS Accelerator Assistant <example-applications/als-assistant>` - our production deployment at Lawrence Berkeley National Laboratory's Advanced Light Source particle accelerator.
+   Osprey provides agentic orchestration with human-in-the-loop safety review, translating natural language requests into approved, isolated execution on facility control systems. For a detailed view of the pipeline workflow and component interactions, see :doc:`Understanding Osprey <developer-guides/01_understanding-the-framework/index>`.
 
-The framework provides:
+Key Features
+------------
 
 * **Plan-First Orchestration**: :doc:`Complete execution planning <developer-guides/04_infrastructure-components/04_orchestrator-planning>` with explicit dependencies before any hardware interaction, enabling operator review of all proposed control system operations
 * **Control-System Awareness**: Pattern detection and static analysis identify hardware writes; :doc:`PV boundary checking <developer-guides/05_production-systems/06_control-system-integration>` validates setpoints against facility-defined limits before execution
@@ -119,7 +106,6 @@ Documentation Structure
    :hidden:
 
    getting-started/index
-   user-guides/index
    developer-guides/index
    api_reference/index
    example-applications/index

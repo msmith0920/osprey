@@ -1,6 +1,64 @@
+---
+workflow: release-workflow
+category: release-management
+applies_when: [before_release, version_bump, publishing]
+estimated_time: 30-45 minutes
+ai_ready: true
+related: [pre-merge-cleanup, commit-organization]
+---
+
 # Release Workflow - Documentation Version Sync Fix
 
 This document provides the **definitive workflow** for creating releases that ensure documentation always shows the correct version.
+
+## 🤖 AI Quick Start
+
+**Paste this prompt to your AI assistant (Cursor/Copilot):**
+
+```
+I'm ready to create a new release. Following @docs/workflows/release-workflow.md,
+guide me through the complete release process for version X.X.X.
+
+Walk me through each step and verify completion before moving to the next:
+
+STEP 0A - Review CHANGELOG (CRITICAL - DO THIS FIRST):
+1. Read the ## [Unreleased] section in CHANGELOG.md
+2. Summarize what this release is about (major features, theme)
+3. Verify the changelog accurately reflects all changes
+4. Confirm the release theme and title with me before proceeding
+
+STEP 0B - Pre-Release Testing:
+1. Check that venv is activated
+2. Run unit tests: pytest tests/ --ignore=tests/e2e -v
+3. Run e2e tests: pytest tests/e2e/ -v
+4. Verify all tests pass before proceeding
+
+STEP 1 - Version Updates (BEFORE creating tag):
+1. Show me all files that need version updates
+2. For each file, show current version and what it should be changed to
+3. Generate the version consistency check commands
+4. After I update, verify all versions match
+5. Stage and commit version bump
+
+STEP 2 - Create and Push Tag (Automated Release):
+1. Verify I'm on main branch and pulled latest
+2. Generate the git tag command for version X.X.X
+3. Generate the git push command for the tag
+4. Explain what GitHub Actions will do automatically
+
+STEP 3 - Verify Automated Release:
+1. Show me how to monitor GitHub Actions workflow
+2. Guide me to verify PyPI publication
+3. Guide me to verify GitHub Release creation
+4. Help me test the new version installation
+
+After each major step, confirm success before proceeding to next step.
+If any step fails, help me troubleshoot before continuing.
+```
+
+**Important**: This workflow includes critical testing (Step 0) and proper version sequencing. Don't skip steps!
+
+**Related workflows**: [pre-merge-cleanup.md](pre-merge-cleanup.md), [commit-organization.md](commit-organization.md)
 
 ## 🎯 Problem Solved
 
@@ -13,7 +71,35 @@ This document provides the **definitive workflow** for creating releases that en
 
 ## 📋 Correct Release Workflow
 
-### **Step 0: Pre-Release Testing (CRITICAL)**
+### **Step 0A: Review CHANGELOG (CRITICAL - DO THIS FIRST!)**
+
+**⚠️ CRITICAL**: Before doing ANYTHING else, understand what you're releasing!
+
+1. **Read the `## [Unreleased]` section in `CHANGELOG.md`**
+   - What are the major features?
+   - What's the theme/focus of this release?
+   - Are there breaking changes?
+
+2. **Determine Release Theme and Title**
+   - Create a descriptive title based on the main features
+   - Examples:
+     - "Middle Layer Pipeline for Channel Finder"
+     - "Developer Experience & CI/CD Improvements"
+     - "Performance Optimizations & Bug Fixes"
+
+3. **Verify Completeness**
+   - All merged PRs documented?
+   - All breaking changes noted?
+   - Migration steps included if needed?
+
+4. **Plan Release Notes**
+   - Identify the top 3-5 features to highlight
+   - Note any important upgrade instructions
+   - Prepare user-facing descriptions
+
+**DO NOT PROCEED** until you clearly understand what this release contains!
+
+### **Step 0B: Pre-Release Testing (CRITICAL)**
 
 **⚠️ IMPORTANT**: Always run tests before starting the release process.
 
@@ -101,28 +187,53 @@ This document provides the **definitive workflow** for creating releases that en
    git push origin main
    ```
 
-### **Step 2: Create GitHub Release**
+### **Step 2: Create and Push Tag (Triggers Automated Release)**
+
+**✅ AUTOMATED**: GitHub Actions handles build, PyPI publishing, and release creation!
 
 ```bash
-# 1. Ensure you're on the correct branch (after version updates from Step 1)
+# 1. Ensure you're on main and up to date
 git checkout main
 git pull origin main
 
-# 2. Create and push tag (use your next version)
-git tag v0.7.3
-git push origin v0.7.3
-
-# 3. Create GitHub release (optional - can use web interface)
-gh release create v0.7.3 \
-  --title "Osprey Framework v0.7.3 - [Brief Description]" \
-  --notes-file RELEASE_NOTES.md
+# 2. Create and push tag (use your version number)
+git tag v0.9.9
+git push origin v0.9.9
 ```
 
-### **Step 3: Publish to PyPI**
+**What happens automatically:**
+1. ✅ **GitHub Actions triggers** (`.github/workflows/release.yml`)
+2. ✅ **Builds package** (creates wheel and source distribution)
+3. ✅ **Publishes to PyPI** (using trusted publishing/OIDC)
+4. ✅ **Creates GitHub Release** (extracts notes from CHANGELOG.md)
 
-**⚠️ IMPORTANT**: Only publish to PyPI after GitHub release is created and documentation is verified.
+### **Step 3: Verify Release**
 
-#### **Option A: Using twine (Recommended)**
+**Monitor the GitHub Actions workflow:**
+
+```bash
+# Option 1: Use GitHub CLI to monitor
+gh run list --limit 5
+
+# Option 2: Check GitHub web interface
+# Go to: https://github.com/als-apg/osprey/actions
+```
+
+**Verify deployment:**
+
+1. **Check PyPI** - Package should appear at: `https://pypi.org/project/osprey-framework/0.9.9/`
+2. **Check GitHub Release** - Release should appear at: `https://github.com/als-apg/osprey/releases/tag/v0.9.9`
+3. **Test installation**:
+   ```bash
+   pip install --upgrade osprey-framework
+   python -c "import osprey; print(osprey.__version__)"  # Should print: 0.9.9
+   ```
+
+### **Step 4: Manual PyPI Publishing (Fallback Only)**
+
+**⚠️ ONLY USE IF GITHUB ACTIONS FAILS**
+
+If the automated workflow fails, you can manually publish:
 
 ```bash
 # 1. Clean previous builds
@@ -140,14 +251,6 @@ twine upload dist/*
 # Optional: Upload to test PyPI first for verification
 # twine upload --repository testpypi dist/*
 ```
-
-#### **Option B: Using GitHub Actions (Automated)**
-
-If you have GitHub Actions set up for PyPI publishing:
-
-1. **Tag Creation** automatically triggers PyPI publish workflow
-2. **Verify GitHub Actions** completed successfully
-3. **Check PyPI** - Package should appear at: `https://pypi.org/project/osprey-framework/0.7.3/`
 
 ## 🔧 Technical Implementation
 

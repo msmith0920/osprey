@@ -10,8 +10,6 @@ Architecture:
 This maintains clean separation between data and prompt logic.
 """
 
-from typing import Dict
-
 # =============================================================================
 # HIERARCHICAL NAVIGATION INSTRUCTIONS
 # =============================================================================
@@ -117,7 +115,7 @@ hierarchical_context = {
 }
 
 
-def get_hierarchical_context() -> Dict[str, str]:
+def get_hierarchical_context() -> dict[str, str]:
     """
     Get hierarchical navigation instructions.
 

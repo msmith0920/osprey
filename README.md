@@ -1,6 +1,13 @@
 # Osprey Framework
 
-**🎉 Latest Release: v0.9.7** - Configuration Management & Channel Finder Robustness
+[![CI](https://github.com/als-apg/osprey/workflows/CI/badge.svg)](https://github.com/als-apg/osprey/actions/workflows/ci.yml)
+[![Documentation](https://readthedocs.org/projects/osprey-framework/badge/?version=latest)](https://als-apg.github.io/osprey/)
+[![codecov](https://codecov.io/gh/als-apg/osprey/branch/main/graph/badge.svg)](https://codecov.io/gh/als-apg/osprey)
+[![PyPI version](https://badge.fury.io/py/osprey-framework.svg)](https://badge.fury.io/py/osprey-framework)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+
+**🎉 Latest Release: v0.9.9** - Middle Layer Pipeline for Channel Finder
 
 > **🚧 Early Access Release**
 > This is an early access version of the Osprey Framework. While the core functionality is stable and ready for experimentation, documentation and APIs may still evolve. We welcome feedback and contributions!

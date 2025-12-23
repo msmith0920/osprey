@@ -170,7 +170,6 @@ file_paths:
   api_calls_dir: api_calls
   checkpoints: checkpoints
 
-{% if template_name != 'hello_world_weather' %}
 # ============================================================
 # EXECUTION INFRASTRUCTURE
 # ============================================================
@@ -197,6 +196,7 @@ execution:
       profile: "fast"    # Options: fast | robust (or custom profiles you define)
       # Advanced settings are in claude_generator_config.yml
 
+{% if template_name != 'hello_world_weather' %}
   # EPICS infrastructure (for hardware control applications)
   epics:
     timeout: 5.0
@@ -344,7 +344,7 @@ development:
   # LLM API call logging configuration
   # Captures raw inputs/outputs to get_chat_completion with caller metadata
   api_calls:
-    save_all: false            # Save all API inputs/outputs to files
+    save_all: true             # Save all API inputs/outputs to files
     latest_only: true          # Keep only latest call per function (false = timestamped files)
     include_stack_trace: false # Include full Python stack trace in metadata
 

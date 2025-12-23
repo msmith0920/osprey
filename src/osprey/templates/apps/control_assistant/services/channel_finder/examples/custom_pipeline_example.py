@@ -6,7 +6,7 @@ It implements a simple keyword-based search without using LLMs.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from ..core.base_pipeline import BasePipeline
 from ..core.models import ChannelFinderResult, ChannelInfo
@@ -86,7 +86,7 @@ class KeywordSearchPipeline(BasePipeline):
 
         # Build result
         channel_infos = []
-        for score, ch in scored_channels:
+        for _, ch in scored_channels:
             channel_infos.append(
                 ChannelInfo(
                     channel=ch["channel"], address=ch["address"], description=ch.get("description")
@@ -151,7 +151,7 @@ class KeywordSearchPipeline(BasePipeline):
 
         return min(score, 1.0)  # Cap at 1.0
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """Return pipeline statistics."""
         db_stats = self.database.get_statistics()
         return {

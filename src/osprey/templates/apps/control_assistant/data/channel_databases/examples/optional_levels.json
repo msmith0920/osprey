@@ -39,16 +39,16 @@
             "_pattern": "MC-{:02d}",
             "_range": [1, 3]
           },
-          "_description": "Main control devices (3 instances for lean tutorial)",
+          "_description": "Main control devices (MC-01, MC-02, MC-03) with direct signals (Status, Heartbeat, Mode, Config) and optional subdevices (PSU, ADC, MOTOR, CH)",
 
           "_comment_1": "=== PATTERN 1: Direct Signals (no subdevice, no suffix) ===",
 
           "Status": {
-            "_description": "Device operational status"
+            "_description": "Device operational status (direct signal, no subdevice)"
           },
 
           "Heartbeat": {
-            "_description": "Device heartbeat counter"
+            "_description": "Device heartbeat counter (direct signal, no subdevice)"
           },
 
           "_comment_2": "=== PATTERN 2: Direct Signals with Suffixes (NEEDS SEPARATOR OVERRIDE) ===",
@@ -56,7 +56,7 @@
           "Mode": {
             "_separator": "_",
             "_is_leaf": true,
-            "_description": "Operating mode - base signal + RB/SP variants (custom _ separator)",
+            "_description": "Operating mode (direct signal, no subdevice) - base + RB/SP variants with underscore separator",
             "_note": "Without _separator override, would generate Mode:RB instead of Mode_RB",
 
             "RB": {"_description": "Mode readback"},
@@ -66,7 +66,7 @@
           "Config": {
             "_separator": "_",
             "_is_leaf": true,
-            "_description": "Configuration register - base + command variants (custom _ separator)",
+            "_description": "Configuration register (direct signal, no subdevice) - base + command variants with underscore separator",
 
             "LOAD": {"_description": "Load configuration command"},
             "SAVE": {"_description": "Save configuration command"},
@@ -120,13 +120,13 @@
               "_pattern": "CH-{}",
               "_range": [1, 2]
             },
-            "_description": "Channel subdevices (instanced)",
+            "_description": "Hardware channel interface modules (CH-1, CH-2) with input/gain monitoring",
 
-            "Input": {"_description": "Channel input value"},
+            "Input": {"_description": "Input value measurement"},
             "Gain": {
               "_separator": "_",
               "_is_leaf": true,
-              "_description": "Channel gain with RB/SP (underscore override)",
+              "_description": "Gain amplification with RB/SP (underscore override)",
               "RB": {"_description": "Gain readback"},
               "SP": {"_description": "Gain setpoint"}
             }
@@ -142,24 +142,24 @@
             "_type": "list",
             "_instances": ["BPM-01", "BPM-02"]
           },
-          "_description": "Beam Position Monitors (2 instances)",
+          "_description": "Beam Position Monitors (BPM-01, BPM-02) with direct signals (X, Y, Quality) - no subdevices",
 
           "X": {
             "_separator": "_",
             "_is_leaf": true,
-            "_description": "Horizontal position - base + readback (underscore override)",
+            "_description": "Horizontal position (direct signal, no subdevice) - base + RB with underscore separator",
             "RB": {"_description": "X position readback"}
           },
 
           "Y": {
             "_separator": "_",
             "_is_leaf": true,
-            "_description": "Vertical position - base + readback (underscore override)",
+            "_description": "Vertical position (direct signal, no subdevice) - base + RB with underscore separator",
             "RB": {"_description": "Y position readback"}
           },
 
           "Quality": {
-            "_description": "Signal quality indicator"
+            "_description": "Signal quality indicator (direct signal, no subdevice)"
           }
         }
       }

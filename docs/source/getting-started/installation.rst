@@ -437,10 +437,10 @@ If you want to build and serve the documentation locally:
    # Install documentation dependencies using optional dependencies
    pip install -e ".[docs]"
 
-   # Build and serve documentation
-   python docs/launch_docs.py
+   # Build and serve documentation with auto-reload
+   cd docs && sphinx-autobuild source build
 
-Once running, you can view the documentation at http://localhost:8082
+Once running, you can view the documentation at http://localhost:8000
 
 Building and Running
 ~~~~~~~~~~~~~~~~~~~~
