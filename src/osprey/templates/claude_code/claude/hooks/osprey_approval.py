@@ -24,11 +24,6 @@ stdin ──► Parse JSON
          approval section
               │
               ▼
-     ┌── tools key? ──NO──► Legacy global_mode path
-     │
-    YES
-     │
-     ▼
   enabled: false?  ──YES──► EXIT (allow)
      │
     NO
@@ -44,17 +39,12 @@ stdin ──► Parse JSON
 
 ## Details
 
-**New path (tools dict):** Per-tool policies from config:
+Per-tool policies from `approval.tools` in config.yml:
 - **skip**: tool allowed without prompt
 - **always**: every call requires approval
 - **selective**: content-aware (execute checks write patterns + exec mode)
 - **enabled: false**: global toggle disables all approval
 - **default_policy**: fail-closed default for unmapped tools
-
-**Legacy fallback (no tools key):** Three modes from `approval.global_mode`:
-- **disabled**: all tools allowed without prompt
-- **all_capabilities**: every OSPREY tool call requires approval
-- **selective** (default): only `channel_write` and write-mode `execute`
 
 Creates a pre-execution notebook artifact for code review whenever
 `execute` requires approval (write mode, write patterns, or always policy).

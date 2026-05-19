@@ -29,7 +29,6 @@ _HOT_CHANGE_PATHS = {
         "control_system.writes_enabled",
         "control_system.limits_checking.enabled",
         "control_system.limits_checking.allow_unlisted_channels",
-        "approval.global_mode",
     },
 }
 

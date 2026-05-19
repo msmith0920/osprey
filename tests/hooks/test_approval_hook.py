@@ -1,9 +1,10 @@
 """Tests for the osprey_approval hook.
 
-This hook implements the human-in-the-loop approval system. Based on config:
-- disabled: all tools pass through
-- selective: only specific tool types require approval
-- all_capabilities: all osprey tools require approval
+This hook implements the human-in-the-loop approval system. Based on the
+`approval` section of config.yml:
+- `enabled: false` — all tools pass through
+- `tools: {name: policy}` with policies `skip` / `selective` / `always`
+- `default_policy` — applied to tools absent from `tools`
 
 Also covers pre-execution notebook creation for execute (python) approval.
 """
@@ -176,8 +177,8 @@ def test_per_tool_skip_allows_read(tmp_path, hook_runner, make_config):
 
 
 @pytest.mark.unit
-def test_all_capabilities_mode_blocks_all(tmp_path, hook_runner, make_config):
-    """all_capabilities mode blocks all osprey tools for approval."""
+def test_default_policy_always_blocks_all_tools(tmp_path, hook_runner, make_config):
+    """`default_policy: always` (with no `tools` overrides) asks on every osprey tool."""
     config = make_config(
         {
             "approval": {"enabled": True, "default_policy": "always"},
@@ -185,7 +186,7 @@ def test_all_capabilities_mode_blocks_all(tmp_path, hook_runner, make_config):
         }
     )
 
-    # channel_read — normally read-only, but all_capabilities blocks everything
+    # channel_read — normally read-only, but default_policy=always asks on everything
     result = hook_runner(
         "osprey_approval.py",
         "mcp__controls__channel_read",
@@ -694,7 +695,7 @@ def test_missing_approval_section_defaults_to_always(tmp_path, hook_runner, make
 
 @pytest.mark.unit
 def test_custom_server_prefix_triggers_approval(tmp_path, hook_runner, make_config):
-    """Custom server prefix in hook_config triggers approval in all_capabilities mode."""
+    """Custom server prefix in hook_config triggers approval under `default_policy: always`."""
     config = make_config(
         {
             "approval": {"enabled": True, "default_policy": "always"},

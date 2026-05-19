@@ -109,16 +109,16 @@ def safety_project_selective(tmp_path_factory):
 
 
 @pytest.fixture(scope="module")
-def safety_project_all_capabilities(tmp_path_factory):
+def safety_project_default_policy_always(tmp_path_factory):
     """Module-scoped project where every tool requires approval.
 
     Used by approval flow tests to verify that ALL tool calls (including
     reads) trigger the approval callback. With ``tools`` absent and
     ``default_policy: always``, every tool falls through to the always-ask
-    path — equivalent to the legacy ``global_mode: all_capabilities``.
+    path.
     """
-    tmp = tmp_path_factory.mktemp("safety-all-caps")
-    project_dir = init_project(tmp, "safety-all-caps", provider="als-apg")
+    tmp = tmp_path_factory.mktemp("safety-default-always")
+    project_dir = init_project(tmp, "safety-default-always", provider="als-apg")
     config_path = project_dir / "config.yml"
     config = yaml.safe_load(config_path.read_text())
     config["approval"] = {"enabled": True, "default_policy": "always"}

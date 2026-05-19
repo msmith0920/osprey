@@ -110,30 +110,13 @@ def in_context_run(tmp_path_factory) -> BenchmarkRun:
 
 
 # ---------------------------------------------------------------------------
-# Per-query informational tests — surface individual results in pytest output
-# without gating CI on noisy single-query outcomes. Real bar is on aggregates.
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.parametrize("idx", range(SLICE_SIZE))
-def test_hierarchical_per_query(hierarchical_run: BenchmarkRun, idx: int) -> None:
-    assert hierarchical_run.query_results[idx].f1 >= 0.0
-
-
-@pytest.mark.parametrize("idx", range(SLICE_SIZE))
-def test_middle_layer_per_query(middle_layer_run: BenchmarkRun, idx: int) -> None:
-    assert middle_layer_run.query_results[idx].f1 >= 0.0
-
-
-@pytest.mark.parametrize("idx", range(SLICE_SIZE))
-def test_in_context_per_query(in_context_run: BenchmarkRun, idx: int) -> None:
-    assert in_context_run.query_results[idx].f1 >= 0.0
-
-
-# ---------------------------------------------------------------------------
 # Aggregate tests — load-bearing assertions per project_channel_finder_
 # benchmark_thresholds memory: target ~90%, assert at 80%; on a miss,
 # investigate dataset/DB drift, do not lower the threshold.
+#
+# Per-query F1 is surfaced via review.html / BenchmarkRun output files; it is
+# intentionally NOT asserted in pytest. Earlier `f1 >= 0.0` per-query asserts
+# were tautological and created false-positive CI signal.
 # ---------------------------------------------------------------------------
 
 

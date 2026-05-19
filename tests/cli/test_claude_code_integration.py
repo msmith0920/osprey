@@ -100,7 +100,7 @@ class TestClaudeCodeFileContents:
         assert "permissions" in data
         assert "allow" in data["permissions"]
         assert "ask" in data["permissions"]
-        # channel_read is hook-managed (not in allow) so all_capabilities mode works
+        # channel_read is hook-managed (not in allow) so `default_policy: always` can ask on reads
         assert "mcp__controls__channel_read" not in data["permissions"]["allow"]
         assert "mcp__controls__channel_write" in data["permissions"]["ask"]
         # channel_read has a PreToolUse matcher for dynamic approval
