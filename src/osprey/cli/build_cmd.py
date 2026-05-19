@@ -1258,14 +1258,30 @@ def _persist_mcp_servers(project_path: Path, mcp_servers: dict[str, Any]) -> Non
 
         spec: dict[str, Any] = {}
         if server.url:
+            spec["transport"] = "http"
             spec["url"] = server.url
         else:
+            spec["transport"] = "stdio"
             if server.command:
                 spec["command"] = server.command
             if server.args:
                 spec["args"] = list(server.args)
             if server.env:
                 spec["env"] = dict(server.env)
+        if server.port is not None and server.url:
+            # Emit a derived network block so non-Claude consumers
+            # (compose-port checkers, integration-tests probes) can read
+            # host/docker URLs without re-deriving them.
+            # NOTE: docker_url uses the MCP server's YAML key (`name`) as the
+            # container hostname. This assumes the operator names the
+            # docker-compose service identically to the mcp_servers entry
+            # (e.g. mcp_servers.matlab → service: matlab). If they diverge,
+            # docker_url will point at a non-existent host.
+            spec["network"] = {
+                "port": int(server.port),
+                "host_url": f"http://localhost:{server.port}/mcp",
+                "docker_url": f"http://{name}:{server.port}/mcp",
+            }
         if server.permissions:
             spec["permissions"] = dict(server.permissions)
 

@@ -516,6 +516,181 @@ class TestBuildHelpers:
         # Server added
         assert config["claude_code"]["servers"]["my_server"]["url"] == "http://host:8001/sse"
 
+    def test_load_profile_mcp_server_port_derives_url(self, tmp_path: Path):
+        """A bare `port:` should yield url=http://localhost:<port>/mcp."""
+        p = tmp_path / "profile.yml"
+        p.write_text(
+            yaml.dump(
+                {
+                    "name": "PortTest",
+                    "mcp_servers": {
+                        "matlab": {
+                            "port": 8008,
+                            "permissions": {"allow": ["mml_search"]},
+                        }
+                    },
+                }
+            )
+        )
+        profile = load_profile(p)
+        server = profile.mcp_servers["matlab"]
+        assert server.port == 8008
+        assert server.url == "http://localhost:8008/mcp"
+        assert server.command == ""
+
+    def test_load_profile_mcp_server_port_with_explicit_url(self, tmp_path: Path):
+        """An explicit `url:` plus `port:` should keep the explicit url verbatim."""
+        p = tmp_path / "profile.yml"
+        p.write_text(
+            yaml.dump(
+                {
+                    "name": "ExternalClient",
+                    "mcp_servers": {
+                        "matlab": {
+                            "port": 8008,
+                            "url": "http://appsdev2:8008/mcp",
+                        }
+                    },
+                }
+            )
+        )
+        profile = load_profile(p)
+        server = profile.mcp_servers["matlab"]
+        assert server.port == 8008
+        assert server.url == "http://appsdev2:8008/mcp"  # explicit wins, no derivation
+
+    def test_load_profile_mcp_server_port_with_command_rejected(self, tmp_path: Path):
+        """A stdio server (`command:`) cannot also declare a port."""
+        p = tmp_path / "profile.yml"
+        p.write_text(
+            yaml.dump(
+                {
+                    "name": "Bad",
+                    "mcp_servers": {
+                        "confluence": {
+                            "command": "uvx",
+                            "port": 8001,
+                        }
+                    },
+                }
+            )
+        )
+        with pytest.raises(BuildProfileError, match="both 'command' and 'port'"):
+            load_profile(p)
+
+    @pytest.mark.parametrize(
+        "bad_port",
+        [0, -1, 65536, 80080, 100000],
+        ids=["zero", "negative", "just-above-max", "typo-extra-digit", "way-too-big"],
+    )
+    def test_load_profile_mcp_server_port_out_of_range_rejected(
+        self, tmp_path: Path, bad_port: int,
+    ):
+        """A `port:` outside 1..65535 must raise BuildProfileError at parse
+        time, so a typo like `port: 80080` cannot silently flow into the
+        derived url and the persisted network block."""
+        p = tmp_path / "profile.yml"
+        p.write_text(
+            yaml.dump(
+                {
+                    "name": "OutOfRange",
+                    "mcp_servers": {
+                        "matlab": {
+                            "port": bad_port,
+                            "permissions": {"allow": ["mml_search"]},
+                        }
+                    },
+                }
+            )
+        )
+        with pytest.raises(BuildProfileError, match="port"):
+            load_profile(p)
+
+    def test_load_profile_mcp_server_port_non_integer_rejected(self, tmp_path: Path):
+        """A string `port:` (YAML quoting accident) must be rejected at parse time."""
+        p = tmp_path / "profile.yml"
+        p.write_text(
+            yaml.dump(
+                {
+                    "name": "Stringy",
+                    "mcp_servers": {
+                        "matlab": {
+                            "port": "8008",
+                            "permissions": {"allow": ["mml_search"]},
+                        }
+                    },
+                }
+            )
+        )
+        with pytest.raises(BuildProfileError, match="port"):
+            load_profile(p)
+
+    def test_persist_mcp_servers_port_emits_network_block(self, tmp_path: Path):
+        """_persist_mcp_servers emits transport=http + network block when port is set."""
+        from osprey.cli.build_cmd import _persist_mcp_servers
+
+        project_path = tmp_path / "project"
+        project_path.mkdir()
+        (project_path / "config.yml").write_text("facility_name: test\n")
+
+        servers = {
+            "matlab": McpServerDef(
+                url="http://localhost:8008/mcp",
+                port=8008,
+                permissions={"allow": ["mml_search"], "ask": []},
+            ),
+        }
+        _persist_mcp_servers(project_path, servers)
+
+        config = yaml.safe_load((project_path / "config.yml").read_text())
+        entry = config["claude_code"]["servers"]["matlab"]
+        assert entry["transport"] == "http"
+        assert entry["url"] == "http://localhost:8008/mcp"
+        assert entry["network"]["port"] == 8008
+        assert entry["network"]["host_url"] == "http://localhost:8008/mcp"
+        assert entry["network"]["docker_url"] == "http://matlab:8008/mcp"
+
+    def test_persist_mcp_servers_stdio_emits_transport_stdio(self, tmp_path: Path):
+        """Stdio servers get transport=stdio and no network block."""
+        from osprey.cli.build_cmd import _persist_mcp_servers
+
+        project_path = tmp_path / "project"
+        project_path.mkdir()
+        (project_path / "config.yml").write_text("facility_name: test\n")
+
+        servers = {
+            "confluence": McpServerDef(
+                command="uvx",
+                args=["--python=3.12", "mcp-atlassian"],
+            ),
+        }
+        _persist_mcp_servers(project_path, servers)
+
+        config = yaml.safe_load((project_path / "config.yml").read_text())
+        entry = config["claude_code"]["servers"]["confluence"]
+        assert entry["transport"] == "stdio"
+        assert entry["command"] == "uvx"
+        assert "network" not in entry
+
+    def test_persist_mcp_servers_url_without_port_no_network_block(self, tmp_path: Path):
+        """A url-only server (no port hint) gets transport=http but no network block."""
+        from osprey.cli.build_cmd import _persist_mcp_servers
+
+        project_path = tmp_path / "project"
+        project_path.mkdir()
+        (project_path / "config.yml").write_text("facility_name: test\n")
+
+        servers = {
+            "remote": McpServerDef(url="http://appsdev2:8008/mcp"),
+        }
+        _persist_mcp_servers(project_path, servers)
+
+        config = yaml.safe_load((project_path / "config.yml").read_text())
+        entry = config["claude_code"]["servers"]["remote"]
+        assert entry["transport"] == "http"
+        assert entry["url"] == "http://appsdev2:8008/mcp"
+        assert "network" not in entry
+
     def test_apply_config_overrides(self, tmp_path: Path):
         """_apply_config_overrides should update config.yml fields."""
         from osprey.cli.build_cmd import _apply_config_overrides

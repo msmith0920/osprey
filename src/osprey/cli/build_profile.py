@@ -34,6 +34,11 @@ class McpServerDef:
     permissions: dict[str, list[str]] = field(default_factory=dict)
     # permissions: {"allow": ["tool1"], "ask": ["tool2"]}
     url: str | None = None  # HTTP/SSE transport URL (mutually exclusive with command)
+    # Single port the HTTP MCP service binds AND publishes. Compose maps
+    # host:port → container:port 1:1, so consumers can derive every URL
+    # variant from this single value. Mutually exclusive with command;
+    # compatible with url (a port hint for non-Claude consumers).
+    port: int | None = None
 
 
 @dataclass
@@ -428,10 +433,24 @@ def _parse_profile(raw: dict[str, Any]) -> BuildProfile:
         perms = sdef.get("permissions", {})
         url = sdef.get("url")
         command = sdef.get("command", "")
+        port = sdef.get("port")
+        if port is not None and (not isinstance(port, int) or isinstance(port, bool)
+                                 or not (1 <= port <= 65535)):
+            raise BuildProfileError(
+                f"MCP server '{name}' port must be an integer in 1..65535 (got {port!r})"
+            )
         if url and command:
             raise BuildProfileError(
                 f"MCP server '{name}' has both 'command' and 'url' — use one or the other"
             )
+        if port is not None and command:
+            raise BuildProfileError(
+                f"MCP server '{name}' has both 'command' and 'port' — stdio servers cannot declare a port"
+            )
+        # Derive url from port when only port is set (HTTP host-published service).
+        # Web terminals run host-networked, so localhost is the right host for .mcp.json.
+        if port is not None and not url:
+            url = f"http://localhost:{port}/mcp"
         if not url and not command:
             raise BuildProfileError(f"MCP server '{name}' must have either 'command' or 'url'")
         mcp_servers[name] = McpServerDef(
@@ -443,6 +462,7 @@ def _parse_profile(raw: dict[str, Any]) -> BuildProfile:
                 "ask": perms.get("ask", []),
             },
             url=url,
+            port=port,
         )
 
     services: dict[str, ServiceDef] = {}

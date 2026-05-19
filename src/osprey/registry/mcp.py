@@ -58,6 +58,7 @@ class ServerDefinition:
     external_command: str | None = None
     external_args: list[str] = field(default_factory=list)
     url: str | None = None  # HTTP/SSE transport URL (mutually exclusive with command)
+    port: int | None = None  # Host/container port for HTTP servers; informational for non-Claude consumers
 
 
 # ---------------------------------------------------------------------------
@@ -351,6 +352,7 @@ def _custom_server_from_spec(name: str, spec: dict) -> ServerDefinition:
         external_command=spec.get("command", ""),
         external_args=spec.get("args", []),
         url=spec.get("url"),
+        port=spec.get("port"),
         permissions_allow=perms.get("allow", []),
         permissions_ask=perms.get("ask", []),
         hooks_pre=hooks_pre,
