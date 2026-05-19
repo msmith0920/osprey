@@ -235,6 +235,8 @@ class TemplateManager:
                     f"channel_finder_mode must be one of {VALID_CHANNEL_FINDER_MODES} "
                     f"(got {channel_finder_mode!r})"
                 )
+            from osprey.registry.mcp import CHANNEL_FINDER_TOOLS_BY_PIPELINE
+
             ctx.update(
                 {
                     "channel_finder_mode": channel_finder_mode,
@@ -243,6 +245,9 @@ class TemplateManager:
                     "enable_middle_layer": channel_finder_mode == "middle_layer",
                     "default_pipeline": channel_finder_mode,
                     "channel_finder_pipeline": channel_finder_mode,
+                    "channel_finder_tools": list(
+                        CHANNEL_FINDER_TOOLS_BY_PIPELINE.get(channel_finder_mode, [])
+                    ),
                     "facility_name": ctx.get("facility_name", project_name),
                 }
             )

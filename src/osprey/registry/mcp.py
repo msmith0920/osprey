@@ -225,7 +225,9 @@ FRAMEWORK_SERVERS: dict[str, ServerDefinition] = {
             "OSPREY_CONFIG": "{project_root}/config.yml",
         },
         condition="channel_finder_pipeline",
-        fixed_allow=["mcp__channel-finder"],
+        # permissions_allow is populated dynamically from
+        # CHANNEL_FINDER_TOOLS_BY_PIPELINE in resolve_servers() because the tool
+        # set varies by pipeline.
         hooks_post=[
             HookRule(
                 matcher="mcp__channel-finder__.*",
@@ -233,6 +235,25 @@ FRAMEWORK_SERVERS: dict[str, ServerDefinition] = {
             ),
         ],
     ),
+}
+
+
+# Tools exposed by each channel-finder pipeline (one MCP server module per pipeline).
+# The agent template and the server's permissions.allow are both rendered from
+# this single source of truth at build time.
+CHANNEL_FINDER_TOOLS_BY_PIPELINE: dict[str, list[str]] = {
+    "hierarchical": ["build_channels", "get_options", "view_examples"],
+    "middle_layer": [
+        "get_common_names",
+        "inspect_fields",
+        "list_channels",
+        "list_families",
+        "list_systems",
+        "query_channels",
+        "statistics",
+        "validate",
+    ],
+    "in_context": ["query_channels"],
 }
 
 
@@ -299,6 +320,16 @@ def resolve_servers(claude_code_config: dict, ctx: dict) -> list[dict]:
     servers: dict[str, ServerDefinition] = {
         k: copy.deepcopy(v) for k, v in FRAMEWORK_SERVERS.items()
     }
+
+    # ── Channel-finder pipeline tools ─────────────────────────
+    # The channel-finder server's tool set is pipeline-specific. Render the
+    # active pipeline's tools into permissions_allow so settings.json and the
+    # agent frontmatter share one source of truth (no wildcard).
+    cf_pipeline = ctx.get("channel_finder_pipeline")
+    if cf_pipeline and "channel-finder" in servers:
+        servers["channel-finder"].permissions_allow = list(
+            CHANNEL_FINDER_TOOLS_BY_PIPELINE.get(cf_pipeline, [])
+        )
 
     # ── Evaluate conditions ────────────────────────────────────
     for sdef in servers.values():

@@ -420,6 +420,19 @@ def build(
         )
         logger.info("  ✓ Re-rendered Claude Code artifacts")
 
+        # 16c. Validate agent tools are backed by permissions.allow.
+        # Catches wildcards in agent frontmatter and bug-class where a
+        # facility author adds a tool to an agent's tools: allowlist but
+        # forgets to add it to the MCP server's permissions.allow.
+        from .validate_claude_artifacts import validate_agent_tools_against_permissions
+
+        validation_errors = validate_agent_tools_against_permissions(project_path)
+        if validation_errors:
+            raise BuildProfileError(
+                "Agent tool/permission drift detected:\n  "
+                + "\n  ".join(validation_errors)
+            )
+
         # 17. Git init + commit
         _git_init_and_commit(project_path)
 

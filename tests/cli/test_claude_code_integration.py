@@ -422,7 +422,9 @@ class TestChannelFinderAgent:
         assert "Submitting Results" in content
 
     def test_channel_finder_tools_allowed_by_default(self, tmp_path):
-        """control_assistant allows all channel-finder MCP tools in settings.json."""
+        """control_assistant allows each channel-finder MCP tool explicitly in settings.json."""
+        from osprey.registry.mcp import CHANNEL_FINDER_TOOLS_BY_PIPELINE
+
         manager = TemplateManager()
         project_dir = manager.create_project(
             project_name="cf-allow-test",
@@ -433,7 +435,10 @@ class TestChannelFinderAgent:
 
         data = json.loads((project_dir / ".claude" / "settings.json").read_text())
         allow = data["permissions"]["allow"]
-        assert "mcp__channel-finder" in allow
+        # No bare-prefix wildcard — each tool is listed explicitly.
+        assert "mcp__channel-finder" not in allow
+        for tool in CHANNEL_FINDER_TOOLS_BY_PIPELINE["hierarchical"]:
+            assert f"mcp__channel-finder__{tool}" in allow
 
     def test_channel_finder_in_mcp_json(self, tmp_path):
         """channel-finder MCP server IS in .mcp.json (project-level, not inline)."""

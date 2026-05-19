@@ -94,6 +94,14 @@ def build_claude_code_context(
         ctx["channel_finder_mode"] = pipeline_mode
         ctx["default_pipeline"] = pipeline_mode
 
+        # Per-pipeline tool list — shared with the registry so the agent
+        # frontmatter and the server's permissions.allow stay in lockstep.
+        from osprey.registry.mcp import CHANNEL_FINDER_TOOLS_BY_PIPELINE
+
+        ctx["channel_finder_tools"] = list(
+            CHANNEL_FINDER_TOOLS_BY_PIPELINE.get(pipeline_mode, [])
+        )
+
         # Embed hierarchy info at render time so the agent doesn't need
         # a separate hierarchy_info() tool call.
         if pipeline_mode == "hierarchical":
