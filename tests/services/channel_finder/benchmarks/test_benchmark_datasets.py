@@ -21,9 +21,9 @@ from osprey.services.channel_finder.benchmarks.generator import (
     validate_queries,
 )
 
-# TEMPLATE_DB_PATH lives at <template>/data/channel_databases/tiers/tier3/hierarchical.json,
-# so walk up five components to reach the template root.
-TEMPLATE_DIR = TEMPLATE_DB_PATH.parents[4]
+# TEMPLATE_DB_PATH lives at <template>/data/channel_databases/hierarchical.json,
+# so walk up three components to reach the template root.
+TEMPLATE_DIR = TEMPLATE_DB_PATH.parents[2]
 QUERIES_DIR = TEMPLATE_DIR / "data" / "benchmarks" / "cross_paradigm" / "queries"
 TIERS_ROOT = TEMPLATE_DIR / "data" / "channel_databases" / "tiers"
 

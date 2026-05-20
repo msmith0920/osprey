@@ -67,8 +67,8 @@
   {
     "user_query": "What are the vacuum gauge pressure readings in sector 2?",
     "targeted_pv": [
-      "SR:VAC:GAUGE:03:PRESSURE:RB",
-      "SR:VAC:GAUGE:04:PRESSURE:RB"
+      "SR:VAC:GAUGE:SR03:PRESSURE:RB",
+      "SR:VAC:GAUGE:SR04:PRESSURE:RB"
     ],
     "category": "aggregate"
   },
@@ -245,16 +245,16 @@
   {
     "user_query": "What are the vacuum gauge readings in sector 2?",
     "targeted_pv": [
-      "SR:VAC:GAUGE:03:PRESSURE:RB",
-      "SR:VAC:GAUGE:04:PRESSURE:RB"
+      "SR:VAC:GAUGE:SR03:PRESSURE:RB",
+      "SR:VAC:GAUGE:SR04:PRESSURE:RB"
     ],
     "category": "sector-based"
   },
   {
     "user_query": "Sector three vacuum pressure.",
     "targeted_pv": [
-      "SR:VAC:GAUGE:05:PRESSURE:RB",
-      "SR:VAC:GAUGE:06:PRESSURE:RB"
+      "SR:VAC:GAUGE:SR05:PRESSURE:RB",
+      "SR:VAC:GAUGE:SR06:PRESSURE:RB"
     ],
     "category": "semantic"
   },

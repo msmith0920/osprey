@@ -937,9 +937,9 @@ class TestMaterializedTierDatabases:
     every (tier, paradigm) combination.
     """
 
-    # TEMPLATE_DB_PATH points at .../tiers/tier3/hierarchical.json — walk up
-    # two levels to reach the tiers/ root.
-    TIERS_ROOT = TEMPLATE_DB_PATH.parents[1]
+    # TEMPLATE_DB_PATH points at .../channel_databases/hierarchical.json — the
+    # tiers/ output root is its sibling.
+    TIERS_ROOT = TEMPLATE_DB_PATH.parents[0] / "tiers"
 
     @staticmethod
     def _count_hierarchical(path) -> int:

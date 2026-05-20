@@ -3468,12 +3468,18 @@
         "RB": {
           "_description": "readback",
           "ChannelNames": [
-            "SR:VAC:GAUGE:01:PRESSURE:RB",
-            "SR:VAC:GAUGE:02:PRESSURE:RB",
-            "SR:VAC:GAUGE:03:PRESSURE:RB",
-            "SR:VAC:GAUGE:04:PRESSURE:RB",
-            "SR:VAC:GAUGE:05:PRESSURE:RB",
-            "SR:VAC:GAUGE:06:PRESSURE:RB"
+            "SR:VAC:GAUGE:SR01:PRESSURE:RB",
+            "SR:VAC:GAUGE:SR02:PRESSURE:RB",
+            "SR:VAC:GAUGE:SR03:PRESSURE:RB",
+            "SR:VAC:GAUGE:SR04:PRESSURE:RB",
+            "SR:VAC:GAUGE:SR05:PRESSURE:RB",
+            "SR:VAC:GAUGE:SR06:PRESSURE:RB",
+            "SR:VAC:GAUGE:SR07:PRESSURE:RB",
+            "SR:VAC:GAUGE:SR08:PRESSURE:RB",
+            "SR:VAC:GAUGE:SR09:PRESSURE:RB",
+            "SR:VAC:GAUGE:SR10:PRESSURE:RB",
+            "SR:VAC:GAUGE:SR11:PRESSURE:RB",
+            "SR:VAC:GAUGE:SR12:PRESSURE:RB"
           ],
           "DataType": "double",
           "HWUnits": "Pa"
@@ -3484,12 +3490,18 @@
         "ON": {
           "_description": "on",
           "ChannelNames": [
-            "SR:VAC:GAUGE:01:STATUS:ON",
-            "SR:VAC:GAUGE:02:STATUS:ON",
-            "SR:VAC:GAUGE:03:STATUS:ON",
-            "SR:VAC:GAUGE:04:STATUS:ON",
-            "SR:VAC:GAUGE:05:STATUS:ON",
-            "SR:VAC:GAUGE:06:STATUS:ON"
+            "SR:VAC:GAUGE:SR01:STATUS:ON",
+            "SR:VAC:GAUGE:SR02:STATUS:ON",
+            "SR:VAC:GAUGE:SR03:STATUS:ON",
+            "SR:VAC:GAUGE:SR04:STATUS:ON",
+            "SR:VAC:GAUGE:SR05:STATUS:ON",
+            "SR:VAC:GAUGE:SR06:STATUS:ON",
+            "SR:VAC:GAUGE:SR07:STATUS:ON",
+            "SR:VAC:GAUGE:SR08:STATUS:ON",
+            "SR:VAC:GAUGE:SR09:STATUS:ON",
+            "SR:VAC:GAUGE:SR10:STATUS:ON",
+            "SR:VAC:GAUGE:SR11:STATUS:ON",
+            "SR:VAC:GAUGE:SR12:STATUS:ON"
           ],
           "DataType": "enum",
           "HWUnits": ""
@@ -3497,12 +3509,18 @@
         "VALID": {
           "_description": "valid",
           "ChannelNames": [
-            "SR:VAC:GAUGE:01:STATUS:VALID",
-            "SR:VAC:GAUGE:02:STATUS:VALID",
-            "SR:VAC:GAUGE:03:STATUS:VALID",
-            "SR:VAC:GAUGE:04:STATUS:VALID",
-            "SR:VAC:GAUGE:05:STATUS:VALID",
-            "SR:VAC:GAUGE:06:STATUS:VALID"
+            "SR:VAC:GAUGE:SR01:STATUS:VALID",
+            "SR:VAC:GAUGE:SR02:STATUS:VALID",
+            "SR:VAC:GAUGE:SR03:STATUS:VALID",
+            "SR:VAC:GAUGE:SR04:STATUS:VALID",
+            "SR:VAC:GAUGE:SR05:STATUS:VALID",
+            "SR:VAC:GAUGE:SR06:STATUS:VALID",
+            "SR:VAC:GAUGE:SR07:STATUS:VALID",
+            "SR:VAC:GAUGE:SR08:STATUS:VALID",
+            "SR:VAC:GAUGE:SR09:STATUS:VALID",
+            "SR:VAC:GAUGE:SR10:STATUS:VALID",
+            "SR:VAC:GAUGE:SR11:STATUS:VALID",
+            "SR:VAC:GAUGE:SR12:STATUS:VALID"
           ],
           "DataType": "enum",
           "HWUnits": ""
@@ -3510,12 +3528,18 @@
       },
       "_setup": {
         "CommonNames": [
-          "GAUGE 01",
-          "GAUGE 02",
-          "GAUGE 03",
-          "GAUGE 04",
-          "GAUGE 05",
-          "GAUGE 06"
+          "GAUGE SR01",
+          "GAUGE SR02",
+          "GAUGE SR03",
+          "GAUGE SR04",
+          "GAUGE SR05",
+          "GAUGE SR06",
+          "GAUGE SR07",
+          "GAUGE SR08",
+          "GAUGE SR09",
+          "GAUGE SR10",
+          "GAUGE SR11",
+          "GAUGE SR12"
         ],
         "DeviceList": [
           [
@@ -3541,6 +3565,30 @@
           [
             6,
             1
+          ],
+          [
+            7,
+            1
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            9,
+            1
+          ],
+          [
+            10,
+            1
+          ],
+          [
+            11,
+            1
+          ],
+          [
+            12,
+            1
           ]
         ],
         "ElementList": [
@@ -3549,7 +3597,13 @@
           3,
           4,
           5,
-          6
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
         ]
       }
     },

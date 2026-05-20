@@ -334,17 +334,14 @@
           }
         },
         "GAUGE": {
-          "_description": "Vacuum Pressure Gauges: Monitor vacuum pressure at critical locations. Independent measurement from ion pumps. Cold cathode or hot cathode ionization gauges.",
+          "_description": "Cold cathode ionization gauges, one per storage-ring sector.",
           "DEVICE": {
             "_expansion": {
-              "_type": "list",
-              "_instances": [
-                "01",
-                "02",
-                "03",
-                "04",
-                "05",
-                "06"
+              "_type": "range",
+              "_pattern": "SR{:02d}",
+              "_range": [
+                1,
+                12
               ]
             },
             "PRESSURE": {

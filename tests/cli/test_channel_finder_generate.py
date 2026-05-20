@@ -38,13 +38,13 @@ class TestGenerateSubcommand:
         assert (tmp_path / "middle_layer.json").exists()
 
     def test_in_context_channel_count_default(self, runner, tmp_path):
-        """Default (no tier) in_context.json should have all 1210 channels."""
+        """Default (no tier) in_context.json should have all 1228 channels."""
         runner.invoke(channel_finder, ["generate", "--output-dir", str(tmp_path)])
 
         data = json.loads((tmp_path / "in_context.json").read_text())
         assert isinstance(data, dict)
         assert "_metadata" in data
-        assert len(data["channels"]) == 1210
+        assert len(data["channels"]) == 1228
 
     def test_in_context_channel_count_tier1(self, runner, tmp_path):
         """--tier 1 in_context.json should have 205 channels."""
@@ -57,24 +57,24 @@ class TestGenerateSubcommand:
         assert len(data["channels"]) == 205
 
     def test_hierarchical_channel_count(self, runner, tmp_path):
-        """hierarchical.json should have 1210 channels (default, no tier filter)."""
+        """hierarchical.json should have 1228 channels (default, no tier filter)."""
         from osprey.services.channel_finder.benchmarks.generator import expand_hierarchy
 
         runner.invoke(channel_finder, ["generate", "--output-dir", str(tmp_path)])
 
         data = json.loads((tmp_path / "hierarchical.json").read_text())
         channels = expand_hierarchy(data)
-        assert len(channels) == 1210
+        assert len(channels) == 1228
 
     def test_middle_layer_channel_count(self, runner, tmp_path):
-        """middle_layer.json should have 1210 channels (default, no tier filter)."""
+        """middle_layer.json should have 1228 channels (default, no tier filter)."""
         from osprey.services.channel_finder.benchmarks.generator import collect_middle_layer_pvs
 
         runner.invoke(channel_finder, ["generate", "--output-dir", str(tmp_path)])
 
         data = json.loads((tmp_path / "middle_layer.json").read_text())
         pvs = collect_middle_layer_pvs(data)
-        assert len(pvs) == 1210
+        assert len(pvs) == 1228
 
     def test_output_dir_flag(self, runner, tmp_path):
         """--output-dir creates files in specified directory."""
@@ -150,7 +150,7 @@ class TestGenerateSubcommand:
         )
         assert result.exit_code == 0
         data = json.loads((tmp_path / "in_context.json").read_text())
-        assert len(data["channels"]) == 1210
+        assert len(data["channels"]) == 1228
 
     def test_validate_single_format(self, runner, tmp_path):
         """--validate works with a single format."""

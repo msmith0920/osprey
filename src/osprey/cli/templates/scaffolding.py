@@ -410,6 +410,13 @@ def materialize_tier_artifacts(project_dir: Path, tier: int, channel_finder_mode
         )
     pairs.append((queries_src, queries_dst))
 
+    # The preset ships the canonical hierarchical.json at flat_root as the
+    # generator's source-of-truth. End users only need the tier-filtered
+    # active paradigm file — drop the canonical before materialization.
+    canonical_source = flat_root / "hierarchical.json"
+    if canonical_source.exists():
+        canonical_source.unlink()
+
     for src, dst in pairs:
         shutil.copy2(src, dst)
 
