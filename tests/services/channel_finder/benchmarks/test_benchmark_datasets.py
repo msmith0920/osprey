@@ -53,9 +53,7 @@ class TestUnifiedQueriesShipped:
             assert isinstance(entry["targeted_pv"], list), (
                 f"tier{tier_num} entry {i} targeted_pv must be a list"
             )
-            assert len(entry["targeted_pv"]) > 0, (
-                f"tier{tier_num} entry {i} has empty targeted_pv"
-            )
+            assert len(entry["targeted_pv"]) > 0, f"tier{tier_num} entry {i} has empty targeted_pv"
 
 
 class TestUnifiedQueriesValidateAgainstTierDbs:
@@ -83,8 +81,7 @@ class TestUnifiedQueriesValidateAgainstTierDbs:
         # Format a useful diagnostic on first drift, capped at 10 entries.
         if result["missing"]:
             preview = "\n".join(
-                f"  tier{m['tier']}/{m['format']}: {m['pv']}"
-                for m in result["missing"][:10]
+                f"  tier{m['tier']}/{m['format']}: {m['pv']}" for m in result["missing"][:10]
             )
             extra = (
                 f"\n  ... and {len(result['missing']) - 10} more"

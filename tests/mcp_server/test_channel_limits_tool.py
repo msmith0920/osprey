@@ -4,14 +4,12 @@ Covers: summary mode, exact lookup (found/not-found/mixed), regex search,
 property filters, combined search+filter, parameter validation, and limits-disabled.
 """
 
-import json
 from dataclasses import dataclass
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from tests.mcp_server.conftest import (
-    assert_error,
     assert_raises_error,
     extract_response_dict,
     get_tool_fn,
@@ -346,7 +344,7 @@ async def test_channels_and_pattern_error():
     with assert_raises_error(error_type="validation_error") as _exc_ctx:
         await fn(channels=["TEST:PV"], pattern="TEST:.*")
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit

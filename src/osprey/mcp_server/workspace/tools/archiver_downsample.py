@@ -9,6 +9,7 @@ import json
 import logging
 
 from fastmcp.exceptions import ToolError
+
 from osprey.mcp_server.errors import make_error
 from osprey.mcp_server.workspace.server import mcp
 from osprey.utils.timeseries import extract_timeseries_frame, lttb_downsample
@@ -47,9 +48,9 @@ async def archiver_downsample(
         raise
     except Exception as e:
         return make_error(
-                "internal_error",
-                f"Could not resolve workspace root: {e}",
-            )
+            "internal_error",
+            f"Could not resolve workspace root: {e}",
+        )
 
     from osprey.stores.artifact_store import ArtifactStore
 
@@ -58,32 +59,32 @@ async def archiver_downsample(
 
     if entry is None:
         return make_error(
-                "validation_error",
-                f"Artifact entry '{entry_id}' not found.",
-                suggestions=["Use session_summary to list available entries."],
-            )
+            "validation_error",
+            f"Artifact entry '{entry_id}' not found.",
+            suggestions=["Use session_summary to list available entries."],
+        )
 
     if entry.category != "archiver_data":
         return make_error(
-                "validation_error",
-                f"Entry '{entry_id}' has category={entry.category!r}, not 'archiver_data'.",
-                suggestions=["Only archiver_data entries can be downsampled."],
-            )
+            "validation_error",
+            f"Entry '{entry_id}' has category={entry.category!r}, not 'archiver_data'.",
+            suggestions=["Only archiver_data entries can be downsampled."],
+        )
 
     filepath = store.get_file_path(entry_id)
     if filepath is None:
         return make_error(
-                "internal_error",
-                f"Data file for entry '{entry_id}' not found on disk.",
-            )
+            "internal_error",
+            f"Data file for entry '{entry_id}' not found on disk.",
+        )
 
     try:
         raw = json.loads(filepath.read_text())
     except (json.JSONDecodeError, OSError) as e:
         return make_error(
-                "internal_error",
-                f"Could not read data file: {e}",
-            )
+            "internal_error",
+            f"Could not read data file: {e}",
+        )
 
     frame, query_meta = extract_timeseries_frame(raw)
     all_columns = frame.get("columns", [])
@@ -107,10 +108,9 @@ async def archiver_downsample(
         col_indices = [i for i, c in enumerate(all_columns) if c in channels]
         if not col_indices:
             return make_error(
-                    "validation_error",
-                    f"None of the requested channels {channels} found in "
-                    f"entry columns {all_columns}.",
-                )
+                "validation_error",
+                f"None of the requested channels {channels} found in entry columns {all_columns}.",
+            )
         selected_columns = [all_columns[i] for i in col_indices]
         filtered_rows = [[row[i] for i in col_indices] for row in rows]
     else:

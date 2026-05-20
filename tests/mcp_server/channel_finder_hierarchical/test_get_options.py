@@ -1,8 +1,6 @@
 """Tests for get_options tool."""
 
-import json
 from unittest.mock import MagicMock, PropertyMock, patch
-from tests.mcp_server.conftest import assert_error, assert_raises_error, extract_response_dict
 
 import pytest
 
@@ -10,6 +8,7 @@ from osprey.mcp_server.channel_finder_hierarchical.server_context import (
     initialize_cf_hier_context,
 )
 from tests.mcp_server.channel_finder_hierarchical.conftest import get_tool_fn
+from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 
 def _setup(tmp_path, monkeypatch):

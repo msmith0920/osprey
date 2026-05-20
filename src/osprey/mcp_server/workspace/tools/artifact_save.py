@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 
 from fastmcp.exceptions import ToolError
+
 from osprey.mcp_server.errors import make_error
 from osprey.mcp_server.http import gallery_url
 from osprey.mcp_server.workspace.server import mcp
@@ -56,23 +57,23 @@ async def artifact_save(
     """
     if file_path and content:
         return make_error(
-                "validation_error",
-                "Provide exactly one of file_path or content, not both.",
-                [
-                    "Use file_path to register an existing file.",
-                    "Use content for inline markdown/HTML/text/JSON.",
-                ],
-            )
+            "validation_error",
+            "Provide exactly one of file_path or content, not both.",
+            [
+                "Use file_path to register an existing file.",
+                "Use content for inline markdown/HTML/text/JSON.",
+            ],
+        )
 
     if not file_path and not content:
         return make_error(
-                "validation_error",
-                "Provide either file_path or content.",
-                [
-                    "Use file_path to register an existing file.",
-                    "Use content for inline markdown/HTML/text/JSON.",
-                ],
-            )
+            "validation_error",
+            "Provide either file_path or content.",
+            [
+                "Use file_path to register an existing file.",
+                "Use content for inline markdown/HTML/text/JSON.",
+            ],
+        )
 
     from osprey.stores.artifact_store import get_artifact_store
 
@@ -94,10 +95,10 @@ async def artifact_save(
             # Inline content
             if content_type not in _CONTENT_TYPE_MAP:
                 return make_error(
-                        "validation_error",
-                        f"Unknown content_type '{content_type}'.",
-                        [f"Valid types: {', '.join(_CONTENT_TYPE_MAP)}"],
-                    )
+                    "validation_error",
+                    f"Unknown content_type '{content_type}'.",
+                    [f"Valid types: {', '.join(_CONTENT_TYPE_MAP)}"],
+                )
 
             a_type, mime, ext = _CONTENT_TYPE_MAP[content_type]
             from osprey.stores.artifact_store import _slugify
@@ -120,30 +121,30 @@ async def artifact_save(
 
     except FileNotFoundError as exc:
         return make_error(
-                "file_not_found",
-                str(exc),
-                ["Check the file path exists.", "Use an absolute path or path relative to CWD."],
-            )
+            "file_not_found",
+            str(exc),
+            ["Check the file path exists.", "Use an absolute path or path relative to CWD."],
+        )
     except PermissionError as exc:
         logger.exception("artifact_save permission denied")
         return make_error(
-                "permission_denied",
-                f"Cannot write artifact: {exc}",
-                [
-                    "The process does not have write access to the artifact directory.",
-                    "Check ownership of _agent_data/artifacts/ — all writers must share a UID or be in a group with write permission.",
-                    "If running via dispatch sidecar, confirm supervisord.conf and the interactive web process run as the same user.",
-                ],
-            )
+            "permission_denied",
+            f"Cannot write artifact: {exc}",
+            [
+                "The process does not have write access to the artifact directory.",
+                "Check ownership of _agent_data/artifacts/ — all writers must share a UID or be in a group with write permission.",
+                "If running via dispatch sidecar, confirm supervisord.conf and the interactive web process run as the same user.",
+            ],
+        )
     except ToolError:
         raise
     except Exception as exc:
         logger.exception("artifact_save failed")
         return make_error(
-                "internal_error",
-                f"Artifact save failed: {exc}",
-                ["Check MCP server logs for details."],
-            )
+            "internal_error",
+            f"Artifact save failed: {exc}",
+            ["Check MCP server logs for details."],
+        )
 
 
 @mcp.tool()
@@ -166,10 +167,10 @@ async def artifact_delete(artifact_id: str) -> str:
 
         if not deleted:
             return make_error(
-                    "not_found",
-                    f"Artifact {artifact_id} not found.",
-                    ["Check the artifact_id from a previous artifact_save response."],
-                )
+                "not_found",
+                f"Artifact {artifact_id} not found.",
+                ["Check the artifact_id from a previous artifact_save response."],
+            )
 
         return json.dumps(
             {
@@ -184,10 +185,10 @@ async def artifact_delete(artifact_id: str) -> str:
     except Exception as exc:
         logger.exception("artifact_delete failed")
         return make_error(
-                "internal_error",
-                f"Failed to delete artifact: {exc}",
-                ["Check MCP server logs for details."],
-            )
+            "internal_error",
+            f"Failed to delete artifact: {exc}",
+            ["Check MCP server logs for details."],
+        )
 
 
 @mcp.tool()
@@ -212,10 +213,10 @@ async def artifact_get(artifact_id: str) -> str:
 
         if entry is None:
             return make_error(
-                    "not_found",
-                    f"Artifact {artifact_id} not found.",
-                    ["Use data_list or check a previous artifact_save response."],
-                )
+                "not_found",
+                f"Artifact {artifact_id} not found.",
+                ["Use data_list or check a previous artifact_save response."],
+            )
 
         file_path = store.get_file_path(artifact_id)
         url = gallery_url()
@@ -238,7 +239,7 @@ async def artifact_get(artifact_id: str) -> str:
     except Exception as exc:
         logger.exception("artifact_get failed")
         return make_error(
-                "internal_error",
-                f"Failed to get artifact: {exc}",
-                ["Check MCP server logs for details."],
-            )
+            "internal_error",
+            f"Failed to get artifact: {exc}",
+            ["Check MCP server logs for details."],
+        )

@@ -2,12 +2,12 @@
 
 import json
 from unittest.mock import AsyncMock, patch
-from tests.mcp_server.conftest import assert_error, assert_raises_error, extract_response_dict
 
 import pytest
 
 from osprey.mcp_server.ariel.server_context import initialize_ariel_context
 from tests.mcp_server.ariel.conftest import get_tool_fn, make_mock_entry
+from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 
 def _get_entry_get():
@@ -74,7 +74,7 @@ async def test_entry_get_nonexistent(tmp_path, monkeypatch):
         with assert_raises_error(error_type="not_found") as _exc_ctx:
             await fn(entry_id="nonexistent")
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -84,7 +84,7 @@ async def test_entry_get_empty_id():
     with assert_raises_error(error_type="validation_error") as _exc_ctx:
         await fn(entry_id="")
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +159,7 @@ async def test_entry_create_empty_subject():
     with assert_raises_error(error_type="validation_error") as _exc_ctx:
         await fn(subject="", details="some details")
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -169,7 +169,7 @@ async def test_entry_create_empty_details():
     with assert_raises_error(error_type="validation_error") as _exc_ctx:
         await fn(subject="A subject", details="")
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -766,7 +766,7 @@ async def test_entries_by_ids_empty_list():
     with assert_raises_error(error_type="validation_error") as _exc_ctx:
         await fn(entry_ids=[])
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -796,4 +796,4 @@ async def test_entries_by_ids_service_error(tmp_path, monkeypatch):
         with assert_raises_error(error_type="internal_error") as _exc_ctx:
             await fn(entry_ids=["e1"])
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]

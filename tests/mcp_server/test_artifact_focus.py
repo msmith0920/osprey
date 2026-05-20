@@ -1,11 +1,8 @@
 """Tests for the artifact_focus MCP tool."""
 
-import json
-
 import pytest
 
 from tests.mcp_server.conftest import (
-    assert_error,
     assert_raises_error,
     extract_response_dict,
     get_tool_fn,
@@ -36,7 +33,7 @@ class TestArtifactFocusTool:
         with assert_raises_error(error_type="not_found") as _exc_ctx:
             await fn(artifact_id="nonexistent-id")
 
-        data = _exc_ctx["envelope"]
+        _exc_ctx["envelope"]
 
     @pytest.mark.asyncio
     async def test_focus_valid_artifact(self, tmp_path, monkeypatch):

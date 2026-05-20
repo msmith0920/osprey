@@ -204,7 +204,8 @@ class TestAgentDelegation:
         # ("Do NOT call `keyword_search`, …, yourself") was ignored — the
         # regression signal we care about.
         direct_logbook_calls = [
-            t for t in result.tool_traces
+            t
+            for t in result.tool_traces
             if "mcp__ariel__" in t.name and t.parent_tool_use_id is None
         ]
         assert not direct_logbook_calls, (
@@ -218,8 +219,7 @@ class TestAgentDelegation:
         if _is_ariel_db_available():
             submit_calls = result.tools_matching("submit_response")
             assert len(submit_calls) > 0, (
-                f"submit_response not called — agent didn't complete. "
-                f"Tools: {result.tool_names}"
+                f"submit_response not called — agent didn't complete. Tools: {result.tool_names}"
             )
             assert_no_tool_errors(result)
 
@@ -280,7 +280,8 @@ class TestAgentDelegation:
 
         # Orchestrator must not have called any logbook MCP tool directly.
         direct_logbook_calls = [
-            t for t in result.tool_traces
+            t
+            for t in result.tool_traces
             if "mcp__ariel__" in t.name and t.parent_tool_use_id is None
         ]
         assert not direct_logbook_calls, (
@@ -294,8 +295,7 @@ class TestAgentDelegation:
         if _is_ariel_db_available():
             submit_calls = result.tools_matching("submit_response")
             assert len(submit_calls) > 0, (
-                f"submit_response not called — agent didn't complete. "
-                f"Tools: {result.tool_names}"
+                f"submit_response not called — agent didn't complete. Tools: {result.tool_names}"
             )
             assert_no_tool_errors(result)
 

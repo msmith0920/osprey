@@ -628,6 +628,7 @@ class TestSearchModulesInit:
 
         assert callable(semantic_search)
 
+
 class TestEnhancementFactory:
     """Tests for enhancement factory function."""
 

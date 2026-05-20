@@ -95,9 +95,7 @@ def create_backend(
 
     if name == "sdk":
         if is_ollama:
-            raise ValueError(
-                f"SDK backend does not support Ollama provider (model={model!r})"
-            )
+            raise ValueError(f"SDK backend does not support Ollama provider (model={model!r})")
         return SdkBackend(project_dir, model, max_turns, max_budget_usd)
 
     if name == "react":

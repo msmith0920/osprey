@@ -136,9 +136,7 @@ class BenchmarkRunner:
         use_llm_judge: bool = False,
     ) -> None:
         if "/" not in model:
-            raise ValueError(
-                f"model must be in LiteLLM ``provider/wire_id`` form, got {model!r}"
-            )
+            raise ValueError(f"model must be in LiteLLM ``provider/wire_id`` form, got {model!r}")
         self.project_dir = Path(project_dir)
         self.model = model
         self.provider, self.wire_id = model.split("/", 1)

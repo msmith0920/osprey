@@ -26,7 +26,6 @@ Public API:
 
 from __future__ import annotations
 
-import json
 import os
 from typing import Any
 
@@ -74,9 +73,7 @@ class ChannelExtractionResult(BaseModel):
     reasoning: str
 
 
-def llm_judge_coverage(
-    response_text: str, expected: list[str]
-) -> tuple[list[str], list[str]]:
+def llm_judge_coverage(response_text: str, expected: list[str]) -> tuple[list[str], list[str]]:
     """Judge which expected channels the agent's final answer covers.
 
     Calls Haiku via OSPREY's LiteLLM adapter with structured output. The
@@ -139,9 +136,7 @@ def llm_judge_coverage(
                 provider = "cborg"
                 api_key = cborg_key or auth_token
                 model_id = "anthropic/claude-haiku"
-                base_url = os.environ.get(
-                    "ANTHROPIC_BASE_URL", "https://api.cborg.lbl.gov/v1"
-                )
+                base_url = os.environ.get("ANTHROPIC_BASE_URL", "https://api.cborg.lbl.gov/v1")
 
     result = execute_litellm_completion(
         provider=provider,
@@ -155,11 +150,7 @@ def llm_judge_coverage(
     )
 
     if isinstance(result, ChannelExtractionResult):
-        covered = [
-            expected[i]
-            for i in result.covered_expected_indices
-            if 0 <= i < len(expected)
-        ]
+        covered = [expected[i] for i in result.covered_expected_indices if 0 <= i < len(expected)]
         return covered, result.extra_recommended
     # Fallback: if structured output didn't parse, return empty lists.
     return [], []

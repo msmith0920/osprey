@@ -198,9 +198,7 @@ def _resolve_default_sdk_model(project_dir: Path) -> str:
 
     config_path = project_dir / "config.yml"
     if not config_path.exists():
-        raise ValueError(
-            f"config.yml not found in {project_dir}; cannot resolve default SDK model"
-        )
+        raise ValueError(f"config.yml not found in {project_dir}; cannot resolve default SDK model")
 
     config = yaml.safe_load(config_path.read_text()) or {}
     spec = ClaudeCodeModelResolver.resolve(

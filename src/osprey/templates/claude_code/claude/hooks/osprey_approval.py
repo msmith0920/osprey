@@ -262,14 +262,18 @@ def main():
     # `control_system` block from their config see normal approval behaviour.
     control_system_cfg = config.get("control_system") or {}
     if control_system_cfg.get("writes_enabled") is False:
-        if tool_name == "mcp__python__execute" and \
-                tool_input.get("execution_mode", "readonly") != "readonly":
+        if (
+            tool_name == "mcp__python__execute"
+            and tool_input.get("execution_mode", "readonly") != "readonly"
+        ):
             log_hook("approval", hook_input, status="defer", detail="writes_disabled")
             sys.exit(0)
         elif tool_name == "mcp__controls__channel_write":
             log_hook(
-                "approval", hook_input,
-                status="defer", detail="writes_disabled_belt_and_braces",
+                "approval",
+                hook_input,
+                status="defer",
+                detail="writes_disabled_belt_and_braces",
             )
             sys.exit(0)
 
@@ -287,9 +291,7 @@ def main():
 
     # Skip policy — no approval needed
     if policy == "skip":
-        log_hook(
-            "approval", hook_input, status="allow", detail=f"policy=skip tool={short_name}"
-        )
+        log_hook("approval", hook_input, status="allow", detail=f"policy=skip tool={short_name}")
         json.dump(build_allow_output(), sys.stdout)
         sys.exit(0)
 
@@ -315,9 +317,7 @@ def main():
                 sys.exit(0)
 
             # Selective execute without write indicators — allow
-            log_hook(
-                "approval", hook_input, status="allow", detail="execute_selective_readonly"
-            )
+            log_hook("approval", hook_input, status="allow", detail="execute_selective_readonly")
             json.dump(build_allow_output(), sys.stdout)
             sys.exit(0)
 
@@ -329,9 +329,7 @@ def main():
                 val = tool_input.get("value")
                 if ch is not None:
                     channels = [{"channel": ch, "value": val}]
-            channel_list = ", ".join(
-                f"{op.get('channel')}={op.get('value')}" for op in channels
-            )
+            channel_list = ", ".join(f"{op.get('channel')}={op.get('value')}" for op in channels)
             reason = f"Channel write: {channel_list or 'unknown'}"
             log_hook("approval", hook_input, status="ask", detail="channel_write_selective")
             json.dump(build_approval_output(reason), sys.stdout)

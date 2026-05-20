@@ -610,7 +610,9 @@ class TestBuildHelpers:
         ids=["zero", "negative", "just-above-max", "typo-extra-digit", "way-too-big"],
     )
     def test_load_profile_mcp_server_port_out_of_range_rejected(
-        self, tmp_path: Path, bad_port: int,
+        self,
+        tmp_path: Path,
+        bad_port: int,
     ):
         """A `port:` outside 1..65535 must raise BuildProfileError at parse
         time, so a typo like `port: 80080` cannot silently flow into the
@@ -1612,9 +1614,7 @@ class TestWebPanelsRendering:
         The web terminal reads this key on startup; the frontend pins the
         cold-load tab to it.
         """
-        config_path = _build_for_web_panels(
-            tmp_path, web_panels=["ariel"], default_panel="ariel"
-        )
+        config_path = _build_for_web_panels(tmp_path, web_panels=["ariel"], default_panel="ariel")
         config = yaml.safe_load(config_path.read_text())
         assert config["web"]["default_panel"] == "ariel"
 
@@ -1649,9 +1649,7 @@ def _preset_tier_source(tier: int, paradigm: str) -> Path:
     )
 
 
-def _write_tier_profile(
-    profile_dir: Path, paradigm: str, tier: int | None = None
-) -> Path:
+def _write_tier_profile(profile_dir: Path, paradigm: str, tier: int | None = None) -> Path:
     """Write a minimal control_assistant profile pinned to a single paradigm
     and (optionally) a tier."""
     profile_data: dict = {
@@ -1718,10 +1716,9 @@ def test_build_tier_flatten(tmp_path: Path, tier: int, paradigm: str) -> None:
     pipelines = config["channel_finder"]["pipelines"]
 
     # (a) Rendered config points to the FLAT path — no tiers/ segment.
-    assert (
-        pipelines[paradigm]["database"]["path"]
-        == f"data/channel_databases/{paradigm}.json"
-    ), f"paradigm={paradigm} got {pipelines[paradigm]['database']['path']!r}"
+    assert pipelines[paradigm]["database"]["path"] == f"data/channel_databases/{paradigm}.json", (
+        f"paradigm={paradigm} got {pipelines[paradigm]['database']['path']!r}"
+    )
 
     # (b) The flat DB exists and byte-equals the preset tier source.
     flat_path = project_dir / "data" / "channel_databases" / f"{paradigm}.json"
@@ -1777,9 +1774,7 @@ def test_build_force_retier(tmp_path: Path, paradigm: str) -> None:
             "--skip-lifecycle",
         ],
     )
-    assert result1.exit_code == 0, (
-        f"tier-1 build failed: {result1.output}\n{result1.exception}"
-    )
+    assert result1.exit_code == 0, f"tier-1 build failed: {result1.output}\n{result1.exception}"
 
     # Second build: tier 3, --force overwrites the same path.
     result2 = runner.invoke(
@@ -1797,9 +1792,7 @@ def test_build_force_retier(tmp_path: Path, paradigm: str) -> None:
             "--skip-lifecycle",
         ],
     )
-    assert result2.exit_code == 0, (
-        f"tier-3 rebuild failed: {result2.output}\n{result2.exception}"
-    )
+    assert result2.exit_code == 0, f"tier-3 rebuild failed: {result2.output}\n{result2.exception}"
 
     project_dir = output_dir / "retier-proj"
     flat_path = project_dir / "data" / "channel_databases" / f"{paradigm}.json"
@@ -1879,9 +1872,7 @@ def test_build_channel_finder_agent_requires_mode(tmp_path: Path) -> None:
             "--skip-lifecycle",
         ],
     )
-    assert result.exit_code != 0, (
-        f"build should have failed; output:\n{result.output}"
-    )
+    assert result.exit_code != 0, f"build should have failed; output:\n{result.output}"
     combined = result.output + (str(result.exception) if result.exception else "")
     assert "channel_finder_mode" in combined
     assert "required" in combined.lower()

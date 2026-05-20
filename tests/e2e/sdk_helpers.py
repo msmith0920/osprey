@@ -336,9 +336,7 @@ class SDKWorkflowResult:
 # ---------------------------------------------------------------------------
 
 
-def _ingest_tool_result(
-    block: ToolResultBlock, pending_tools: dict[str, ToolTrace]
-) -> None:
+def _ingest_tool_result(block: ToolResultBlock, pending_tools: dict[str, ToolTrace]) -> None:
     """Match a ToolResultBlock to its pending ToolTrace and populate result/is_error.
 
     ToolResultBlocks arrive in ``UserMessage.content`` (per Anthropic API contract:

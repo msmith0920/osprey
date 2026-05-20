@@ -3,13 +3,13 @@
 import json
 from datetime import datetime
 from unittest.mock import AsyncMock, patch
-from tests.mcp_server.conftest import assert_error, assert_raises_error
 
 import pytest
 
 from osprey.mcp_server.ariel.server_context import initialize_ariel_context
 from osprey.services.ariel_search.models import ARIELStatusResult, EmbeddingTableInfo
 from tests.mcp_server.ariel.conftest import get_tool_fn
+from tests.mcp_server.conftest import assert_raises_error
 
 
 def _get_status():
@@ -121,4 +121,4 @@ async def test_status_service_exception(tmp_path, monkeypatch):
         with assert_raises_error(error_type="internal_error") as _exc_ctx:
             await fn()
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]

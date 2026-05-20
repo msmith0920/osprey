@@ -84,9 +84,7 @@ class TestClaudeCodeSDKIntegration:
         # MCP server tool was called, not just any "channel"-substring tool
         # (controls-server channel_read/write/limits would otherwise satisfy this).
         cf_tools = [t for t in result.tool_traces if t.name.startswith("mcp__channel-finder__")]
-        assert cf_tools, (
-            f"Expected a channel-finder tool call but got: {result.tool_names}"
-        )
+        assert cf_tools, f"Expected a channel-finder tool call but got: {result.tool_names}"
 
         # Cost should be reasonable for a simple query
         if result.cost_usd is not None:

@@ -17,7 +17,12 @@ import pytest
 
 # Default hook_config matching the original hard-coded OSPREY_PREFIXES
 DEFAULT_APPROVAL_CONFIG = {
-    "server_prefixes": ["mcp__controls__", "mcp__python__", "mcp__osprey_workspace__", "mcp__ariel__"],
+    "server_prefixes": [
+        "mcp__controls__",
+        "mcp__python__",
+        "mcp__osprey_workspace__",
+        "mcp__ariel__",
+    ],
     "approval_prefixes": [
         "mcp__controls__",
         "mcp__python__",
@@ -77,7 +82,8 @@ def test_selective_mode_blocks_write(tmp_path, hook_runner, make_config):
     config = make_config(
         {
             "approval": {
-                "enabled": True, "default_policy": "selective",
+                "enabled": True,
+                "default_policy": "selective",
                 "requires_approval": ["channel_write", "execute"],
             },
             "control_system": {"writes_enabled": True},
@@ -104,7 +110,8 @@ def test_selective_mode_blocks_python_write(tmp_path, hook_runner, make_config):
     config = make_config(
         {
             "approval": {
-                "enabled": True, "default_policy": "selective",
+                "enabled": True,
+                "default_policy": "selective",
             },
             "control_system": {"writes_enabled": True},
         }
@@ -130,7 +137,8 @@ def test_selective_mode_allows_readonly_python(tmp_path, hook_runner, make_confi
     config = make_config(
         {
             "approval": {
-                "enabled": True, "default_policy": "selective",
+                "enabled": True,
+                "default_policy": "selective",
             },
             "control_system": {"writes_enabled": True},
         }
@@ -229,7 +237,8 @@ def test_approval_ask_includes_tool_info(tmp_path, hook_runner, make_config):
     config = make_config(
         {
             "approval": {
-                "enabled": True, "default_policy": "selective",
+                "enabled": True,
+                "default_policy": "selective",
                 "requires_approval": ["channel_write"],
             },
             "control_system": {"writes_enabled": True},

@@ -5,13 +5,12 @@ pattern detection, script args, encoding errors, and delegation to the
 shared response builder.
 """
 
-import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from osprey.mcp_server.python_executor.executor import ExecutionResult
-from tests.mcp_server.conftest import assert_error, assert_raises_error, extract_response_dict, get_tool_fn
+from tests.mcp_server.conftest import assert_raises_error, extract_response_dict, get_tool_fn
 
 
 def _get_python_execute_file():
@@ -141,7 +140,7 @@ async def test_execute_file_not_found(tmp_path, monkeypatch):
                 description="missing file test",
             )
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -225,7 +224,7 @@ async def test_execute_file_safety_check_blocks(tmp_path, monkeypatch):
             )
 
     mock_exec.assert_not_called()
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -265,7 +264,7 @@ async def test_execute_file_readonly_blocks_writes(tmp_path, monkeypatch):
             )
 
     mock_exec.assert_not_called()
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit

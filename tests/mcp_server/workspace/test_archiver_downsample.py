@@ -10,7 +10,7 @@ import json
 import pytest
 
 from osprey.stores.artifact_store import initialize_artifact_store
-from tests.mcp_server.conftest import assert_error, assert_raises_error, get_tool_fn
+from tests.mcp_server.conftest import assert_raises_error, get_tool_fn
 
 
 def _get_archiver_downsample():

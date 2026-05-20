@@ -59,10 +59,10 @@ async def create_interactive_plot(
     """
     if not code or not code.strip():
         return make_error(
-                "validation_error",
-                "No plotting code provided.",
-                ["Provide Python code that creates an interactive Plotly chart."],
-            )
+            "validation_error",
+            "No plotting code provided.",
+            ["Provide Python code that creates an interactive Plotly chart."],
+        )
 
     # Build the full code to execute
     parts = [_INTERACTIVE_PREAMBLE]
@@ -85,18 +85,17 @@ async def create_interactive_plot(
 
     if not exec_result.success:
         return make_error(
-                "execution_error",
-                f"Interactive plot creation failed: "
-                f"{exec_result.error_message or exec_result.stderr}",
-                [
-                    "Check your Plotly code for syntax or runtime errors.",
-                    "Ensure you call save_artifact(fig, 'title') to produce output.",
-                    "Ensure data variables are defined or use data_source parameter.",
-                    "If the error mentions `titlefont` or `titleside`, Plotly removed "
-                    "those in 5.x — use `title=dict(text='...', font=dict(size=N))` "
-                    "(and `title=dict(side=...)` for colorbars).",
-                ],
-            )
+            "execution_error",
+            f"Interactive plot creation failed: {exec_result.error_message or exec_result.stderr}",
+            [
+                "Check your Plotly code for syntax or runtime errors.",
+                "Ensure you call save_artifact(fig, 'title') to produce output.",
+                "Ensure data variables are defined or use data_source parameter.",
+                "If the error mentions `titlefont` or `titleside`, Plotly removed "
+                "those in 5.x — use `title=dict(text='...', font=dict(size=N))` "
+                "(and `title=dict(side=...)` for colorbars).",
+            ],
+        )
 
     # Collect artifacts with category and embedded metadata
     artifact_ids = collect_and_register_artifacts(

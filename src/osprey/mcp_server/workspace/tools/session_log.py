@@ -10,6 +10,7 @@ import logging
 from datetime import datetime
 
 from fastmcp.exceptions import ToolError
+
 from osprey.mcp_server.errors import make_error
 from osprey.mcp_server.workspace.server import mcp
 from osprey.mcp_server.workspace.transcript_reader import TranscriptReader

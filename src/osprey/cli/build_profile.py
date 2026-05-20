@@ -490,8 +490,9 @@ def _parse_profile(raw: dict[str, Any]) -> BuildProfile:
         url = sdef.get("url")
         command = sdef.get("command", "")
         port = sdef.get("port")
-        if port is not None and (not isinstance(port, int) or isinstance(port, bool)
-                                 or not (1 <= port <= 65535)):
+        if port is not None and (
+            not isinstance(port, int) or isinstance(port, bool) or not (1 <= port <= 65535)
+        ):
             raise BuildProfileError(
                 f"MCP server '{name}' port must be an integer in 1..65535 (got {port!r})"
             )

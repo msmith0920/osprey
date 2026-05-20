@@ -5,10 +5,11 @@ and returns its content, or a proper error envelope if the file is missing.
 """
 
 import json
-from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 import pytest
 import yaml
+
+from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 
 @pytest.fixture

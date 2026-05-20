@@ -2,13 +2,13 @@
 
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
-from tests.mcp_server.conftest import assert_error, assert_raises_error, extract_response_dict
 
 import pytest
 
 from osprey.mcp_server.ariel.server_context import initialize_ariel_context
 from osprey.services.ariel_search.models import SearchMode
 from tests.mcp_server.ariel.conftest import get_tool_fn, make_mock_entry
+from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 
 def _make_search_result(entries, reasoning="", sources=()):
@@ -149,7 +149,7 @@ async def test_keyword_search_empty_query():
     with assert_raises_error(error_type="validation_error") as _exc_ctx:
         await fn(query="")
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit

@@ -4,12 +4,11 @@ Covers: syntax errors caught before execution, exec()/eval() flagged,
 prohibited imports blocked, valid code passes through.
 """
 
-import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from tests.mcp_server.conftest import assert_error, assert_raises_error, extract_response_dict, get_tool_fn
+from tests.mcp_server.conftest import assert_raises_error, extract_response_dict, get_tool_fn
 
 
 def _get_python_execute():
@@ -135,7 +134,7 @@ async def test_dunder_import_flagged(tmp_path, monkeypatch):
             execution_mode="readonly",
         )
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit

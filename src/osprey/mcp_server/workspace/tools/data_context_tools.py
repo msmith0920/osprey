@@ -10,6 +10,7 @@ import json
 import logging
 
 from fastmcp.exceptions import ToolError
+
 from osprey.mcp_server.errors import make_error
 from osprey.mcp_server.workspace.server import mcp
 
@@ -68,10 +69,10 @@ async def data_list(
     except Exception as exc:
         logger.exception("data_list failed")
         return make_error(
-                "internal_error",
-                f"Failed to list data: {exc}",
-                ["Check that the _agent_data directory is accessible."],
-            )
+            "internal_error",
+            f"Failed to list data: {exc}",
+            ["Check that the _agent_data directory is accessible."],
+        )
 
 
 # Inline read cap. Above this, the file is too large to safely return in a
@@ -177,57 +178,57 @@ async def data_read(entry_id: str) -> str:
 
         if entry is None:
             return make_error(
-                    "not_found",
-                    f"Data entry '{entry_id}' not found.",
-                    ["Use data_list to see available entries."],
-                )
+                "not_found",
+                f"Data entry '{entry_id}' not found.",
+                ["Use data_list to see available entries."],
+            )
 
         # Get the data file path
         file_path = store.get_file_path(entry_id)
         if file_path is None or not file_path.exists():
             return make_error(
-                    "file_not_found",
-                    f"Data file for entry '{entry_id}' is missing from disk.",
-                    [
-                        "The data file may have been deleted externally.",
-                        "Use data_list to find other entries.",
-                    ],
-                )
+                "file_not_found",
+                f"Data file for entry '{entry_id}' is missing from disk.",
+                [
+                    "The data file may have been deleted externally.",
+                    "Use data_list to find other entries.",
+                ],
+            )
 
         size = file_path.stat().st_size
         if size > _MAX_INLINE_SIZE:
             preview = _build_oversize_preview(file_path, size)
             return make_error(
-                    "file_too_large",
+                "file_too_large",
+                (
+                    f"Data file for entry '{entry_id}' is {size:,} bytes "
+                    f"(>{_MAX_INLINE_SIZE:,} bytes / "
+                    f"{_MAX_INLINE_SIZE // 1024} KB)."
+                ),
+                [
                     (
-                        f"Data file for entry '{entry_id}' is {size:,} bytes "
-                        f"(>{_MAX_INLINE_SIZE:,} bytes / "
-                        f"{_MAX_INLINE_SIZE // 1024} KB)."
+                        "Load the file in the Python sandbox: pass the code "
+                        f"`with open('{file_path}') as f: data = json.load(f)` "
+                        "to the `execute` tool."
                     ),
-                    [
-                        (
-                            "Load the file in the Python sandbox: pass the code "
-                            f"`with open('{file_path}') as f: data = json.load(f)` "
-                            "to the `execute` tool."
-                        ),
-                        (
-                            "For visualization, pass entry_id as `data_source=` to "
-                            "`create_static_plot` or `create_interactive_plot` — the "
-                            "plot tool auto-loads the data inside its sandbox."
-                        ),
-                        (
-                            "Use `archiver_downsample` to reduce row count before "
-                            "reading if this is timeseries data."
-                        ),
-                    ],
-                    details={
-                        "entry_id": entry_id,
-                        "size_bytes": size,
-                        "limit_bytes": _MAX_INLINE_SIZE,
-                        "file_path": str(file_path),
-                        "preview": preview,
-                    },
-                )
+                    (
+                        "For visualization, pass entry_id as `data_source=` to "
+                        "`create_static_plot` or `create_interactive_plot` — the "
+                        "plot tool auto-loads the data inside its sandbox."
+                    ),
+                    (
+                        "Use `archiver_downsample` to reduce row count before "
+                        "reading if this is timeseries data."
+                    ),
+                ],
+                details={
+                    "entry_id": entry_id,
+                    "size_bytes": size,
+                    "limit_bytes": _MAX_INLINE_SIZE,
+                    "file_path": str(file_path),
+                    "preview": preview,
+                },
+            )
 
         content = file_path.read_text(encoding="utf-8")
         return content
@@ -237,10 +238,10 @@ async def data_read(entry_id: str) -> str:
     except Exception as exc:
         logger.exception("data_read failed")
         return make_error(
-                "internal_error",
-                f"Failed to read data entry: {exc}",
-                ["Check that the _agent_data directory is accessible."],
-            )
+            "internal_error",
+            f"Failed to read data entry: {exc}",
+            ["Check that the _agent_data directory is accessible."],
+        )
 
 
 @mcp.tool()
@@ -263,10 +264,10 @@ async def data_delete(entry_id: str) -> str:
 
         if not deleted:
             return make_error(
-                    "not_found",
-                    f"Data entry '{entry_id}' not found.",
-                    ["Check the entry_id from a previous tool response."],
-                )
+                "not_found",
+                f"Data entry '{entry_id}' not found.",
+                ["Check the entry_id from a previous tool response."],
+            )
 
         return json.dumps(
             {
@@ -281,7 +282,7 @@ async def data_delete(entry_id: str) -> str:
     except Exception as exc:
         logger.exception("data_delete failed")
         return make_error(
-                "internal_error",
-                f"Failed to delete data entry: {exc}",
-                ["Check that the _agent_data directory is accessible."],
-            )
+            "internal_error",
+            f"Failed to delete data entry: {exc}",
+            ["Check that the _agent_data directory is accessible."],
+        )

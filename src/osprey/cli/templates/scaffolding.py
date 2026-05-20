@@ -331,9 +331,7 @@ def copy_template_data(
 _ALL_PARADIGMS: tuple[str, ...] = ("in_context", "hierarchical", "middle_layer")
 
 
-def materialize_tier_artifacts(
-    project_dir: Path, tier: int, channel_finder_mode: str
-) -> None:
+def materialize_tier_artifacts(project_dir: Path, tier: int, channel_finder_mode: str) -> None:
     """Materialize tier-routed channel databases AND benchmark queries.
 
     The preset ships:
@@ -408,8 +406,7 @@ def materialize_tier_artifacts(
     queries_dst = project_dir / "data" / "benchmarks" / "queries.json"
     if not queries_src.exists():
         raise FileNotFoundError(
-            f"Tier-routed benchmark queries file not found: {queries_src} "
-            f"(tier={tier})"
+            f"Tier-routed benchmark queries file not found: {queries_src} (tier={tier})"
         )
     pairs.append((queries_src, queries_dst))
 

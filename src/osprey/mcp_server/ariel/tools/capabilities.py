@@ -1,8 +1,9 @@
 """MCP tool: capabilities — report ARIEL service capabilities."""
 
-from fastmcp.exceptions import ToolError
 import json
 import logging
+
+from fastmcp.exceptions import ToolError
 
 from osprey.mcp_server.ariel.server import make_error, mcp
 from osprey.mcp_server.ariel.server_context import get_ariel_context
@@ -49,7 +50,7 @@ async def capabilities() -> str:
     except Exception as exc:
         logger.exception("capabilities failed")
         return make_error(
-                "internal_error",
-                f"Failed to get capabilities: {exc}",
-                ["Check ARIEL configuration in config.yml."],
-            )
+            "internal_error",
+            f"Failed to get capabilities: {exc}",
+            ["Check ARIEL configuration in config.yml."],
+        )

@@ -161,9 +161,7 @@ class TestLlmJudgeCoverage:
             extra_recommended=["CH:Z"],
             reasoning="Agent enumerated A and B; also recommended Z.",
         )
-        covered, extras = llm_judge_coverage(
-            "some response text", ["CH:A", "CH:B"]
-        )
+        covered, extras = llm_judge_coverage("some response text", ["CH:A", "CH:B"])
         assert covered == ["CH:A", "CH:B"]
         assert extras == ["CH:Z"]
         mock_completion.assert_called_once()

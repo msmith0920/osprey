@@ -5,9 +5,10 @@ PROMPT-PROVIDER: This tool's docstring is a static prompt visible to Claude Code
   Facility-customizable: selection dict examples, level name examples
 """
 
-from fastmcp.exceptions import ToolError
 import json
 import logging
+
+from fastmcp.exceptions import ToolError
 
 from osprey.mcp_server.channel_finder_hierarchical.server import make_error, mcp
 from osprey.mcp_server.channel_finder_hierarchical.server_context import get_cf_hier_context
@@ -57,18 +58,18 @@ def build_channels(selections: dict) -> str:
 
     except ValueError as exc:
         return make_error(
-                "validation_error",
-                str(exc),
-                [
-                    "Use get_options to discover hierarchy levels and valid options.",
-                ],
-            )
+            "validation_error",
+            str(exc),
+            [
+                "Use get_options to discover hierarchy levels and valid options.",
+            ],
+        )
     except ToolError:
         raise
     except Exception as exc:
         logger.exception("build_channels failed")
         return make_error(
-                "internal_error",
-                f"Failed to build channels: {exc}",
-                ["Check that the channel finder database is configured."],
-            )
+            "internal_error",
+            f"Failed to build channels: {exc}",
+            ["Check that the channel finder database is configured."],
+        )

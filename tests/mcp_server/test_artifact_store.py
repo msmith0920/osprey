@@ -14,7 +14,6 @@ from unittest.mock import patch
 import pytest
 
 from tests.mcp_server.conftest import (
-    assert_error,
     assert_raises_error,
     extract_response_dict,
     get_tool_fn,
@@ -514,7 +513,7 @@ class TestArtifactSaveTool:
                 content="some content",
             )
 
-        data = _exc_ctx["envelope"]
+        _exc_ctx["envelope"]
 
     @pytest.mark.asyncio
     async def test_neither_file_nor_content_error(self, tmp_path, monkeypatch):
@@ -524,7 +523,7 @@ class TestArtifactSaveTool:
         with assert_raises_error(error_type="validation_error") as _exc_ctx:
             await fn(title="Empty")
 
-        data = _exc_ctx["envelope"]
+        _exc_ctx["envelope"]
 
     @pytest.mark.asyncio
     async def test_invalid_content_type_error(self, tmp_path, monkeypatch):
@@ -552,7 +551,7 @@ class TestArtifactSaveTool:
                 file_path="/nonexistent/file.txt",
             )
 
-        data = _exc_ctx["envelope"]
+        _exc_ctx["envelope"]
 
 
 # ---------------------------------------------------------------------------

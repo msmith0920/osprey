@@ -1,13 +1,12 @@
 """Tests for the create_document MCP tool."""
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 import pytest
 
 from osprey.stores.artifact_store import get_artifact_store
+from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 
 class TestCreateDocument:
@@ -136,7 +135,9 @@ Welcome to the presentation.
             patch("shutil.which", return_value="/usr/bin/pdflatex"),
             patch("subprocess.run", side_effect=mock_run),
         ):
-            result = extract_response_dict(await tool_fn(latex_source=simple_latex, title="Artifacts Test"))
+            result = extract_response_dict(
+                await tool_fn(latex_source=simple_latex, title="Artifacts Test")
+            )
 
         assert result["status"] == "success"
         store = get_artifact_store()

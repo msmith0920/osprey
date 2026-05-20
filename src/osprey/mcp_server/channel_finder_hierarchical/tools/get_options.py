@@ -5,9 +5,10 @@ PROMPT-PROVIDER: This tool's docstring is a static prompt visible to Claude Code
   Facility-customizable: level name examples, selection dict examples
 """
 
-from fastmcp.exceptions import ToolError
 import json
 import logging
+
+from fastmcp.exceptions import ToolError
 
 from osprey.mcp_server.channel_finder_hierarchical.server import make_error, mcp
 from osprey.mcp_server.channel_finder_hierarchical.server_context import get_cf_hier_context
@@ -46,19 +47,19 @@ def get_options(level: str, selections: dict | None = None) -> str:
 
     except ValueError as exc:
         return make_error(
-                "validation_error",
-                str(exc),
-                [
-                    "Use get_options to discover available hierarchy levels.",
-                    "Ensure previous level selections are valid.",
-                ],
-            )
+            "validation_error",
+            str(exc),
+            [
+                "Use get_options to discover available hierarchy levels.",
+                "Ensure previous level selections are valid.",
+            ],
+        )
     except ToolError:
         raise
     except Exception as exc:
         logger.exception("get_options failed")
         return make_error(
-                "internal_error",
-                f"Failed to get options: {exc}",
-                ["Check that the channel finder database is configured."],
-            )
+            "internal_error",
+            f"Failed to get options: {exc}",
+            ["Check that the channel finder database is configured."],
+        )

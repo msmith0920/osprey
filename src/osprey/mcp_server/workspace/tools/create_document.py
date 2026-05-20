@@ -13,6 +13,7 @@ import tempfile
 from pathlib import Path
 
 from fastmcp.exceptions import ToolError
+
 from osprey.mcp_server.errors import make_error
 from osprey.mcp_server.workspace.server import mcp
 
@@ -75,22 +76,22 @@ async def create_document(
     """
     if not latex_source or not latex_source.strip():
         return make_error(
-                "validation_error",
-                "No LaTeX source provided.",
-                ["Provide complete LaTeX source code."],
-            )
+            "validation_error",
+            "No LaTeX source provided.",
+            ["Provide complete LaTeX source code."],
+        )
 
     # Check pdflatex availability
     if shutil.which("pdflatex") is None:
         return make_error(
-                "dependency_missing",
-                "pdflatex is not installed.",
-                [
-                    "macOS: brew install --cask mactex  (or: brew install basictex)",
-                    "Ubuntu: apt install texlive-latex-base texlive-latex-extra",
-                    "pdflatex must be installed as a system package, not via pip.",
-                ],
-            )
+            "dependency_missing",
+            "pdflatex is not installed.",
+            [
+                "macOS: brew install --cask mactex  (or: brew install basictex)",
+                "Ubuntu: apt install texlive-latex-base texlive-latex-extra",
+                "pdflatex must be installed as a system package, not via pip.",
+            ],
+        )
 
     with tempfile.TemporaryDirectory(prefix="osprey_latex_") as tmp:
         build_dir = Path(tmp)
@@ -125,19 +126,19 @@ async def create_document(
                     compile_errors = error_lines or [result.stdout[-2000:]]
             except subprocess.TimeoutExpired:
                 return make_error(
-                        "execution_error",
-                        f"pdflatex timed out on pass {pass_num}.",
-                        ["Simplify the LaTeX source or check for infinite loops."],
-                    )
+                    "execution_error",
+                    f"pdflatex timed out on pass {pass_num}.",
+                    ["Simplify the LaTeX source or check for infinite loops."],
+                )
 
         # Check if PDF was produced
         pdf_path = build_dir / "document.pdf"
         if not pdf_path.exists():
             return make_error(
-                    "compilation_error",
-                    "LaTeX compilation failed — no PDF produced.",
-                    compile_errors[:5] or ["Check the LaTeX source for syntax errors."],
-                )
+                "compilation_error",
+                "LaTeX compilation failed — no PDF produced.",
+                compile_errors[:5] or ["Check the LaTeX source for syntax errors."],
+            )
 
         # Save artifacts
         from osprey.stores.artifact_store import get_artifact_store

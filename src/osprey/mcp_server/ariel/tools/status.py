@@ -1,8 +1,9 @@
 """MCP tool: status — report ARIEL service health and statistics."""
 
-from fastmcp.exceptions import ToolError
 import json
 import logging
+
+from fastmcp.exceptions import ToolError
 
 from osprey.mcp_server.ariel.server import make_error, mcp
 from osprey.mcp_server.ariel.server_context import get_ariel_context
@@ -54,10 +55,10 @@ async def status() -> str:
     except Exception as exc:
         logger.exception("status failed")
         return make_error(
-                "internal_error",
-                f"Failed to get status: {exc}",
-                [
-                    "Check ARIEL database connectivity.",
-                    "Verify config.yml has correct ariel.database settings.",
-                ],
-            )
+            "internal_error",
+            f"Failed to get status: {exc}",
+            [
+                "Check ARIEL database connectivity.",
+                "Verify config.yml has correct ariel.database settings.",
+            ],
+        )

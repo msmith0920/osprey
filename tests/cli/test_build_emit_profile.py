@@ -23,9 +23,7 @@ def runner() -> CliRunner:
 
 def test_emit_profile_writes_expected_tree(runner: CliRunner, tmp_path: Path) -> None:
     target = tmp_path / "my-profile"
-    result = runner.invoke(
-        build, ["--emit-profile", str(target), "--preset", "hello-world"]
-    )
+    result = runner.invoke(build, ["--emit-profile", str(target), "--preset", "hello-world"])
     assert result.exit_code == 0, result.output
     assert (target / "profile.yml").is_file()
     assert (target / "README.md").is_file()
@@ -37,9 +35,7 @@ def test_emit_profile_writes_expected_tree(runner: CliRunner, tmp_path: Path) ->
 def test_emit_profile_seed_extends_preset(runner: CliRunner, tmp_path: Path) -> None:
     """The seed ``profile.yml`` must include the preset name in its ``extends:`` line."""
     target = tmp_path / "my-profile"
-    result = runner.invoke(
-        build, ["--emit-profile", str(target), "--preset", "hello-world"]
-    )
+    result = runner.invoke(build, ["--emit-profile", str(target), "--preset", "hello-world"])
     assert result.exit_code == 0, result.output
     text = (target / "profile.yml").read_text()
     assert "extends: hello-world" in text
@@ -48,9 +44,7 @@ def test_emit_profile_seed_extends_preset(runner: CliRunner, tmp_path: Path) -> 
 def test_emit_profile_normalizes_preset_name(runner: CliRunner, tmp_path: Path) -> None:
     """``--preset control_assistant`` (underscored) writes the hyphenated form in extends."""
     target = tmp_path / "my-profile"
-    result = runner.invoke(
-        build, ["--emit-profile", str(target), "--preset", "control_assistant"]
-    )
+    result = runner.invoke(build, ["--emit-profile", str(target), "--preset", "control_assistant"])
     assert result.exit_code == 0, result.output
     text = (target / "profile.yml").read_text()
     assert "extends: control-assistant" in text
@@ -59,9 +53,7 @@ def test_emit_profile_normalizes_preset_name(runner: CliRunner, tmp_path: Path) 
 def test_emit_profile_yaml_loads_through_resolver(runner: CliRunner, tmp_path: Path) -> None:
     """The generated ``profile.yml`` must round-trip through ``resolve_build_profile``."""
     target = tmp_path / "my-profile"
-    result = runner.invoke(
-        build, ["--emit-profile", str(target), "--preset", "hello-world"]
-    )
+    result = runner.invoke(build, ["--emit-profile", str(target), "--preset", "hello-world"])
     assert result.exit_code == 0, result.output
     resolved, _ = resolve_build_profile((target / "profile.yml").resolve(), preset=None)
     # Preset's data_bundle/provider flow through the extends chain.
@@ -75,9 +67,7 @@ def test_emit_profile_then_build_succeeds(runner: CliRunner, tmp_path: Path) -> 
     out_dir = tmp_path / "out"
     out_dir.mkdir()
 
-    scaffold = runner.invoke(
-        build, ["--emit-profile", str(profile_dir), "--preset", "hello-world"]
-    )
+    scaffold = runner.invoke(build, ["--emit-profile", str(profile_dir), "--preset", "hello-world"])
     assert scaffold.exit_code == 0, scaffold.output
 
     rebuild = runner.invoke(
@@ -160,9 +150,7 @@ def test_emit_profile_requires_preset(runner: CliRunner, tmp_path: Path) -> None
 
 
 def test_emit_profile_rejects_unknown_preset(runner: CliRunner, tmp_path: Path) -> None:
-    result = runner.invoke(
-        build, ["--emit-profile", str(tmp_path / "p"), "--preset", "bogus"]
-    )
+    result = runner.invoke(build, ["--emit-profile", str(tmp_path / "p"), "--preset", "bogus"])
     assert result.exit_code == 2, result.output
     assert "bogus" in result.output.lower()
 
@@ -170,9 +158,7 @@ def test_emit_profile_rejects_unknown_preset(runner: CliRunner, tmp_path: Path) 
 def test_emit_profile_rejects_existing_target(runner: CliRunner, tmp_path: Path) -> None:
     target = tmp_path / "already-there"
     target.mkdir()
-    result = runner.invoke(
-        build, ["--emit-profile", str(target), "--preset", "hello-world"]
-    )
+    result = runner.invoke(build, ["--emit-profile", str(target), "--preset", "hello-world"])
     assert result.exit_code == 2, result.output
     assert "already exists" in result.output.lower()
 

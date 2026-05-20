@@ -497,12 +497,7 @@ class TestReadDbPathFromConfig:
         (project_dir / "config.yml").write_text(yaml.dump(config), encoding="utf-8")
 
         result = read_db_path_from_config(project_dir, "in_context")
-        expected = (
-            project_dir
-            / "data"
-            / "channel_databases"
-            / "in_context.json"
-        ).resolve()
+        expected = (project_dir / "data" / "channel_databases" / "in_context.json").resolve()
         assert result == expected
 
     def test_missing_config_raises(self, tmp_path: Path):

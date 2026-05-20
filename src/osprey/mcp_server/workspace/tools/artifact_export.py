@@ -4,6 +4,7 @@ import json
 import logging
 
 from fastmcp.exceptions import ToolError
+
 from osprey.mcp_server.errors import make_error
 from osprey.mcp_server.http import gallery_url
 from osprey.mcp_server.workspace.server import mcp
@@ -40,10 +41,10 @@ async def artifact_export(
 
     if entry is None:
         return make_error(
-                "not_found",
-                f"Artifact '{artifact_id}' not found.",
-                ["Use artifact_save or execute to create artifacts first."],
-            )
+            "not_found",
+            f"Artifact '{artifact_id}' not found.",
+            ["Use artifact_save or execute to create artifacts first."],
+        )
 
     target_mime = f"image/{format}"
 
@@ -55,13 +56,13 @@ async def artifact_export(
     # Only HTML artifacts can be converted
     if entry.mime_type != "text/html":
         return make_error(
-                "conversion_not_supported",
-                f"Cannot convert artifact type '{entry.mime_type}' to {format}.",
-                [
-                    "Only HTML artifacts (e.g. Plotly plots) can be exported to images.",
-                    "Images and other formats are already in a static format.",
-                ],
-            )
+            "conversion_not_supported",
+            f"Cannot convert artifact type '{entry.mime_type}' to {format}.",
+            [
+                "Only HTML artifacts (e.g. Plotly plots) can be exported to images.",
+                "Images and other formats are already in a static format.",
+            ],
+        )
 
     # Convert HTML → image via Playwright
     try:
@@ -71,18 +72,18 @@ async def artifact_export(
         )
     except ImportError:
         return make_error(
-                "dependency_missing",
-                "Export module not available.",
-                ["Ensure osprey.mcp_server.export is installed."],
-            )
+            "dependency_missing",
+            "Export module not available.",
+            ["Ensure osprey.mcp_server.export is installed."],
+        )
 
     html_path = store.get_file_path(artifact_id)
     if html_path is None or not html_path.exists():
         return make_error(
-                "file_not_found",
-                f"Artifact file not found on disk for '{artifact_id}'.",
-                ["The artifact index may be stale. Try saving the artifact again."],
-            )
+            "file_not_found",
+            f"Artifact file not found on disk for '{artifact_id}'.",
+            ["The artifact index may be stale. Try saving the artifact again."],
+        )
 
     output_path = html_path.with_suffix(f".{format}")
 
@@ -96,22 +97,22 @@ async def artifact_export(
         )
     except PlaywrightNotInstalledError as exc:
         return make_error(
-                "dependency_missing",
-                str(exc),
-                [
-                    "Install Playwright: pip install playwright",
-                    "Install browser: playwright install chromium",
-                ],
-            )
+            "dependency_missing",
+            str(exc),
+            [
+                "Install Playwright: pip install playwright",
+                "Install browser: playwright install chromium",
+            ],
+        )
     except ToolError:
         raise
     except Exception as exc:
         logger.exception("artifact_export conversion failed")
         return make_error(
-                "conversion_error",
-                f"HTML-to-image conversion failed: {exc}",
-                ["Check MCP server logs for details."],
-            )
+            "conversion_error",
+            f"HTML-to-image conversion failed: {exc}",
+            ["Check MCP server logs for details."],
+        )
 
     # Save converted image as a new artifact
     try:
@@ -135,7 +136,7 @@ async def artifact_export(
     except Exception as exc:
         logger.exception("artifact_export save failed")
         return make_error(
-                "internal_error",
-                f"Failed to save exported image: {exc}",
-                ["Check MCP server logs for details."],
-            )
+            "internal_error",
+            f"Failed to save exported image: {exc}",
+            ["Check MCP server logs for details."],
+        )

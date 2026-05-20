@@ -1,6 +1,5 @@
 """Tests for the artifact_export MCP tool."""
 
-import json
 from unittest.mock import patch
 
 import pytest
@@ -8,7 +7,6 @@ import pytest
 from osprey.mcp_server.export.converter import PlaywrightNotInstalledError
 from osprey.stores.artifact_store import ArtifactStore
 from tests.mcp_server.conftest import (
-    assert_error,
     assert_raises_error,
     extract_response_dict,
     get_tool_fn,
@@ -94,7 +92,7 @@ async def test_export_nonexistent_artifact(tmp_path, monkeypatch):
         with assert_raises_error(error_type="not_found") as _exc_ctx:
             await fn(artifact_id="nonexistent-id")
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -117,7 +115,7 @@ async def test_export_non_html_artifact(tmp_path, monkeypatch):
         with assert_raises_error(error_type="conversion_not_supported") as _exc_ctx:
             await fn(artifact_id=entry.id)
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -149,4 +147,4 @@ async def test_export_playwright_missing(tmp_path, monkeypatch):
         with assert_raises_error(error_type="dependency_missing") as _exc_ctx:
             await fn(artifact_id=entry.id)
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]

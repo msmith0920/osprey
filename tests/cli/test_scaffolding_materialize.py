@@ -69,9 +69,7 @@ class TestSingleParadigmModes:
     def test_single_mode_only_materializes_that_paradigm(
         self, rendered_project: Path, paradigm: str
     ):
-        materialize_tier_artifacts(
-            rendered_project, tier=1, channel_finder_mode=paradigm
-        )
+        materialize_tier_artifacts(rendered_project, tier=1, channel_finder_mode=paradigm)
 
         cdb = rendered_project / "data" / "channel_databases"
 
@@ -105,12 +103,8 @@ class TestTier3Selection:
     `cross_paradigm/queries/tier3_queries.json`, byte-exact."""
 
     @pytest.mark.parametrize("paradigm", _PARADIGMS)
-    def test_tier3_flat_file_byte_equals_preset_tier3(
-        self, rendered_project: Path, paradigm: str
-    ):
-        materialize_tier_artifacts(
-            rendered_project, tier=3, channel_finder_mode=paradigm
-        )
+    def test_tier3_flat_file_byte_equals_preset_tier3(self, rendered_project: Path, paradigm: str):
+        materialize_tier_artifacts(rendered_project, tier=3, channel_finder_mode=paradigm)
 
         flat = rendered_project / "data" / "channel_databases" / f"{paradigm}.json"
         expected = (_PRESET_CDB_DIR / "tiers" / "tier3" / f"{paradigm}.json").read_bytes()
@@ -134,9 +128,7 @@ class TestMissingSourceDb:
         (tier_dir / "hierarchical.json").write_text("{}")
 
         with pytest.raises(FileNotFoundError, match="middle_layer"):
-            materialize_tier_artifacts(
-                project_dir, tier=1, channel_finder_mode="middle_layer"
-            )
+            materialize_tier_artifacts(project_dir, tier=1, channel_finder_mode="middle_layer")
 
         # On failure the tiers/ tree must still be present (no partial rmtree).
         assert tier_dir.exists()
@@ -148,14 +140,10 @@ class TestMissingSourceDb:
     def test_missing_source_for_single_mode_raises(self, tmp_path: Path):
         project_dir = tmp_path / "proj"
         # tier2 dir exists but is empty — single-paradigm request should fail.
-        (project_dir / "data" / "channel_databases" / "tiers" / "tier2").mkdir(
-            parents=True
-        )
+        (project_dir / "data" / "channel_databases" / "tiers" / "tier2").mkdir(parents=True)
 
         with pytest.raises(FileNotFoundError, match="hierarchical"):
-            materialize_tier_artifacts(
-                project_dir, tier=2, channel_finder_mode="hierarchical"
-            )
+            materialize_tier_artifacts(project_dir, tier=2, channel_finder_mode="hierarchical")
 
 
 class TestMissingQueriesFile:
@@ -169,9 +157,7 @@ class TestMissingQueriesFile:
         (tier_dir / "in_context.json").write_text("{}")
 
         with pytest.raises(FileNotFoundError, match="queries"):
-            materialize_tier_artifacts(
-                project_dir, tier=1, channel_finder_mode="in_context"
-            )
+            materialize_tier_artifacts(project_dir, tier=1, channel_finder_mode="in_context")
 
         # Failure happens before any copy/rmtree — tiers/ still in place,
         # no flat artifacts created.
@@ -191,9 +177,7 @@ class TestSubtreePruning:
         assert (cdb / "tiers" / "tier1").is_dir()
         assert (cross_paradigm / "queries").is_dir()
 
-        materialize_tier_artifacts(
-            rendered_project, tier=1, channel_finder_mode="hierarchical"
-        )
+        materialize_tier_artifacts(rendered_project, tier=1, channel_finder_mode="hierarchical")
 
         assert not (cdb / "tiers").exists()
         assert not cross_paradigm.exists()
@@ -205,9 +189,7 @@ class TestUnknownMode:
     @pytest.mark.parametrize("mode", ["bogus", "all", None])
     def test_unknown_mode_raises_value_error(self, rendered_project: Path, mode):
         with pytest.raises(ValueError, match="Unknown channel_finder_mode"):
-            materialize_tier_artifacts(
-                rendered_project, tier=1, channel_finder_mode=mode
-            )
+            materialize_tier_artifacts(rendered_project, tier=1, channel_finder_mode=mode)
 
 
 class TestNoOpOnMissingTiersSubtree:
@@ -218,8 +200,6 @@ class TestNoOpOnMissingTiersSubtree:
         project_dir = tmp_path / "proj"
         (project_dir / "data").mkdir(parents=True)
         # Must NOT raise, even with a fully-valid tier/mode combination.
-        materialize_tier_artifacts(
-            project_dir, tier=1, channel_finder_mode="hierarchical"
-        )
+        materialize_tier_artifacts(project_dir, tier=1, channel_finder_mode="hierarchical")
         # Nothing got created — flat root doesn't exist either.
         assert not (project_dir / "data" / "channel_databases").exists()

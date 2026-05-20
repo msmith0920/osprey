@@ -127,9 +127,7 @@ def test_set_with_list_value_extends(runner: CliRunner, tmp_path: Path) -> None:
     assert {"hook-log", "hook-config", "approval"} <= hooks
 
 
-def test_preset_ariel_standalone_renders_logbook_persona(
-    runner: CliRunner, tmp_path: Path
-) -> None:
+def test_preset_ariel_standalone_renders_logbook_persona(runner: CliRunner, tmp_path: Path) -> None:
     """The ariel-standalone preset's ``claude_md_template`` must travel from
     the preset YAML, through the build-profile parser, into the render
     context, into the rendered ``CLAUDE.md``, and into the manifest creation
@@ -163,9 +161,7 @@ def test_preset_ariel_standalone_renders_logbook_persona(
     assert "Logbook Research Assistant" in claude_md, claude_md[:200]
     assert "Control System Assistant" not in claude_md
 
-    manifest = json.loads(
-        (project_dir / ".osprey-manifest.json").read_text(encoding="utf-8")
-    )
+    manifest = json.loads((project_dir / ".osprey-manifest.json").read_text(encoding="utf-8"))
     assert manifest["creation"]["claude_md_template"] == "CLAUDE.ariel.md.j2"
 
 

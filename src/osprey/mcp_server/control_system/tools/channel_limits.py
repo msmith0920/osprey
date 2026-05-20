@@ -150,17 +150,17 @@ async def channel_limits(
     # Validate parameter combinations
     if channels is not None and pattern is not None:
         return make_error(
-                "validation_error",
-                "Cannot combine 'channels' (exact lookup) with 'pattern' (regex search).",
-                ["Use 'channels' for exact addresses or 'pattern' for regex matching, not both."],
-            )
+            "validation_error",
+            "Cannot combine 'channels' (exact lookup) with 'pattern' (regex search).",
+            ["Use 'channels' for exact addresses or 'pattern' for regex matching, not both."],
+        )
 
     if filter_by is not None and filter_by not in VALID_FILTERS:
         return make_error(
-                "validation_error",
-                f"Invalid filter_by value: {filter_by!r}",
-                [f"Valid values: {', '.join(sorted(VALID_FILTERS))}"],
-            )
+            "validation_error",
+            f"Invalid filter_by value: {filter_by!r}",
+            [f"Valid values: {', '.join(sorted(VALID_FILTERS))}"],
+        )
 
     # Validate regex before loading validator
     if pattern is not None:
@@ -168,10 +168,10 @@ async def channel_limits(
             re.compile(pattern)
         except re.error as exc:
             return make_error(
-                    "validation_error",
-                    f"Invalid regex pattern: {exc}",
-                    ["Provide a valid Python regular expression."],
-                )
+                "validation_error",
+                f"Invalid regex pattern: {exc}",
+                ["Provide a valid Python regular expression."],
+            )
 
     # Load validator
     try:

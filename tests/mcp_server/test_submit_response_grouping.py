@@ -8,9 +8,6 @@ The ``tool_source`` field is always ``"submit_response"`` (the actual MCP tool),
 while ``source_agent`` carries the delegating agent name.
 """
 
-import json
-from tests.mcp_server.conftest import extract_response_dict
-
 import pytest
 
 from osprey.mcp_server.workspace.tools.submit_response import submit_response
@@ -19,6 +16,7 @@ from osprey.stores.artifact_store import (
     initialize_artifact_store,
     reset_artifact_store,
 )
+from tests.mcp_server.conftest import extract_response_dict
 
 _fn = submit_response.fn if hasattr(submit_response, "fn") else submit_response
 

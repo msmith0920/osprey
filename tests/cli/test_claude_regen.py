@@ -532,9 +532,7 @@ class TestDisableServers:
         # Non-var values should pass through unchanged
         assert env["EXAMPLE_URL"] == "https://example.invalid"
 
-    def test_custom_server_env_preserves_placeholder_when_var_set(
-        self, tmp_path, monkeypatch
-    ):
+    def test_custom_server_env_preserves_placeholder_when_var_set(self, tmp_path, monkeypatch):
         """`${VAR}` placeholders survive even when VAR is set at build time.
 
         Build-time expansion is wrong even when the var IS set: secrets get

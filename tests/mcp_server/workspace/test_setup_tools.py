@@ -325,7 +325,10 @@ async def test_patch_creates_nested_keys(project_dir):
 async def test_patch_whitelist_enforcement(project_dir):
     """setup_patch rejects files not in the whitelist."""
     fn = _get_setup_patch()
-    with _patch_config_path(project_dir), assert_raises_error(error_type="validation_error") as _exc_ctx:
+    with (
+        _patch_config_path(project_dir),
+        assert_raises_error(error_type="validation_error") as _exc_ctx,
+    ):
         await fn(file="settings.json", key_path="foo", value="bar")
 
     result = _exc_ctx["envelope"]
@@ -337,7 +340,10 @@ async def test_patch_whitelist_enforcement(project_dir):
 async def test_patch_rejects_traversal(project_dir):
     """setup_patch rejects key_path with '..' traversal."""
     fn = _get_setup_patch()
-    with _patch_config_path(project_dir), assert_raises_error(error_type="validation_error") as _exc_ctx:
+    with (
+        _patch_config_path(project_dir),
+        assert_raises_error(error_type="validation_error") as _exc_ctx,
+    ):
         await fn(file="config.yml", key_path="foo..bar", value="baz")
 
     result = _exc_ctx["envelope"]

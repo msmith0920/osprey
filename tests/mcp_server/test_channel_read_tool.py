@@ -4,14 +4,12 @@ Covers: single read, multiple reads, metadata on/off, connection errors,
 unknown channels, and error format compliance.
 """
 
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from osprey.mcp_server.control_system.server_context import initialize_server_context
 from tests.mcp_server.conftest import (
-    assert_error,
     assert_raises_error,
     extract_response_dict,
     get_tool_fn,
@@ -180,4 +178,4 @@ async def test_channel_read_empty_list(tmp_path, monkeypatch):
     with assert_raises_error(error_type="validation_error") as _exc_ctx:
         await fn(channels=[])
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]

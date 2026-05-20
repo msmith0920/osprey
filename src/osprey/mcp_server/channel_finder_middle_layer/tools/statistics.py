@@ -1,8 +1,9 @@
 """MCP tool: statistics — get database statistics."""
 
-from fastmcp.exceptions import ToolError
 import json
 import logging
+
+from fastmcp.exceptions import ToolError
 
 from osprey.mcp_server.channel_finder_middle_layer.server import make_error, mcp
 from osprey.mcp_server.channel_finder_middle_layer.server_context import get_cf_ml_context
@@ -29,7 +30,7 @@ def statistics() -> str:
     except Exception as exc:
         logger.exception("statistics failed")
         return make_error(
-                "internal_error",
-                f"Failed to get statistics: {exc}",
-                ["Check that the channel finder database is configured."],
-            )
+            "internal_error",
+            f"Failed to get statistics: {exc}",
+            ["Check that the channel finder database is configured."],
+        )

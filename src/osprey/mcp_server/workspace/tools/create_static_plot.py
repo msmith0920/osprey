@@ -79,10 +79,10 @@ async def create_static_plot(
     """
     if not code or not code.strip():
         return make_error(
-                "validation_error",
-                "No plotting code provided.",
-                ["Provide Python code that creates a static matplotlib/seaborn plot."],
-            )
+            "validation_error",
+            "No plotting code provided.",
+            ["Provide Python code that creates a static matplotlib/seaborn plot."],
+        )
 
     # Build the full code to execute
     parts = [_STATIC_PREAMBLE]
@@ -105,14 +105,14 @@ async def create_static_plot(
 
     if not exec_result.success:
         return make_error(
-                "execution_error",
-                f"Static plot creation failed: {exec_result.error_message or exec_result.stderr}",
-                [
-                    "Check your plotting code for syntax or runtime errors.",
-                    "Ensure you call save_artifact(fig, 'title') to produce output.",
-                    "Ensure data variables are defined or use data_source parameter.",
-                ],
-            )
+            "execution_error",
+            f"Static plot creation failed: {exec_result.error_message or exec_result.stderr}",
+            [
+                "Check your plotting code for syntax or runtime errors.",
+                "Ensure you call save_artifact(fig, 'title') to produce output.",
+                "Ensure data variables are defined or use data_source parameter.",
+            ],
+        )
 
     # Collect artifacts with category and embedded metadata
     artifact_ids = collect_and_register_artifacts(

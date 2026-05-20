@@ -1,15 +1,14 @@
 """Tests for the create_interactive_plot MCP tool."""
 
-import json
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
-from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 import pytest
 
 from osprey.mcp_server.workspace.execution.sandbox_executor import SandboxExecutionResult
 from osprey.mcp_server.workspace.tools._viz_common import resolve_data_source
 from osprey.stores.artifact_store import get_artifact_store
+from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 # Mock target for the sandbox executor used by create_interactive_plot
 _SANDBOX_EXEC_TARGET = "osprey.mcp_server.workspace.execution.sandbox_executor.execute_sandbox_code"

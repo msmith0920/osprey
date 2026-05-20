@@ -491,8 +491,7 @@ def build(
         validation_errors = validate_agent_tools_against_permissions(project_path)
         if validation_errors:
             raise BuildProfileError(
-                "Agent tool/permission drift detected:\n  "
-                + "\n  ".join(validation_errors)
+                "Agent tool/permission drift detected:\n  " + "\n  ".join(validation_errors)
             )
 
         # 17. Git init + commit
@@ -1467,8 +1466,7 @@ def _emit_profile_directory(target_dir: Path, preset_name: str) -> None:
     target = target_dir.resolve()
     if target.exists():
         raise click.UsageError(
-            f"Target directory already exists: {target}. "
-            f"Remove it or choose a different path."
+            f"Target directory already exists: {target}. Remove it or choose a different path."
         )
 
     normalized_preset = _normalize_preset_name(preset_name)
@@ -1499,8 +1497,7 @@ def _emit_profile_directory(target_dir: Path, preset_name: str) -> None:
 
     logger.info("✓ Scaffolded profile at: %s", target)
     logger.info(
-        "  Next: edit %s/profile.yml, then run "
-        "`osprey build <PROJECT_NAME> %s/profile.yml`",
+        "  Next: edit %s/profile.yml, then run `osprey build <PROJECT_NAME> %s/profile.yml`",
         target,
         target,
     )

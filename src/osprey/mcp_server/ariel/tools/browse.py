@@ -5,9 +5,10 @@ PROMPT-PROVIDER: Tool docstrings are static prompts visible to Claude Code.
   Facility-customizable: filter field descriptions, source system examples
 """
 
-from fastmcp.exceptions import ToolError
 import json
 import logging
+
+from fastmcp.exceptions import ToolError
 
 from osprey.mcp_server.ariel.server import make_error, mcp, parse_date_filters, serialize_entry
 from osprey.mcp_server.ariel.server_context import get_ariel_context
@@ -79,10 +80,10 @@ async def browse(
     except Exception as exc:
         logger.exception("browse failed")
         return make_error(
-                "internal_error",
-                f"Browse failed: {exc}",
-                ["Check ARIEL database connectivity."],
-            )
+            "internal_error",
+            f"Browse failed: {exc}",
+            ["Check ARIEL database connectivity."],
+        )
 
 
 @mcp.tool()
@@ -112,10 +113,10 @@ async def filter_options(
         method_name = field_methods.get(field)
         if not method_name:
             return make_error(
-                    "validation_error",
-                    f"Unknown filter field: {field}",
-                    [f"Available fields: {', '.join(field_methods)}"],
-                )
+                "validation_error",
+                f"Unknown filter field: {field}",
+                [f"Available fields: {', '.join(field_methods)}"],
+            )
 
         method = getattr(service.repository, method_name)
         values = await method()
@@ -133,7 +134,7 @@ async def filter_options(
     except Exception as exc:
         logger.exception("filter_options failed")
         return make_error(
-                "internal_error",
-                f"Filter options failed: {exc}",
-                ["Check ARIEL database connectivity."],
-            )
+            "internal_error",
+            f"Filter options failed: {exc}",
+            ["Check ARIEL database connectivity."],
+        )

@@ -7,14 +7,12 @@ Note: writes_enabled check is handled by the PreToolUse hook, not the tool itsel
 The tool does its own limits validation via LimitsValidator.
 """
 
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from osprey.mcp_server.control_system.server_context import initialize_server_context
 from tests.mcp_server.conftest import (
-    assert_error,
     assert_raises_error,
     extract_response_dict,
     get_tool_fn,
@@ -277,7 +275,7 @@ async def test_channel_write_empty_operations(tmp_path, monkeypatch):
     with assert_raises_error(error_type="validation_error") as _exc_ctx:
         await fn(operations=[])
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -294,4 +292,4 @@ async def test_channel_write_missing_channel_key(tmp_path, monkeypatch):
         with assert_raises_error(error_type="validation_error") as _exc_ctx:
             await fn(operations=[{"value": 42.0}])
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]

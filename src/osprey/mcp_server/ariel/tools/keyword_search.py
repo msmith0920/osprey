@@ -4,9 +4,10 @@ PROMPT-PROVIDER: This tool's docstring is a static prompt visible to Claude Code
   Facility-customizable: field prefix examples, operator guidance
 """
 
-from fastmcp.exceptions import ToolError
 import json
 import logging
+
+from fastmcp.exceptions import ToolError
 
 from osprey.mcp_server.ariel.server import (
     make_error,
@@ -48,10 +49,10 @@ async def keyword_search(
     """
     if not query or not query.strip():
         return make_error(
-                "validation_error",
-                "Empty search query.",
-                ["Provide search terms describing what you are looking for."],
-            )
+            "validation_error",
+            "Empty search query.",
+            ["Provide search terms describing what you are looking for."],
+        )
 
     try:
         from osprey.services.ariel_search.models import SearchMode
@@ -101,10 +102,10 @@ async def keyword_search(
     except Exception as exc:
         logger.exception("keyword_search failed")
         return make_error(
-                "internal_error",
-                f"ARIEL keyword search failed: {exc}",
-                [
-                    "Check ARIEL service configuration in config.yml.",
-                    "Verify the ARIEL database is reachable.",
-                ],
-            )
+            "internal_error",
+            f"ARIEL keyword search failed: {exc}",
+            [
+                "Check ARIEL service configuration in config.yml.",
+                "Verify the ARIEL database is reachable.",
+            ],
+        )

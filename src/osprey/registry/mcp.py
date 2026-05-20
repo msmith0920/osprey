@@ -58,7 +58,9 @@ class ServerDefinition:
     external_command: str | None = None
     external_args: list[str] = field(default_factory=list)
     url: str | None = None  # HTTP/SSE transport URL (mutually exclusive with command)
-    port: int | None = None  # Host/container port for HTTP servers; informational for non-Claude consumers
+    port: int | None = (
+        None  # Host/container port for HTTP servers; informational for non-Claude consumers
+    )
 
 
 # ---------------------------------------------------------------------------

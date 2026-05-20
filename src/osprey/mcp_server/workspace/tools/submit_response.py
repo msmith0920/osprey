@@ -9,6 +9,7 @@ import json
 import logging
 
 from fastmcp.exceptions import ToolError
+
 from osprey.mcp_server.errors import make_error
 from osprey.mcp_server.http import gallery_url
 from osprey.mcp_server.workspace.server import mcp
@@ -60,27 +61,27 @@ async def submit_response(
     """
     if not title or not title.strip():
         return make_error(
-                "validation_error",
-                "title is required and must not be empty.",
-                ["Provide a short descriptive title for your response."],
-            )
+            "validation_error",
+            "title is required and must not be empty.",
+            ["Provide a short descriptive title for your response."],
+        )
 
     if not content or not content.strip():
         return make_error(
-                "validation_error",
-                "content is required and must not be empty.",
-                ["Provide the full synthesized response text."],
-            )
+            "validation_error",
+            "content is required and must not be empty.",
+            ["Provide the full synthesized response text."],
+        )
 
     from osprey.stores.type_registry import valid_category_keys
 
     valid = valid_category_keys()
     if data_type not in valid:
         return make_error(
-                "validation_error",
-                f"Unknown data_type '{data_type}'. Valid: {sorted(valid)}",
-                ["Use one of the registered data_type or category values."],
-            )
+            "validation_error",
+            f"Unknown data_type '{data_type}'. Valid: {sorted(valid)}",
+            ["Use one of the registered data_type or category values."],
+        )
 
     try:
         from osprey.stores.artifact_store import get_artifact_store
@@ -141,7 +142,7 @@ async def submit_response(
     except Exception as exc:
         logger.exception("submit_response failed")
         return make_error(
-                "internal_error",
-                f"Failed to save response: {exc}",
-                ["Check that the _agent_data directory is accessible."],
-            )
+            "internal_error",
+            f"Failed to save response: {exc}",
+            ["Check that the _agent_data directory is accessible."],
+        )

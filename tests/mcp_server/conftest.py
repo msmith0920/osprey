@@ -53,9 +53,7 @@ def assert_error(result, *, error_type: str | None = None) -> dict:
         )
     elif isinstance(result, CallToolResult):
         envelope = extract_error_envelope(result)
-        assert envelope is not None, (
-            f"Expected isError=True with error envelope, got: {result!r}"
-        )
+        assert envelope is not None, f"Expected isError=True with error envelope, got: {result!r}"
     else:
         raise AssertionError(f"Unexpected tool result type: {type(result).__name__}: {result!r}")
     if error_type is not None:

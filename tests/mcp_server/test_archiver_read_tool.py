@@ -15,7 +15,6 @@ import pytest
 
 from osprey.mcp_server.control_system.server_context import initialize_server_context
 from tests.mcp_server.conftest import (
-    assert_error,
     assert_raises_error,
     extract_response_dict,
     get_tool_fn,
@@ -299,4 +298,4 @@ async def test_archiver_read_empty_channels(tmp_path, monkeypatch):
     with assert_raises_error(error_type="validation_error") as _exc_ctx:
         await fn(channels=[], start_time="2024-01-15T10:00:00")
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]

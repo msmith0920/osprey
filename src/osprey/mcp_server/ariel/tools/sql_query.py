@@ -4,9 +4,10 @@ PROMPT-PROVIDER: This tool's docstring is a static prompt visible to Claude Code
   Facility-customizable: table schema, metadata JSONB keys
 """
 
-from fastmcp.exceptions import ToolError
 import json
 import logging
+
+from fastmcp.exceptions import ToolError
 
 from osprey.mcp_server.ariel.server import make_error, mcp
 from osprey.mcp_server.ariel.server_context import get_ariel_context
@@ -52,10 +53,10 @@ async def sql_query(
     """
     if not query or not query.strip():
         return make_error(
-                "validation_error",
-                "Empty SQL query.",
-                ["Provide a SELECT query against the enhanced_entries table."],
-            )
+            "validation_error",
+            "Empty SQL query.",
+            ["Provide a SELECT query against the enhanced_entries table."],
+        )
 
     try:
         # Fail fast before acquiring a DB connection
@@ -81,22 +82,22 @@ async def sql_query(
     except ValueError as exc:
         # Validation errors from validate_sql_query
         return make_error(
-                "validation_error",
-                str(exc),
-                [
-                    "Only SELECT/WITH queries on enhanced_entries and "
-                    "text_embeddings_* tables are allowed.",
-                ],
-            )
+            "validation_error",
+            str(exc),
+            [
+                "Only SELECT/WITH queries on enhanced_entries and "
+                "text_embeddings_* tables are allowed.",
+            ],
+        )
     except ToolError:
         raise
     except Exception as exc:
         logger.exception("sql_query failed")
         return make_error(
-                "internal_error",
-                f"ARIEL SQL query failed: {exc}",
-                [
-                    "Check ARIEL database connectivity.",
-                    "Verify your SQL syntax is correct.",
-                ],
-            )
+            "internal_error",
+            f"ARIEL SQL query failed: {exc}",
+            [
+                "Check ARIEL database connectivity.",
+                "Verify your SQL syntax is correct.",
+            ],
+        )

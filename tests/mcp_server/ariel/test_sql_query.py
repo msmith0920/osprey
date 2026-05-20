@@ -1,14 +1,13 @@
 """Tests for the sql_query MCP tool and sql_query validation."""
 
-import json
 from unittest.mock import AsyncMock, patch
-from tests.mcp_server.conftest import assert_error, assert_raises_error, extract_response_dict
 
 import pytest
 
 from osprey.mcp_server.ariel.server_context import initialize_ariel_context
 from osprey.services.ariel_search.search.sql_query import validate_sql_query
 from tests.mcp_server.ariel.conftest import get_tool_fn
+from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 # ---------------------------------------------------------------------------
 # validate_sql_query unit tests
@@ -169,7 +168,7 @@ async def test_sql_query_empty():
     with assert_raises_error(error_type="validation_error") as _exc_ctx:
         await fn(query="")
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit

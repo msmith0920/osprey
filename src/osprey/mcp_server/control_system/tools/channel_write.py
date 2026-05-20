@@ -33,10 +33,10 @@ async def channel_write(
     """
     if not operations:
         return make_error(
-                "validation_error",
-                "No write operations provided.",
-                ["Provide at least one operation with 'channel' and 'value'."],
-            )
+            "validation_error",
+            "No write operations provided.",
+            ["Provide at least one operation with 'channel' and 'value'."],
+        )
 
     # Limits validation (additional safety layer inside the tool)
     try:
@@ -54,10 +54,10 @@ async def channel_write(
         value = op.get("value")
         if not channel:
             return make_error(
-                    "validation_error",
-                    "Each operation must include a 'channel' key.",
-                    ["Ensure every entry in operations has 'channel' and 'value'."],
-                )
+                "validation_error",
+                "Each operation must include a 'channel' key.",
+                ["Ensure every entry in operations has 'channel' and 'value'."],
+            )
         if validator:
             try:
                 validator.validate(channel, value)
@@ -90,15 +90,15 @@ async def channel_write(
             parts.append(part)
 
         return make_error(
-                "limits_violation",
-                f"Channel limits violated: {'; '.join(parts)}",
-                [
-                    "Do NOT attempt to work around this limit.",
-                    "Report the violation to the operator with the allowed range.",
-                    "The operator may adjust the limits database if the value is appropriate.",
-                ],
-                details=violations,
-            )
+            "limits_violation",
+            f"Channel limits violated: {'; '.join(parts)}",
+            [
+                "Do NOT attempt to work around this limit.",
+                "Report the violation to the operator with the allowed range.",
+                "The operator may adjust the limits database if the value is appropriate.",
+            ],
+            details=violations,
+        )
 
     # Execute writes
     async with connector_error_handler("channel_write"):

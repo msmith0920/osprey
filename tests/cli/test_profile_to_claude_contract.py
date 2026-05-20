@@ -32,7 +32,6 @@ from osprey.registry.mcp import (
     FRAMEWORK_AGENTS,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -215,34 +214,71 @@ _FRAMEWORK_AGENT_EXPECTED: dict[str, dict[str, list[str]]] = {
             "mcp__osprey_workspace__submit_response",
         ],
         "disallowedTools": [
-            "Bash", "Read", "Write", "Edit", "Glob", "Grep",
-            "WebFetch", "WebSearch", "NotebookEdit", "Task", "Skill", "Agent",
+            "Bash",
+            "Read",
+            "Write",
+            "Edit",
+            "Glob",
+            "Grep",
+            "WebFetch",
+            "WebSearch",
+            "NotebookEdit",
+            "Task",
+            "Skill",
+            "Agent",
         ],
     },
     "logbook-search": {
         "tools": [
-            "mcp__ariel__keyword_search", "mcp__ariel__semantic_search",
-            "mcp__ariel__browse", "mcp__ariel__filter_options",
-            "mcp__ariel__entry_get", "mcp__ariel__capabilities",
+            "mcp__ariel__keyword_search",
+            "mcp__ariel__semantic_search",
+            "mcp__ariel__browse",
+            "mcp__ariel__filter_options",
+            "mcp__ariel__entry_get",
+            "mcp__ariel__capabilities",
             "mcp__osprey_workspace__submit_response",
         ],
         "disallowedTools": [
-            "Bash", "Read", "Write", "Edit", "Glob", "Grep",
-            "WebFetch", "WebSearch", "NotebookEdit", "Task", "Skill", "Agent",
+            "Bash",
+            "Read",
+            "Write",
+            "Edit",
+            "Glob",
+            "Grep",
+            "WebFetch",
+            "WebSearch",
+            "NotebookEdit",
+            "Task",
+            "Skill",
+            "Agent",
         ],
     },
     "logbook-deep-research": {
         "tools": [
-            "mcp__ariel__keyword_search", "mcp__ariel__semantic_search",
-            "mcp__ariel__browse", "mcp__ariel__filter_options",
-            "mcp__ariel__entry_get", "mcp__ariel__capabilities",
-            "mcp__ariel__sql_query", "mcp__ariel__entries_by_ids",
+            "mcp__ariel__keyword_search",
+            "mcp__ariel__semantic_search",
+            "mcp__ariel__browse",
+            "mcp__ariel__filter_options",
+            "mcp__ariel__entry_get",
+            "mcp__ariel__capabilities",
+            "mcp__ariel__sql_query",
+            "mcp__ariel__entries_by_ids",
             "mcp__osprey_workspace__submit_response",
         ],
         "disallowedTools": [
-            "Bash", "Read", "Write", "Edit", "Glob", "Grep",
-            "WebFetch", "WebSearch", "NotebookEdit", "NotebookRead",
-            "Task", "Skill", "Agent",
+            "Bash",
+            "Read",
+            "Write",
+            "Edit",
+            "Glob",
+            "Grep",
+            "WebFetch",
+            "WebSearch",
+            "NotebookEdit",
+            "NotebookRead",
+            "Task",
+            "Skill",
+            "Agent",
         ],
     },
     "data-visualizer": {
@@ -259,17 +295,24 @@ _FRAMEWORK_AGENT_EXPECTED: dict[str, dict[str, list[str]]] = {
             "Read",
         ],
         "disallowedTools": [
-            "Bash", "Write", "Edit", "Glob", "Grep",
-            "WebFetch", "WebSearch", "NotebookEdit", "Task", "Skill", "Agent",
+            "Bash",
+            "Write",
+            "Edit",
+            "Glob",
+            "Grep",
+            "WebFetch",
+            "WebSearch",
+            "NotebookEdit",
+            "Task",
+            "Skill",
+            "Agent",
         ],
     },
 }
 
 
 @pytest.mark.parametrize("agent_name", list(_FRAMEWORK_AGENT_EXPECTED))
-def test_framework_agent_frontmatter_preserved(
-    built_control_assistant_project, agent_name
-):
+def test_framework_agent_frontmatter_preserved(built_control_assistant_project, agent_name):
     """Each framework agent's rendered frontmatter matches the locked-down spec."""
     md = built_control_assistant_project / ".claude" / "agents" / f"{agent_name}.md"
     assert md.exists(), f"missing rendered agent file: {md}"
@@ -284,9 +327,7 @@ def test_framework_agent_frontmatter_preserved(
 def test_disallowed_tools_includes_skill_and_agent(built_control_assistant_project):
     """Every framework agent must deny Skill and Agent (commit 3757e95c lockdown)."""
     for agent_name in FRAMEWORK_AGENTS:
-        md = (
-            built_control_assistant_project / ".claude" / "agents" / f"{agent_name}.md"
-        )
+        md = built_control_assistant_project / ".claude" / "agents" / f"{agent_name}.md"
         if not md.exists():
             pytest.skip(f"framework agent {agent_name} not rendered in this build")
         fm = _parse_frontmatter(md)
@@ -337,12 +378,8 @@ def test_overlay_agent_frontmatter_preserved(tmp_path):
     assert custom.exists(), "overlay agent file deleted by regen"
     fm = _parse_frontmatter(custom)
     assert fm["name"] == "my-overlay"
-    assert _split_csv(fm["tools"]) == [
-        "mcp__osprey_workspace__submit_response", "Read"
-    ]
-    assert _split_csv(fm["disallowedTools"]) == [
-        "Bash", "Edit", "Skill", "Agent"
-    ]
+    assert _split_csv(fm["tools"]) == ["mcp__osprey_workspace__submit_response", "Read"]
+    assert _split_csv(fm["disallowedTools"]) == ["Bash", "Edit", "Skill", "Agent"]
 
 
 # ---------------------------------------------------------------------------
@@ -353,7 +390,9 @@ def test_overlay_agent_frontmatter_preserved(tmp_path):
 def test_crown_jewel_invariant_passes_on_preset(built_control_assistant_project):
     """The shipped control-assistant preset must satisfy the invariant."""
     errors = validate_agent_tools_against_permissions(built_control_assistant_project)
-    assert errors == [], "preset violates agent-tools-vs-permissions invariant:\n" + "\n".join(errors)
+    assert errors == [], "preset violates agent-tools-vs-permissions invariant:\n" + "\n".join(
+        errors
+    )
 
 
 def test_crown_jewel_invariant_catches_missing_tool(tmp_path):
@@ -383,9 +422,9 @@ def test_crown_jewel_invariant_catches_missing_tool(tmp_path):
     )
 
     errors = validate_agent_tools_against_permissions(project)
-    assert any(
-        "bogus" in e and "mcp__nonexistent__phantom_tool" in e for e in errors
-    ), f"expected error naming the bogus agent + tool; got: {errors}"
+    assert any("bogus" in e and "mcp__nonexistent__phantom_tool" in e for e in errors), (
+        f"expected error naming the bogus agent + tool; got: {errors}"
+    )
 
 
 def test_crown_jewel_invariant_rejects_wildcards(tmp_path):
@@ -415,9 +454,9 @@ def test_crown_jewel_invariant_rejects_wildcards(tmp_path):
     )
 
     errors = validate_agent_tools_against_permissions(project)
-    assert any(
-        "wild" in e and "wildcard" in e.lower() for e in errors
-    ), f"expected wildcard-rejection error; got: {errors}"
+    assert any("wild" in e and "wildcard" in e.lower() for e in errors), (
+        f"expected wildcard-rejection error; got: {errors}"
+    )
 
 
 def test_crown_jewel_invariant_accepts_prefix_match_on_existing_allow(
@@ -497,9 +536,7 @@ def test_build_command_fails_on_violation(tmp_path, monkeypatch):
         catch_exceptions=False,
     )
 
-    assert result.exit_code != 0, (
-        f"build should have failed; stdout:\n{result.output}"
-    )
+    assert result.exit_code != 0, f"build should have failed; stdout:\n{result.output}"
     # Validator's diagnostic should mention the bogus agent and tool.
     assert "bogus" in result.output or "phantom_tool" in result.output, (
         f"build output should name the violation; got:\n{result.output}"

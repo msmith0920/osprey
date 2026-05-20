@@ -12,6 +12,7 @@ from collections import Counter
 from pathlib import Path
 
 from fastmcp.exceptions import ToolError
+
 from osprey.mcp_server.errors import make_error
 from osprey.mcp_server.workspace.server import mcp
 from osprey.utils.workspace import resolve_workspace_root
@@ -59,9 +60,9 @@ async def session_summary() -> str:
         raise
     except Exception as e:
         return make_error(
-                "internal_error",
-                f"Could not resolve workspace root: {e}",
-            )
+            "internal_error",
+            f"Could not resolve workspace root: {e}",
+        )
 
     # --- Unified artifact store ---
     from osprey.stores.artifact_store import ArtifactStore

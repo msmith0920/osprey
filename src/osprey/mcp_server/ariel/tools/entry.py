@@ -6,13 +6,14 @@ PROMPT-PROVIDER: Tool docstrings are static prompts visible to Claude Code.
   attachment limits, logbook name conventions
 """
 
-from fastmcp.exceptions import ToolError
 import json
 import logging
 import os
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
+
+from fastmcp.exceptions import ToolError
 
 from osprey.mcp_server.ariel.server import make_error, mcp, serialize_entry
 from osprey.mcp_server.ariel.server_context import get_ariel_context
@@ -79,10 +80,10 @@ async def entry_get(
     """
     if not entry_id or not entry_id.strip():
         return make_error(
-                "validation_error",
-                "entry_id is required.",
-                ["Provide a valid entry ID."],
-            )
+            "validation_error",
+            "entry_id is required.",
+            ["Provide a valid entry ID."],
+        )
 
     try:
         registry = get_ariel_context()
@@ -91,13 +92,13 @@ async def entry_get(
         entry = await service.repository.get_entry(entry_id)
         if not entry:
             return make_error(
-                    "not_found",
-                    f"Entry {entry_id} not found.",
-                    [
-                        "Check the entry_id is correct.",
-                        "Use keyword_search/semantic_search or browse to find valid entry IDs.",
-                    ],
-                )
+                "not_found",
+                f"Entry {entry_id} not found.",
+                [
+                    "Check the entry_id is correct.",
+                    "Use keyword_search/semantic_search or browse to find valid entry IDs.",
+                ],
+            )
 
         # TypedDict -- dict access, not attribute access
         return json.dumps(
@@ -122,10 +123,10 @@ async def entry_get(
     except Exception as exc:
         logger.exception("entry_get failed")
         return make_error(
-                "internal_error",
-                f"Failed to get entry: {exc}",
-                ["Check ARIEL database connectivity."],
-            )
+            "internal_error",
+            f"Failed to get entry: {exc}",
+            ["Check ARIEL database connectivity."],
+        )
 
 
 @mcp.tool()
@@ -147,17 +148,17 @@ async def entries_by_ids(
     """
     if not entry_ids:
         return make_error(
-                "validation_error",
-                "entry_ids list is empty.",
-                ["Provide at least one entry ID."],
-            )
+            "validation_error",
+            "entry_ids list is empty.",
+            ["Provide at least one entry ID."],
+        )
 
     if len(entry_ids) > 50:
         return make_error(
-                "validation_error",
-                f"Too many entry IDs ({len(entry_ids)}). Maximum is 50 per call.",
-                ["Split into multiple calls of 50 or fewer IDs."],
-            )
+            "validation_error",
+            f"Too many entry IDs ({len(entry_ids)}). Maximum is 50 per call.",
+            ["Split into multiple calls of 50 or fewer IDs."],
+        )
 
     try:
         registry = get_ariel_context()
@@ -182,10 +183,10 @@ async def entries_by_ids(
     except Exception as exc:
         logger.exception("entries_by_ids failed")
         return make_error(
-                "internal_error",
-                f"Failed to get entries: {exc}",
-                ["Check ARIEL database connectivity."],
-            )
+            "internal_error",
+            f"Failed to get entries: {exc}",
+            ["Check ARIEL database connectivity."],
+        )
 
 
 @mcp.tool()
@@ -224,16 +225,16 @@ async def entry_create(
     """
     if not subject or not subject.strip():
         return make_error(
-                "validation_error",
-                "subject is required.",
-                ["Provide a subject/title for the entry."],
-            )
+            "validation_error",
+            "subject is required.",
+            ["Provide a subject/title for the entry."],
+        )
     if not details or not details.strip():
         return make_error(
-                "validation_error",
-                "details is required.",
-                ["Provide details/body for the entry."],
-            )
+            "validation_error",
+            "details is required.",
+            ["Provide details/body for the entry."],
+        )
 
     # --- Resolve artifact_ids to file paths (both modes) ---
     artifact_paths: list[str] = []
@@ -242,10 +243,10 @@ async def entry_create(
             artifact_paths = await _resolve_artifacts(artifact_ids)
         except ValueError as exc:
             return make_error(
-                    "validation_error",
-                    str(exc),
-                    ["Check artifact IDs via the gallery or artifact_save output."],
-                )
+                "validation_error",
+                str(exc),
+                ["Check artifact IDs via the gallery or artifact_save output."],
+            )
         except ToolError:
             raise
         except Exception as exc:
@@ -253,10 +254,10 @@ async def entry_create(
             # For draft mode, store IDs for deferred resolution
             if not draft:
                 return make_error(
-                        "internal_error",
-                        f"Failed to resolve artifacts: {exc}",
-                        ["Check MCP server logs for details."],
-                    )
+                    "internal_error",
+                    f"Failed to resolve artifacts: {exc}",
+                    ["Check MCP server logs for details."],
+                )
 
     # Merge artifact-resolved paths with explicit file_paths (used by both modes)
     all_file_paths = list(file_paths or []) + artifact_paths
@@ -276,10 +277,10 @@ async def entry_create(
                 read_local_file(path)  # validates existence + size
         except AttachmentValidationError as exc:
             return make_error(
-                    "validation_error",
-                    str(exc),
-                    ["Check file path and ensure file is under 10 MB."],
-                )
+                "validation_error",
+                str(exc),
+                ["Check file path and ensure file is under 10 MB."],
+            )
 
     # --- Draft mode: write a JSON file for the web UI to pick up ---
     if draft:
@@ -335,10 +336,10 @@ async def entry_create(
         except Exception as exc:
             logger.exception("entry_create (draft) failed")
             return make_error(
-                    "internal_error",
-                    f"Failed to create draft: {exc}",
-                    ["Check that _agent_data/drafts/ is writable."],
-                )
+                "internal_error",
+                f"Failed to create draft: {exc}",
+                ["Check that _agent_data/drafts/ is writable."],
+            )
 
     # --- Direct mode: write straight to the database ---
 
@@ -403,7 +404,7 @@ async def entry_create(
     except Exception as exc:
         logger.exception("entry_create failed")
         return make_error(
-                "internal_error",
-                f"Failed to create entry: {exc}",
-                ["Check ARIEL database connectivity."],
-            )
+            "internal_error",
+            f"Failed to create entry: {exc}",
+            ["Check ARIEL database connectivity."],
+        )

@@ -10,7 +10,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-import yaml
 from click.testing import CliRunner
 
 from osprey.cli.build_cmd import build
@@ -90,10 +89,7 @@ def test_extends_path_shaped_value_resolves_via_filesystem(tmp_path: Path) -> No
     """
     base = tmp_path / "als-base.yml"
     base.write_text(
-        "name: AlsBase\n"
-        "data_bundle: hello_world\n"
-        "provider: anthropic\n"
-        "hooks: [hook-log]\n"
+        "name: AlsBase\ndata_bundle: hello_world\nprovider: anthropic\nhooks: [hook-log]\n"
     )
     child = tmp_path / "client.yml"
     child.write_text("extends: als-base.yml\nname: AlsClient\n")
@@ -137,9 +133,7 @@ def test_extends_preset_chain_via_intermediate_file(tmp_path: Path) -> None:
     assert resolved.data_bundle == "hello_world"
 
 
-def test_build_from_profile_extending_preset_succeeds(
-    runner: CliRunner, tmp_path: Path
-) -> None:
+def test_build_from_profile_extending_preset_succeeds(runner: CliRunner, tmp_path: Path) -> None:
     """End-to-end: build from a profile whose ``extends:`` references a preset by name."""
     profile = tmp_path / "p.yml"
     profile.write_text("extends: hello-world\nname: ExtTest\n")

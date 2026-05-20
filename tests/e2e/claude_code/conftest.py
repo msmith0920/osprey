@@ -68,9 +68,10 @@ def safety_project_writes_off(tmp_path_factory):
     config_path.write_text(yaml.dump(config, default_flow_style=False))
 
     regen = subprocess.run(
-        [sys.executable, "-m", "osprey.cli.main", "claude", "regen",
-         "--project", str(project_dir)],
-        capture_output=True, text=True, timeout=60,
+        [sys.executable, "-m", "osprey.cli.main", "claude", "regen", "--project", str(project_dir)],
+        capture_output=True,
+        text=True,
+        timeout=60,
     )
     assert regen.returncode == 0, (
         f"osprey claude regen failed:\n--- stdout ---\n{regen.stdout}\n"

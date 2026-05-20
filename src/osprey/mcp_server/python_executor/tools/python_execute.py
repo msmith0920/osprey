@@ -45,10 +45,10 @@ async def execute(
     """
     if not code or not code.strip():
         return make_error(
-                "validation_error",
-                "No code provided.",
-                ["Provide Python code to execute."],
-            )
+            "validation_error",
+            "No code provided.",
+            ["Provide Python code to execute."],
+        )
 
     # Pre-execution safety checks (syntax, security, imports)
     try:
@@ -57,10 +57,10 @@ async def execute(
         passed, safety_issues = quick_safety_check(code)
         if not passed:
             return make_error(
-                    "safety_error",
-                    "Code failed pre-execution safety checks.",
-                    safety_issues,
-                )
+                "safety_error",
+                "Code failed pre-execution safety checks.",
+                safety_issues,
+            )
     except ImportError:
         logger.warning("Safety check module unavailable — executing without pre-checks")
 
@@ -91,26 +91,29 @@ async def execute(
             )
             exec_control_config = None
 
-        if exec_control_config is not None and exec_control_config.control_system_writes_enabled is False:
+        if (
+            exec_control_config is not None
+            and exec_control_config.control_system_writes_enabled is False
+        ):
             return make_error(
-                    "safety_error",
-                    "Control-system writes are disabled in this deployment "
-                    "(control_system.writes_enabled=false in project config).",
-                    [
-                        "Set control_system.writes_enabled=true in the project config to enable writes.",
-                    ],
-                )
+                "safety_error",
+                "Control-system writes are disabled in this deployment "
+                "(control_system.writes_enabled=false in project config).",
+                [
+                    "Set control_system.writes_enabled=true in the project config to enable writes.",
+                ],
+            )
 
     # Per-call execution-mode gate (uses pattern detection — readonly-mode safety).
     if patterns.get("has_writes") and execution_mode == "readonly":
         return make_error(
-                "safety_error",
-                "Control-system write patterns detected in readonly mode.",
-                [
-                    "Set execution_mode to 'readwrite' if writes are intentional.",
-                    "Detected patterns: " + json.dumps(patterns.get("detected_patterns", {})),
-                ],
-            )
+            "safety_error",
+            "Control-system write patterns detected in readonly mode.",
+            [
+                "Set execution_mode to 'readwrite' if writes are intentional.",
+                "Detected patterns: " + json.dumps(patterns.get("detected_patterns", {})),
+            ],
+        )
 
     # Execute code via adapter (container or subprocess)
     from osprey.mcp_server.python_executor.executor import execute_code

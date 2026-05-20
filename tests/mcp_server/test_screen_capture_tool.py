@@ -6,7 +6,6 @@ the backend, exception-to-make_error mapping, and ArtifactStore integration.
 All backend calls are mocked — no actual screencapture/swift/osascript execution.
 """
 
-import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -17,7 +16,7 @@ from osprey.mcp_server.workspace.tools.screen_capture_backends.base import (
     WindowInfo,
     WindowNotFoundError,
 )
-from tests.mcp_server.conftest import assert_error, assert_raises_error, extract_response_dict, get_tool_fn
+from tests.mcp_server.conftest import assert_raises_error, extract_response_dict, get_tool_fn
 
 
 def _get_screenshot_capture():
@@ -220,7 +219,7 @@ async def test_screenshot_window_name_not_found(tmp_path, monkeypatch):
         with assert_raises_error(error_type="window_not_found") as _exc_ctx:
             await fn(mode="window", target="NonExistentApp")
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -308,7 +307,7 @@ async def test_screenshot_command_failure(tmp_path, monkeypatch):
         with assert_raises_error(error_type="capture_error") as _exc_ctx:
             await fn(mode="full")
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -399,7 +398,7 @@ async def test_list_windows_backend_failure(tmp_path, monkeypatch):
         with assert_raises_error(error_type="internal_error") as _exc_ctx:
             await fn()
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 # ---------------------------------------------------------------------------

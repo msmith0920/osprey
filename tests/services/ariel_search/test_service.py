@@ -749,8 +749,6 @@ class TestServiceState:
         assert service._embedder is None
 
 
-
-
 class TestToolInputSchemaDefaults:
     """Tests for tool input schema default values."""
 
@@ -763,5 +761,3 @@ class TestToolInputSchemaDefaults:
         """SemanticSearchInput has similarity_threshold default of 0.5."""
         input_schema = SemanticSearchInput(query="test")
         assert input_schema.similarity_threshold == 0.5
-
-

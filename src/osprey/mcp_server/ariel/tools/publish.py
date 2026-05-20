@@ -1,8 +1,9 @@
 """MCP tool: entry_publish — publish an existing ARIEL entry to the facility logbook."""
 
-from fastmcp.exceptions import ToolError
 import json
 import logging
+
+from fastmcp.exceptions import ToolError
 
 from osprey.mcp_server.ariel.server import make_error, mcp
 from osprey.mcp_server.ariel.server_context import get_ariel_context
@@ -30,10 +31,10 @@ async def entry_publish(
     """
     if not entry_id or not entry_id.strip():
         return make_error(
-                "validation_error",
-                "entry_id is required.",
-                ["Provide a valid entry ID."],
-            )
+            "validation_error",
+            "entry_id is required.",
+            ["Provide a valid entry ID."],
+        )
 
     try:
         registry = get_ariel_context()
@@ -53,22 +54,22 @@ async def entry_publish(
 
     except KeyError:
         return make_error(
-                "not_found",
-                f"Entry {entry_id} not found.",
-                ["Check the entry_id is correct."],
-            )
+            "not_found",
+            f"Entry {entry_id} not found.",
+            ["Check the entry_id is correct."],
+        )
     except NotImplementedError as exc:
         return make_error(
-                "not_supported",
-                str(exc),
-                ["The configured adapter does not support writing entries."],
-            )
+            "not_supported",
+            str(exc),
+            ["The configured adapter does not support writing entries."],
+        )
     except ToolError:
         raise
     except Exception as exc:
         logger.exception("entry_publish failed for %s", entry_id)
         return make_error(
-                "internal_error",
-                f"Failed to publish entry: {exc}",
-                ["Check the ARIEL service logs for details."],
-            )
+            "internal_error",
+            f"Failed to publish entry: {exc}",
+            ["Check the ARIEL service logs for details."],
+        )

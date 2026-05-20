@@ -1,12 +1,11 @@
 """Tests for the create_dashboard MCP tool."""
 
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
-from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 import pytest
 
 from osprey.mcp_server.workspace.execution.sandbox_executor import SandboxExecutionResult
+from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 # Mock targets for the sandbox executor used by create_dashboard
 _SANDBOX_EXEC_TARGET = "osprey.mcp_server.workspace.execution.sandbox_executor.execute_sandbox_code"
@@ -216,7 +215,9 @@ class TestCreateDashboard:
             patch(_SANDBOX_EXEC_TARGET, new_callable=AsyncMock, return_value=mock_result),
             patch(_SANDBOX_FOLDER_TARGET, return_value=mock_execution_folder),
         ):
-            result = extract_response_dict(await tool_fn(code="pass", title="Multi-panel Dashboard"))
+            result = extract_response_dict(
+                await tool_fn(code="pass", title="Multi-panel Dashboard")
+            )
 
         assert result["status"] == "success"
         assert len(result["artifact_ids"]) == 2

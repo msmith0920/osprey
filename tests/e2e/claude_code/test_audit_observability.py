@@ -86,9 +86,7 @@ class TestAuditObservability:
         # must have been called. We require a tool trace, not text narration —
         # the agent claiming "I'll look at BPMs" doesn't satisfy the workflow.
         cf_tools = [t for t in result.tool_traces if t.name.startswith("mcp__channel-finder__")]
-        assert cf_tools, (
-            f"No mcp__channel-finder__* tool was called. Tools: {result.tool_names}"
-        )
+        assert cf_tools, f"No mcp__channel-finder__* tool was called. Tools: {result.tool_names}"
 
         # archiver_read was called
         archiver_tools = result.tools_matching("archiver_read")

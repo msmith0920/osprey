@@ -67,28 +67,28 @@ async def archiver_read(
     """
     if not channels:
         return make_error(
-                "validation_error",
-                "No channels provided.",
-                ["Provide at least one channel address."],
-            )
+            "validation_error",
+            "No channels provided.",
+            ["Provide at least one channel address."],
+        )
 
     try:
         start_dt = _parse_time(start_time)
     except Exception as exc:
         return make_error(
-                "validation_error",
-                f"Could not parse start_time '{start_time}': {exc}",
-                ["Use ISO-8601 format or relative expressions like '2h ago'."],
-            )
+            "validation_error",
+            f"Could not parse start_time '{start_time}': {exc}",
+            ["Use ISO-8601 format or relative expressions like '2h ago'."],
+        )
 
     try:
         end_dt = _parse_time(end_time)
     except Exception as exc:
         return make_error(
-                "validation_error",
-                f"Could not parse end_time '{end_time}': {exc}",
-                ["Use ISO-8601 format or 'now'."],
-            )
+            "validation_error",
+            f"Could not parse end_time '{end_time}': {exc}",
+            ["Use ISO-8601 format or 'now'."],
+        )
 
     async with connector_error_handler("archiver_read", connector_name="archiver"):
         from osprey.mcp_server.control_system.server_context import get_server_context
@@ -149,8 +149,7 @@ async def archiver_read(
                 "index": "list of ISO-8601 timestamp strings (one per row)",
                 "columns": f"list of channel names: {list(df.columns)}",
                 "data": (
-                    "list of lists — each inner list has one value per column, "
-                    "aligned with index"
+                    "list of lists — each inner list has one value per column, aligned with index"
                 ),
             },
             "access_patterns": {

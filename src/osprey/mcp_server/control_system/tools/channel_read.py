@@ -26,10 +26,10 @@ async def channel_read(
     """
     if not channels:
         return make_error(
-                "validation_error",
-                "No channels provided.",
-                ["Provide at least one channel address."],
-            )
+            "validation_error",
+            "No channels provided.",
+            ["Provide at least one channel address."],
+        )
 
     async with connector_error_handler("channel_read"):
         from osprey.mcp_server.control_system.server_context import get_server_context

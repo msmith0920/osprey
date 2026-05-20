@@ -1,12 +1,11 @@
 """Tests for the create_static_plot MCP tool."""
 
-import json
 from unittest.mock import AsyncMock, patch
-from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 import pytest
 
 from osprey.mcp_server.workspace.execution.sandbox_executor import SandboxExecutionResult
+from tests.mcp_server.conftest import assert_raises_error, extract_response_dict
 
 # Mock target for the sandbox executor used by create_static_plot
 _SANDBOX_EXEC_TARGET = "osprey.mcp_server.workspace.execution.sandbox_executor.execute_sandbox_code"

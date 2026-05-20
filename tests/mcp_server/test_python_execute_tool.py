@@ -15,7 +15,11 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from osprey.mcp_server.python_executor.executor import ExecutionResult
-from tests.mcp_server.conftest import assert_error, assert_raises_error, extract_response_dict, get_tool_fn
+from tests.mcp_server.conftest import (
+    assert_raises_error,
+    extract_response_dict,
+    get_tool_fn,
+)
 
 
 def _get_python_execute():
@@ -249,7 +253,7 @@ async def test_python_execute_empty_code(tmp_path, monkeypatch):
     with assert_raises_error(error_type="validation_error") as _exc_ctx:
         await fn(code="", description="empty")
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -350,7 +354,7 @@ async def test_safety_checks_run_before_adapter(tmp_path, monkeypatch):
     # Adapter should NOT have been called
     mock_exec.assert_not_called()
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -384,7 +388,7 @@ async def test_pattern_detection_runs_before_adapter(tmp_path, monkeypatch):
 
     mock_exec.assert_not_called()
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]
 
 
 @pytest.mark.unit
@@ -689,7 +693,6 @@ def test_collect_artifacts_empty_when_no_manifest(tmp_path):
 @pytest.mark.unit
 async def test_save_artifact_registered_in_gallery(tmp_path, monkeypatch):
     """Artifacts from exec_result.artifacts are saved to the gallery."""
-    import json
 
     monkeypatch.chdir(tmp_path)
 

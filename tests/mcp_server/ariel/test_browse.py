@@ -2,12 +2,12 @@
 
 import json
 from unittest.mock import AsyncMock, patch
-from tests.mcp_server.conftest import assert_error, assert_raises_error
 
 import pytest
 
 from osprey.mcp_server.ariel.server_context import initialize_ariel_context
 from tests.mcp_server.ariel.conftest import get_tool_fn, make_mock_entry
+from tests.mcp_server.conftest import assert_raises_error
 
 
 def _get_browse():
@@ -160,4 +160,4 @@ async def test_filter_options_unknown_field(tmp_path, monkeypatch):
         with assert_raises_error(error_type="validation_error") as _exc_ctx:
             await fn(field="unknown")
 
-    data = _exc_ctx["envelope"]
+    _exc_ctx["envelope"]

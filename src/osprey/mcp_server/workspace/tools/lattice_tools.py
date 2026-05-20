@@ -18,8 +18,8 @@ import logging
 import os
 
 import httpx
-
 from fastmcp.exceptions import ToolError
+
 from osprey.mcp_server.errors import make_error
 from osprey.mcp_server.workspace.server import mcp
 from osprey.utils.workspace import load_osprey_config
@@ -93,16 +93,16 @@ async def lattice_init(lattice_path: str) -> str:
         )
     except httpx.ConnectError:
         return make_error(
-                "service_unavailable",
-                "Lattice dashboard server is not running.",
-                ["The dashboard starts automatically with 'osprey web'."],
-            )
+            "service_unavailable",
+            "Lattice dashboard server is not running.",
+            ["The dashboard starts automatically with 'osprey web'."],
+        )
     except httpx.HTTPStatusError as exc:
         return make_error(
-                "lattice_error",
-                f"Failed to load lattice: {exc.response.text}",
-                ["Check that the lattice file path is correct and readable."],
-            )
+            "lattice_error",
+            f"Failed to load lattice: {exc.response.text}",
+            ["Check that the lattice file path is correct and readable."],
+        )
     except ToolError:
         raise
     except Exception as exc:
@@ -124,10 +124,10 @@ async def lattice_state() -> str:
         return json.dumps(result, default=str)
     except httpx.ConnectError:
         return make_error(
-                "service_unavailable",
-                "Lattice dashboard server is not running.",
-                ["The dashboard starts automatically with 'osprey web'."],
-            )
+            "service_unavailable",
+            "Lattice dashboard server is not running.",
+            ["The dashboard starts automatically with 'osprey web'."],
+        )
     except ToolError:
         raise
     except Exception as exc:
@@ -166,15 +166,15 @@ async def lattice_set_param(family: str, value: float) -> str:
         )
     except httpx.HTTPStatusError as exc:
         return make_error(
-                "lattice_error",
-                f"Failed to set parameter: {exc.response.text}",
-                ["Check that the family name exists in the lattice."],
-            )
+            "lattice_error",
+            f"Failed to set parameter: {exc.response.text}",
+            ["Check that the family name exists in the lattice."],
+        )
     except httpx.ConnectError:
         return make_error(
-                "service_unavailable",
-                "Lattice dashboard server is not running.",
-            )
+            "service_unavailable",
+            "Lattice dashboard server is not running.",
+        )
     except ToolError:
         raise
     except Exception as exc:
@@ -207,9 +207,9 @@ async def lattice_refresh(figure: str | None = None) -> str:
         return json.dumps(result, default=str)
     except httpx.ConnectError:
         return make_error(
-                "service_unavailable",
-                "Lattice dashboard server is not running.",
-            )
+            "service_unavailable",
+            "Lattice dashboard server is not running.",
+        )
     except ToolError:
         raise
     except Exception as exc:
@@ -240,9 +240,9 @@ async def lattice_set_baseline() -> str:
         )
     except httpx.ConnectError:
         return make_error(
-                "service_unavailable",
-                "Lattice dashboard server is not running.",
-            )
+            "service_unavailable",
+            "Lattice dashboard server is not running.",
+        )
     except ToolError:
         raise
     except Exception as exc:
@@ -271,18 +271,18 @@ async def lattice_get_figure(name: str) -> str:
         return json.dumps(result, default=str)
     except httpx.HTTPStatusError as exc:
         return make_error(
-                "lattice_error",
-                f"Failed to fetch figure '{name}': {exc.response.text}",
-                [
-                    "Valid names: optics, resonance, chromaticity, footprint, da, lma.",
-                    "If the figure status is 'idle' or 'stale', call lattice_refresh first.",
-                ],
-            )
+            "lattice_error",
+            f"Failed to fetch figure '{name}': {exc.response.text}",
+            [
+                "Valid names: optics, resonance, chromaticity, footprint, da, lma.",
+                "If the figure status is 'idle' or 'stale', call lattice_refresh first.",
+            ],
+        )
     except httpx.ConnectError:
         return make_error(
-                "service_unavailable",
-                "Lattice dashboard server is not running.",
-            )
+            "service_unavailable",
+            "Lattice dashboard server is not running.",
+        )
     except ToolError:
         raise
     except Exception as exc:
@@ -310,18 +310,18 @@ async def lattice_get_data(name: str) -> str:
         return json.dumps(result, default=str)
     except httpx.HTTPStatusError as exc:
         return make_error(
-                "lattice_error",
-                f"Failed to fetch data for '{name}': {exc.response.text}",
-                [
-                    "Valid names: optics, resonance, chromaticity, footprint, da, lma.",
-                    "If the figure status is 'idle' or 'stale', call lattice_refresh first.",
-                ],
-            )
+            "lattice_error",
+            f"Failed to fetch data for '{name}': {exc.response.text}",
+            [
+                "Valid names: optics, resonance, chromaticity, footprint, da, lma.",
+                "If the figure status is 'idle' or 'stale', call lattice_refresh first.",
+            ],
+        )
     except httpx.ConnectError:
         return make_error(
-                "service_unavailable",
-                "Lattice dashboard server is not running.",
-            )
+            "service_unavailable",
+            "Lattice dashboard server is not running.",
+        )
     except ToolError:
         raise
     except Exception as exc:
@@ -346,9 +346,9 @@ async def lattice_get_settings() -> str:
         return json.dumps(result, default=str)
     except httpx.ConnectError:
         return make_error(
-                "service_unavailable",
-                "Lattice dashboard server is not running.",
-            )
+            "service_unavailable",
+            "Lattice dashboard server is not running.",
+        )
     except ToolError:
         raise
     except Exception as exc:
@@ -378,15 +378,15 @@ async def lattice_update_settings(settings: dict) -> str:
         return json.dumps(result, default=str)
     except httpx.HTTPStatusError as exc:
         return make_error(
-                "lattice_error",
-                f"Failed to update settings: {exc.response.text}",
-                ["Check the settings shape — nested dict keyed by group name."],
-            )
+            "lattice_error",
+            f"Failed to update settings: {exc.response.text}",
+            ["Check the settings shape — nested dict keyed by group name."],
+        )
     except httpx.ConnectError:
         return make_error(
-                "service_unavailable",
-                "Lattice dashboard server is not running.",
-            )
+            "service_unavailable",
+            "Lattice dashboard server is not running.",
+        )
     except ToolError:
         raise
     except Exception as exc:
@@ -409,9 +409,9 @@ async def lattice_clear_baseline() -> str:
         return json.dumps(result, default=str)
     except httpx.ConnectError:
         return make_error(
-                "service_unavailable",
-                "Lattice dashboard server is not running.",
-            )
+            "service_unavailable",
+            "Lattice dashboard server is not running.",
+        )
     except ToolError:
         raise
     except Exception as exc:

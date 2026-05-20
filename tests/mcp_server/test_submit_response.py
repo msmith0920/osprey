@@ -10,8 +10,6 @@ Covers:
   - skip_artifact mode
 """
 
-import json
-
 import pytest
 
 from osprey.mcp_server.workspace.tools.submit_response import submit_response
@@ -21,7 +19,6 @@ from osprey.stores.artifact_store import (
     reset_artifact_store,
 )
 from tests.mcp_server.conftest import (
-    assert_error,
     assert_raises_error,
     extract_response_dict,
 )
@@ -85,7 +82,7 @@ class TestSubmitResponse:
     async def test_submit_response_whitespace_title(self, workspace):
         with assert_raises_error(error_type="validation_error") as _exc_ctx:
             await _fn(title="   ", content="Some content.")
-        data = _exc_ctx["envelope"]
+        _exc_ctx["envelope"]
 
     @pytest.mark.asyncio
     async def test_submit_response_empty_content(self, workspace):
@@ -236,6 +233,6 @@ class TestSubmitResponse:
         """Validation errors should NOT create an artifact."""
         with assert_raises_error() as _exc_ctx:
             await _fn(title="", content="Some content.")
-        data = _exc_ctx["envelope"]
+        _exc_ctx["envelope"]
         store = get_artifact_store()
         assert len(store.list_entries()) == 0

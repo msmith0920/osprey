@@ -5,9 +5,10 @@ PROMPT-PROVIDER: This tool's docstring is a static prompt visible to Claude Code
   Facility-customizable: tool description with facility-specific system examples
 """
 
-from fastmcp.exceptions import ToolError
 import json
 import logging
+
+from fastmcp.exceptions import ToolError
 
 from osprey.mcp_server.channel_finder_middle_layer.server import make_error, mcp
 from osprey.mcp_server.channel_finder_middle_layer.server_context import get_cf_ml_context
@@ -33,7 +34,7 @@ def list_systems() -> str:
     except Exception as exc:
         logger.exception("list_systems failed")
         return make_error(
-                "internal_error",
-                f"Failed to list systems: {exc}",
-                ["Check that the channel finder database is configured."],
-            )
+            "internal_error",
+            f"Failed to list systems: {exc}",
+            ["Check that the channel finder database is configured."],
+        )
