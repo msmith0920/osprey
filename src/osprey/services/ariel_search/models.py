@@ -12,7 +12,9 @@ This module defines the core data models for ARIEL search service:
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, NotRequired, TypedDict
+from typing import Any
+
+from typing_extensions import NotRequired, TypedDict
 
 
 class SyncStatus(Enum):

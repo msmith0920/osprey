@@ -17,7 +17,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-04-26T20:25:29.649806Z"
+exclude-newer = "2026-05-13T17:39:45.372821Z"
 exclude-newer-span = "P7D"
 
 [[package]]
@@ -3027,6 +3027,7 @@ dependencies = [
     { name = "scipy" },
     { name = "seaborn" },
     { name = "tenacity" },
+    { name = "typing-extensions" },
     { name = "unique-namer" },
     { name = "urllib3" },
     { name = "uvicorn", extra = ["standard"] },
@@ -3202,6 +3203,7 @@ requires-dist = [
     { name = "tenacity", specifier = ">=9.1.4" },
     { name = "testcontainers", extras = ["postgres"], marker = "extra == 'all'", specifier = ">=4.0.0" },
     { name = "testcontainers", extras = ["postgres"], marker = "extra == 'dev'", specifier = ">=4.0.0" },
+    { name = "typing-extensions", specifier = ">=4.12.0" },
     { name = "unique-namer", specifier = ">=0.1.0" },
     { name = "urllib3", specifier = ">=2.4.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.27.0" },
