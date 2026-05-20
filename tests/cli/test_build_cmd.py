@@ -1359,14 +1359,23 @@ class TestProfileExtends:
             load_profile(tmp_path / "a.yml")
 
     def test_missing_base_file(self, tmp_path: Path):
-        """Extends referencing a nonexistent file raises a clear error."""
+        """Extends referencing a nonexistent file raises a clear, debuggable error.
+
+        The diagnostic surfaces BOTH the preset list (so typos against bundled
+        names are obvious) and the resolved filesystem path (so path-shaped
+        values are debuggable).
+        """
         child_path = _write_yaml(
             tmp_path / "child.yml",
             {"extends": "nonexistent.yml", "name": "Child"},
         )
 
-        with pytest.raises(BuildProfileError, match="Extended profile not found"):
+        with pytest.raises(BuildProfileError) as exc:
             load_profile(child_path)
+        msg = str(exc.value)
+        assert "nonexistent.yml" in msg
+        assert "no bundled preset" in msg.lower()
+        assert "no file at" in msg.lower()
 
     def test_multi_level_extends(self, tmp_path: Path):
         """A extends B extends C resolves correctly."""

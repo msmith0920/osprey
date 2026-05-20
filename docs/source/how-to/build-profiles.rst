@@ -50,6 +50,76 @@ produces the same output, and user-owned files (like ``facility.md``) are tracke
 separately.
 
 
+Preset → Profile → Project
+==========================
+
+OSPREY's build inputs form a three-layer hierarchy:
+
+- **Preset** — bundled upstream, lives in ``src/osprey/profiles/presets/``.
+  Self-contained: no ``extends:``. Edited only by PR'ing OSPREY itself.
+  Examples: ``hello-world``, ``control-assistant``, ``ariel-standalone``.
+- **Profile** — user-owned, lives in *your* repo as a directory. Has
+  ``extends: <preset-name>`` (or a path) and overrides only what your
+  facility needs. This is your durable source-of-truth for customizations.
+- **Project** — the rendered output of ``osprey build``. Derived; regenerable;
+  treat it as a build artifact and avoid editing it in place.
+
+You can drive ``osprey build`` in three modes:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 38 40
+
+   * - Mode
+     - Command
+     - When to use
+   * - Quick start
+     - ``osprey build my-project --preset X``
+     - Trying a preset; no customizations needed.
+   * - Scaffold profile
+     - ``osprey build --emit-profile my-profile --preset X``
+     - Starting facility-specific customization. Writes an editable
+       profile directory and exits — no project rendered yet.
+   * - Build from profile
+     - ``osprey build my-project my-profile/profile.yml``
+     - Rendering a project from your profile (the everyday command after
+       the profile exists).
+
+The scaffold mode writes:
+
+.. code-block:: text
+
+   my-profile/
+     profile.yml          # extends: <preset>, with override sections (commented)
+     overlays/
+       rules/   .gitkeep  # drop facility-specific rule .md files here
+       skills/  .gitkeep  # drop custom skill directories here
+       agents/  .gitkeep  # drop custom subagent .md files here
+     README.md            # explains the layout
+
+The seed ``profile.yml`` lists every supported override section in commented
+form (``skills:``, ``rules:``, ``agents:``, ``config:``, ``env:``,
+``overlay:``) — uncomment what you need.
+
+Inheriting from a preset
+------------------------
+
+``extends:`` accepts either a bundled preset name or a filesystem path:
+
+.. code-block:: yaml
+
+   # By bundled preset name (recommended for new profiles).
+   extends: control-assistant
+
+   # By relative path (e.g. multi-profile facility repos with a shared base).
+   extends: ./als-base.yml
+
+Path-shaped values containing ``.yml`` always resolve as filesystem paths,
+so existing multi-file layouts (like the ALS profiles repo) keep working
+unchanged. A preset-name probe is tried first; if it misses, path
+resolution runs.
+
+
 Quick Start
 ===========
 

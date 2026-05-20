@@ -114,6 +114,16 @@ def _list_presets_callback(ctx: click.Context, param: click.Parameter, value: bo
     "data/channel_databases/tiers/tier{N}/ DB the rendered config points at. "
     "Defaults to the profile's tier (which itself defaults to 1).",
 )
+@click.option(
+    "--emit-profile",
+    "emit_profile",
+    type=click.Path(path_type=Path),
+    default=None,
+    metavar="DIR",
+    help="Scaffold an editable profile directory at DIR that extends --preset, "
+    "then exit without rendering a project. Build the project from it with "
+    "`osprey build <PROJECT_NAME> DIR/profile.yml`.",
+)
 def build(
     project_name: str | None,
     profile: str | None,
@@ -127,6 +137,7 @@ def build(
     skip_deps: bool,
     runtime_root: str | None,
     tier: int | None,
+    emit_profile: Path | None,
 ) -> None:
     """Build a facility-specific assistant from a profile or bundled preset.
 
@@ -155,6 +166,50 @@ def build(
     """
     from .build_profile import resolve_build_profile
     from .project_utils import _clear_claude_code_project_state
+
+    # --emit-profile is a project-less scaffold mode. Validate its constraints
+    # and dispatch before the normal "PROJECT_NAME is required" check fires.
+    if emit_profile is not None:
+        if not preset:
+            raise click.UsageError("--emit-profile requires --preset.")
+        # Reject every flag that only makes sense for rendering a project.
+        _incompatible: list[str] = []
+        if project_name:
+            _incompatible.append("PROJECT_NAME")
+        if profile:
+            _incompatible.append("PROFILE")
+        if overrides:
+            _incompatible.append("--override")
+        if set_pairs:
+            _incompatible.append("--set")
+        if output_dir != ".":
+            _incompatible.append("--output-dir")
+        if force:
+            _incompatible.append("--force")
+        if stream:
+            _incompatible.append("--stream")
+        if skip_lifecycle:
+            _incompatible.append("--skip-lifecycle")
+        if skip_deps:
+            _incompatible.append("--skip-deps")
+        if runtime_root:
+            _incompatible.append("--runtime-root")
+        if tier is not None:
+            _incompatible.append("--tier")
+        if _incompatible:
+            raise click.UsageError(
+                "--emit-profile cannot be combined with project-rendering flags: "
+                + ", ".join(_incompatible)
+            )
+        try:
+            _emit_profile_directory(emit_profile, preset)
+        except BuildProfileError as e:
+            # Unknown-preset is a user error; promote to UsageError so the
+            # exit code is 2 (same convention as the project-render path).
+            if str(e).lower().startswith("unknown preset"):
+                raise click.UsageError(str(e)) from e
+            raise
+        return
 
     if not project_name:
         raise click.UsageError("PROJECT_NAME is required. Run 'osprey build --help' for usage.")
@@ -1386,3 +1441,61 @@ def _git_init_and_commit(project_path: Path) -> None:
             "  git init succeeded but initial commit failed.\n"
             "     Run 'git add . && git commit' manually."
         )
+
+
+def _emit_profile_directory(target_dir: Path, preset_name: str) -> None:
+    """Scaffold an editable profile directory that extends ``preset_name``.
+
+    Writes ``profile.yml`` (with ``extends: <preset>`` + commented override
+    sections), an explanatory ``README.md``, and the ``overlays/{rules,skills,
+    agents}/`` tree (with ``.gitkeep`` sentinels). The user then drops overlay
+    artifacts in, edits ``profile.yml``, and builds the project with
+    ``osprey build <PROJECT_NAME> <target_dir>/profile.yml``.
+    """
+    from .build_profile import _load_preset_raw, _normalize_preset_name
+    from .templates.scaffolding import _copy_data_tree
+
+    # Resolve and validate the preset name up-front so the error is clean
+    # (raises BuildProfileError → caught by the outer except chain).
+    preset_raw, _preset_path = _load_preset_raw(preset_name)
+
+    target = target_dir.resolve()
+    if target.exists():
+        raise click.UsageError(
+            f"Target directory already exists: {target}. "
+            f"Remove it or choose a different path."
+        )
+
+    normalized_preset = _normalize_preset_name(preset_name)
+    # `target.name` is the user-chosen directory name (e.g. "my-profile").
+    # Derive a human display name only when the preset itself has no `name:`.
+    profile_name_default = target.name.replace("-", " ").replace("_", " ").title()
+    preset_display_name = preset_raw.get("name") or profile_name_default
+
+    manager = TemplateManager()
+    seed_root = manager.template_root / "profile_seed"
+    if not seed_root.is_dir():
+        # Defensive: catch packaging regressions early with an actionable error
+        # rather than letting Jinja raise TemplateNotFound deep in the loader.
+        raise BuildProfileError(
+            f"Profile seed templates missing at {seed_root}. "
+            f"This is a packaging bug — reinstall osprey-framework."
+        )
+
+    target.mkdir(parents=True)
+    ctx = {
+        "preset_name": normalized_preset,
+        "preset_display_name": preset_display_name,
+        "profile_name": profile_name_default,
+        "profile_dirname": target.name,
+        "profile_filename": f"{target.name}/profile.yml",
+    }
+    _copy_data_tree(seed_root, target, manager.template_root, manager.jinja_env, ctx)
+
+    logger.info("✓ Scaffolded profile at: %s", target)
+    logger.info(
+        "  Next: edit %s/profile.yml, then run "
+        "`osprey build <PROJECT_NAME> %s/profile.yml`",
+        target,
+        target,
+    )

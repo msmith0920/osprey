@@ -152,11 +152,22 @@ def _resolve_extends(
     if extends_value is None:
         return raw
 
-    base_path = (profile_path.parent / extends_value).resolve()
-    if not base_path.exists():
-        raise BuildProfileError(
-            f"Extended profile not found: {extends_value} (resolved to {base_path})"
-        )
+    # Try a bundled preset by name first; fall through to filesystem-path
+    # resolution. Path-shaped values like ``als-base.yml`` correctly miss the
+    # preset probe (it looks up ``als-base.yml.yml``) and resolve as paths,
+    # preserving the sibling-file semantics ALS-style profiles depend on.
+    preset_path = _preset_exists(extends_value)
+    if preset_path is not None:
+        base_path = preset_path
+    else:
+        base_path = (profile_path.parent / extends_value).resolve()
+        if not base_path.exists():
+            available = ", ".join(list_presets()) or "(none)"
+            raise BuildProfileError(
+                f"Cannot resolve extends: {extends_value!r}. "
+                f"No bundled preset by that name (available: {available}), "
+                f"and no file at {base_path}."
+            )
 
     try:
         base_raw = yaml.safe_load(base_path.read_text(encoding="utf-8"))
@@ -558,12 +569,30 @@ def _normalize_preset_name(name: str) -> str:
     return name.replace("_", "-")
 
 
+def _presets_dir() -> Path:
+    """Return the directory containing bundled preset YAMLs."""
+    return Path(str(importlib.resources.files(_PRESETS_PACKAGE)))
+
+
+def _preset_exists(name: str) -> Path | None:
+    """Return the resolved preset path if ``name`` matches a bundled preset, else None.
+
+    Non-raising probe; mirrors :func:`_load_preset_raw`'s lookup so callers
+    that need to *try* preset resolution before falling back can do so
+    without absorbing an exception. Note that :func:`_normalize_preset_name`
+    only translates ``_`` → ``-``; values containing ``.yml`` (e.g. path-style
+    ``extends: als-base.yml``) probe as ``als-base.yml.yml`` and correctly miss.
+    """
+    normalized = _normalize_preset_name(name)
+    candidate = _presets_dir() / f"{normalized}.yml"
+    return candidate if candidate.is_file() else None
+
+
 def list_presets() -> list[str]:
     """Return the sorted list of bundled preset names (hyphenated)."""
-    presets_root = importlib.resources.files(_PRESETS_PACKAGE)
     return sorted(
         p.name.removesuffix(".yml")
-        for p in presets_root.iterdir()
+        for p in _presets_dir().iterdir()
         if p.name.endswith(".yml") and not p.name.startswith("_")
     )
 
@@ -574,9 +603,7 @@ def _load_preset_raw(name: str) -> tuple[dict[str, Any], Path]:
     Raises ``BuildProfileError`` if the preset is unknown or invalid YAML.
     """
     normalized = _normalize_preset_name(name)
-    presets_root = importlib.resources.files(_PRESETS_PACKAGE)
-    presets_dir = Path(str(presets_root))
-    target = presets_dir / f"{normalized}.yml"
+    target = _presets_dir() / f"{normalized}.yml"
     if not target.exists():
         available = ", ".join(list_presets()) or "(none)"
         raise BuildProfileError(f"Unknown preset {name!r}. Available: {available}")
