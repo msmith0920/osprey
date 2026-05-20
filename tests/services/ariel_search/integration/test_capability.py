@@ -219,9 +219,6 @@ class TestCapabilityConfig:
                 "keyword": {"enabled": True},
                 "semantic": {"enabled": True, "model": "nomic-embed-text"},
             },
-            "pipelines": {
-                "rag": {"enabled": True, "retrieval_modules": ["keyword", "semantic"]},
-            },
             "enhancement_modules": {
                 "text_embedding": {
                     "enabled": True,
