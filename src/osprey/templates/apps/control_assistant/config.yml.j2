@@ -592,6 +592,10 @@ claude_code:
 web:
 {%- set _BUILTIN_PANELS = ["ariel", "channel-finder", "tuning"] %}
 {%- set _enabled_builtin_panels = selected_web_panels | select("in", _BUILTIN_PANELS) | list %}
+{%- if default_panel is defined and default_panel %}
+  # Tab focused on cold load. Falls back to "artifacts" (Workspace) when unset.
+  default_panel: {{ default_panel }}
+{%- endif %}
 {%- if _enabled_builtin_panels %}
   panels:
 {%- for panel in _enabled_builtin_panels %}

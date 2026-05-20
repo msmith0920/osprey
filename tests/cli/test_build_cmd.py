@@ -337,6 +337,32 @@ class TestValidation:
         # Should not raise
         profile.validate(profile_dir)
 
+    def test_default_panel_typo_rejected(self, tmp_path: Path):
+        """A `default_panel` value that doesn't match any known panel is rejected.
+
+        Without this check the frontend silently falls back to the framework
+        default — a typo never surfaces. Validation catches it at build time.
+        """
+        profile = BuildProfile(name="Test", default_panel="areil")
+        with pytest.raises(BuildProfileError, match="Unknown default_panel 'areil'"):
+            profile.validate(tmp_path)
+
+    def test_default_panel_builtin_accepted(self, tmp_path: Path):
+        """A built-in panel id is accepted as default_panel without needing
+        a matching web_panels entry."""
+        profile = BuildProfile(name="Test", default_panel="ariel")
+        profile.validate(tmp_path)  # must not raise
+
+    def test_default_panel_custom_via_config_accepted(self, tmp_path: Path):
+        """A custom panel backed by a `web.panels.<id>.url` config override
+        is accepted as default_panel."""
+        profile = BuildProfile(
+            name="Test",
+            default_panel="grafana",
+            config={"web.panels.grafana.url": "http://localhost:3000"},
+        )
+        profile.validate(tmp_path)  # must not raise
+
 
 # ---------------------------------------------------------------------------
 # Build Command Helpers
@@ -1445,10 +1471,14 @@ class TestProfileExtends:
 
 
 def _build_for_web_panels(
-    tmp_path: Path, web_panels: list[str] | None, overrides: dict | None = None
+    tmp_path: Path,
+    web_panels: list[str] | None,
+    overrides: dict | None = None,
+    default_panel: str | None = None,
 ) -> Path:
-    """Build a minimal control_assistant project, optionally with web_panels
-    and config overrides, and return the rendered config.yml path.
+    """Build a minimal control_assistant project, optionally with web_panels,
+    a default_panel pin, and config overrides, and return the rendered
+    config.yml path.
 
     Mirrors build_cmd.py steps 1b, 6, and 8 without running the full CLI.
     """
@@ -1470,6 +1500,8 @@ def _build_for_web_panels(
     }
     if web_panels is not None:
         profile_data["web_panels"] = web_panels
+    if default_panel is not None:
+        profile_data["default_panel"] = default_panel
     if overrides:
         profile_data["config"] = overrides
 
@@ -1487,12 +1519,16 @@ def _build_for_web_panels(
     if build_profile.web_panels:
         artifacts["web_panels"] = list(build_profile.web_panels)
 
+    template_context: dict = {}
+    if build_profile.default_panel:
+        template_context["default_panel"] = build_profile.default_panel
+
     manager = TemplateManager()
     project_dir = manager.create_project(
         project_name="panels-test",
         output_dir=tmp_path / "out",
         data_bundle=build_profile.data_bundle,
-        context={},
+        context=template_context,
         force=False,
         artifacts=artifacts,
     )
@@ -1560,6 +1596,25 @@ class TestWebPanelsRendering:
         tuning = config["web"]["panels"]["tuning"]
         assert tuning["enabled"] is True
         assert tuning["label"] == "TUNING"
+
+    def test_default_panel_rendered_when_set(self, tmp_path: Path):
+        """Profile default_panel: ariel ends up as web.default_panel in config.yml.
+
+        The web terminal reads this key on startup; the frontend pins the
+        cold-load tab to it.
+        """
+        config_path = _build_for_web_panels(
+            tmp_path, web_panels=["ariel"], default_panel="ariel"
+        )
+        config = yaml.safe_load(config_path.read_text())
+        assert config["web"]["default_panel"] == "ariel"
+
+    def test_default_panel_omitted_when_unset(self, tmp_path: Path):
+        """Without a profile default_panel, the rendered config.yml omits
+        the key entirely so the frontend falls back to DEFAULT_PANEL_FALLBACK."""
+        config_path = _build_for_web_panels(tmp_path, web_panels=["ariel"])
+        config = yaml.safe_load(config_path.read_text())
+        assert "default_panel" not in config["web"]
 
 
 # ---------------------------------------------------------------------------

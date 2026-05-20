@@ -209,6 +209,7 @@ class BuildProfile:
     agents: list[str] = field(default_factory=list)
     output_styles: list[str] = field(default_factory=list)
     web_panels: list[str] = field(default_factory=list)
+    default_panel: str | None = None
     categories: dict[str, dict[str, str]] = field(default_factory=dict)
 
     def validate(self, profile_dir: Path) -> None:
@@ -322,6 +323,27 @@ class BuildProfile:
                     f"({sorted(BUILTIN_PANELS)}) and no '{url_key}' config override"
                 )
 
+        # Validate default_panel: must be a built-in, a declared web_panels
+        # entry, or a custom panel backed by a `web.panels.<id>.url` override.
+        # Catches typos like `default_panel: areil` that would otherwise
+        # silently fall back to the frontend DEFAULT_PANEL_FALLBACK at runtime.
+        if self.default_panel is not None:
+            known_custom_urls = {
+                key.split(".")[2]
+                for key in self.config
+                if key.startswith("web.panels.") and key.endswith(".url")
+            }
+            if (
+                self.default_panel not in BUILTIN_PANELS
+                and self.default_panel not in self.web_panels
+                and self.default_panel not in known_custom_urls
+            ):
+                errors.append(
+                    f"Unknown default_panel {self.default_panel!r}: not in BUILTIN_PANELS "
+                    f"({sorted(BUILTIN_PANELS)}), not in web_panels, and no "
+                    f"'web.panels.{self.default_panel}.url' config override"
+                )
+
         # Validate custom category definitions
         import re
 
@@ -400,6 +422,7 @@ _KNOWN_PROFILE_KEYS = frozenset(
         "agents",
         "output_styles",
         "web_panels",
+        "default_panel",
         "categories",
     }
 )
@@ -513,6 +536,7 @@ def _parse_profile(raw: dict[str, Any]) -> BuildProfile:
         agents=raw.get("agents", []),
         output_styles=raw.get("output_styles", []),
         web_panels=raw.get("web_panels", []),
+        default_panel=raw.get("default_panel"),
         categories=raw.get("categories", {}),
     )
 

@@ -285,6 +285,8 @@ def build(
             context["default_model"] = build_profile.model
         if build_profile.channel_finder_mode is not None:
             context["channel_finder_mode"] = build_profile.channel_finder_mode
+        if build_profile.default_panel:
+            context["default_panel"] = build_profile.default_panel
 
         # 6b. Create project directory early (venv creation needs it)
         project_path.mkdir(parents=True, exist_ok=True)
