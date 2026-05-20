@@ -41,7 +41,13 @@ def _get_default_artifacts() -> list[PromptArtifact]:
             canonical_name="claude-md",
             template_path="CLAUDE.md.j2",
             output_path="CLAUDE.md",
-            description="CLAUDE.md system prompt",
+            description="CLAUDE.md system prompt (control-system persona)",
+        ),
+        PromptArtifact(
+            canonical_name="claude-md-ariel",
+            template_path="CLAUDE.ariel.md.j2",
+            output_path="CLAUDE.md",
+            description="CLAUDE.md system prompt (ARIEL logbook research persona)",
         ),
         PromptArtifact(
             canonical_name="mcp-json",
@@ -227,6 +233,12 @@ def _get_default_artifacts() -> list[PromptArtifact]:
             output_path=".claude/skills/demo-gallery/SKILL.md",
             description="Artifact Gallery demo showcase skill",
         ),
+        PromptArtifact(
+            canonical_name="skills/logbook-deep-research",
+            template_path="claude/skills/logbook-deep-research/SKILL.md.j2",
+            output_path=".claude/skills/logbook-deep-research/SKILL.md",
+            description="Multi-phase logbook investigation skill",
+        ),
         # ── Output Styles ────────────────────────────────────────────
         PromptArtifact(
             canonical_name="output-styles/control-operator",
@@ -250,7 +262,12 @@ class PromptCatalog:
 
     def __init__(self, artifacts: list[PromptArtifact]) -> None:
         self._by_name: dict[str, PromptArtifact] = {a.canonical_name: a for a in artifacts}
-        self._by_output: dict[str, PromptArtifact] = {a.output_path: a for a in artifacts}
+        # First registration wins when multiple templates emit the same output
+        # path (e.g. alternate CLAUDE.md personas). `_by_output` is used by
+        # consumers that want the canonical/default artifact for a given output.
+        self._by_output: dict[str, PromptArtifact] = {}
+        for a in artifacts:
+            self._by_output.setdefault(a.output_path, a)
 
     @classmethod
     def default(cls) -> PromptCatalog:

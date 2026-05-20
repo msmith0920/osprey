@@ -541,6 +541,12 @@ def generate_manifest(
         "data_bundle": template_name,
         "claude_code_only": True,
     }
+    # Preserve the CLAUDE.md template choice so `osprey claude regen` can
+    # re-render against the same persona (e.g. CLAUDE.ariel.md.j2 for the
+    # ARIEL standalone preset). Default is the control-system persona.
+    claude_md_template = context.get("claude_md_template")
+    if claude_md_template and claude_md_template != "CLAUDE.md.j2":
+        creation_block["claude_md_template"] = claude_md_template
 
     manifest_data: dict[str, Any] = {
         "schema_version": MANIFEST_SCHEMA_VERSION,

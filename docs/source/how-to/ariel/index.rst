@@ -171,6 +171,14 @@ Learn More
 
       FastAPI app, frontend architecture, capabilities API, and REST endpoints.
 
+   .. grid-item-card:: Standalone Deployment
+      :link: standalone-deployment
+      :link-type: doc
+      :class-header: bg-warning text-white
+      :shadow: md
+
+      The ``ariel-standalone`` preset: ARIEL without the control-system stack.
+
 
 CLI Commands
 ============
@@ -217,6 +225,7 @@ All ARIEL functionality is available through the ``osprey ariel`` command group:
    search-modes
    web-interface
    osprey-integration
+   standalone-deployment
 
 
 See Also

@@ -112,7 +112,8 @@ def _list_presets_callback(ctx: click.Context, param: click.Parameter, value: bo
     default=None,
     help="Channel-database tier (1|2|3). Selects which "
     "data/channel_databases/tiers/tier{N}/ DB the rendered config points at. "
-    "Defaults to the profile's tier (which itself defaults to 1).",
+    "Advanced: override the paradigm-derived default "
+    "(in_context → tier 1, hierarchical/middle_layer → tier 3).",
 )
 @click.option(
     "--emit-profile",
@@ -253,7 +254,7 @@ def build(
 
         logger.info("  Profile: %s", build_profile.name)
         logger.info("  Data bundle: %s", build_profile.data_bundle)
-        logger.info("  Tier: %d", build_profile.tier)
+        logger.info("  Tier: %d", build_profile.resolved_tier())
 
         # 1b. Collect and validate profile artifact selections
         artifacts: dict[str, list[str]] = {}
@@ -342,6 +343,8 @@ def build(
             context["channel_finder_mode"] = build_profile.channel_finder_mode
         if build_profile.default_panel:
             context["default_panel"] = build_profile.default_panel
+        if build_profile.claude_md_template:
+            context["claude_md_template"] = build_profile.claude_md_template
 
         # 6b. Create project directory early (venv creation needs it)
         project_path.mkdir(parents=True, exist_ok=True)
@@ -388,7 +391,7 @@ def build(
             context=context,
             force=True,  # Directory already exists from step 6b (venv created there)
             artifacts=artifacts or None,
-            tier=build_profile.tier,
+            tier=build_profile.resolved_tier(),
         )
         logger.info("  ✓ Base template rendered")
 
@@ -447,6 +450,8 @@ def build(
         }
         if build_profile.channel_finder_mode is not None:
             manifest_context["channel_finder_mode"] = build_profile.channel_finder_mode
+        if build_profile.claude_md_template:
+            manifest_context["claude_md_template"] = build_profile.claude_md_template
         # Carry the invocation source forward so build_reproducible_command
         # renders the matching --preset or positional form (C12).
         if preset:

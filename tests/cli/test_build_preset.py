@@ -127,6 +127,48 @@ def test_set_with_list_value_extends(runner: CliRunner, tmp_path: Path) -> None:
     assert {"hook-log", "hook-config", "approval"} <= hooks
 
 
+def test_preset_ariel_standalone_renders_logbook_persona(
+    runner: CliRunner, tmp_path: Path
+) -> None:
+    """The ariel-standalone preset's ``claude_md_template`` must travel from
+    the preset YAML, through the build-profile parser, into the render
+    context, into the rendered ``CLAUDE.md``, and into the manifest creation
+    block so that ``osprey claude regen`` round-trips the persona choice.
+
+    Drift-guard: if any layer of that wiring (BuildProfile field,
+    _KNOWN_PROFILE_KEYS, _parse_profile, build_cmd's context/manifest_context
+    propagation, or the renderer's template-selection branch) breaks, the
+    preset silently falls back to the control-system persona — exactly the
+    regression this test pins down.
+    """
+    import json
+
+    result = runner.invoke(
+        build,
+        [
+            "smoke",
+            "--preset",
+            "ariel-standalone",
+            "--skip-deps",
+            "--skip-lifecycle",
+            "--output-dir",
+            str(tmp_path),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+
+    project_dir = tmp_path / "smoke"
+
+    claude_md = (project_dir / "CLAUDE.md").read_text(encoding="utf-8")
+    assert "Logbook Research Assistant" in claude_md, claude_md[:200]
+    assert "Control System Assistant" not in claude_md
+
+    manifest = json.loads(
+        (project_dir / ".osprey-manifest.json").read_text(encoding="utf-8")
+    )
+    assert manifest["creation"]["claude_md_template"] == "CLAUDE.ariel.md.j2"
+
+
 def test_positional_profile_still_works(runner: CliRunner, tmp_path: Path) -> None:
     """Backward-compat: existing osprey build PROJECT PROFILE.yml flow."""
     profile = tmp_path / "p.yml"

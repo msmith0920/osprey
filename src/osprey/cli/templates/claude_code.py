@@ -49,6 +49,7 @@ def build_claude_code_context(
     manifest_path = project_dir / manifest_mod.MANIFEST_FILENAME
     template_name = "control_assistant"
     data_bundle = "control_assistant"
+    claude_md_template = "CLAUDE.md.j2"
     artifacts: dict[str, list[str]] = {}
     if manifest_path.exists():
         try:
@@ -56,6 +57,7 @@ def build_claude_code_context(
             creation = manifest_data.get("creation", {})
             template_name = creation.get("template", "control_assistant")
             data_bundle = creation.get("data_bundle", template_name)
+            claude_md_template = creation.get("claude_md_template", "CLAUDE.md.j2")
             artifacts = manifest_data.get("artifacts", {})
         except (json.JSONDecodeError, OSError):
             pass
@@ -81,6 +83,7 @@ def build_claude_code_context(
         ),
         "template_name": template_name,
         "data_bundle": data_bundle,
+        "claude_md_template": claude_md_template,
         "facility_name": config.get("facility_name", project_name),
         "system_timezone": config.get("system", {}).get("timezone", "UTC"),
         "selected_hooks": selected_hooks,
@@ -361,12 +364,21 @@ def create_claude_code_integration(
         render_template(jinja_env, "claude_code/mcp.json.j2", ctx, project_dir / ".mcp.json")
         files_created += 1
 
-    # 2. Render CLAUDE.md.j2 -> CLAUDE.md
-    claude_md_j2 = claude_code_dir / "CLAUDE.md.j2"
+    # 2. Render CLAUDE.md template -> CLAUDE.md
+    # The template filename is selected by the build profile via the
+    # `claude_md_template` field (default "CLAUDE.md.j2"). Presets that want
+    # a different persona override it to e.g. "CLAUDE.ariel.md.j2".
+    claude_md_template_name = ctx.get("claude_md_template", "CLAUDE.md.j2")
+    claude_md_j2 = claude_code_dir / claude_md_template_name
     claude_md_static = claude_code_dir / "CLAUDE.md"
     if not is_user_owned("CLAUDE.md", ctx):
         if claude_md_j2.exists():
-            render_template(jinja_env, "claude_code/CLAUDE.md.j2", ctx, project_dir / "CLAUDE.md")
+            render_template(
+                jinja_env,
+                f"claude_code/{claude_md_template_name}",
+                ctx,
+                project_dir / "CLAUDE.md",
+            )
         elif claude_md_static.exists():
             shutil.copy2(claude_md_static, project_dir / "CLAUDE.md")
         files_created += 1

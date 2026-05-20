@@ -192,12 +192,14 @@ class BuildProfile:
     provider: str | None = None
     model: str | None = None
     channel_finder_mode: str | None = None
-    tier: int = 1
+    tier: int | None = None
     """Channel-database tier (1|2|3) selecting which preset `tiers/tier{N}` DB
     is materialized at build time to the flat `data/channel_databases/<name>.json`
-    location. This is build-time only and is NOT rendered into `config.yml`;
-    the runtime config carries no tier knob. Facility profiles can ignore it
-    because the DB they overlay overwrites whatever the preset put there.
+    location. When ``None``, the build resolves a paradigm-aware default via
+    :meth:`resolved_tier` (in_context → 1, hierarchical/middle_layer → 3).
+    This is build-time only and is NOT rendered into `config.yml`; the runtime
+    config carries no tier knob. Facility profiles can ignore it because the
+    DB they overlay overwrites whatever the preset put there.
     """
     config: dict[str, Any] = field(default_factory=dict)
     overlay: dict[str, str] = field(default_factory=dict)
@@ -221,7 +223,26 @@ class BuildProfile:
     output_styles: list[str] = field(default_factory=list)
     web_panels: list[str] = field(default_factory=list)
     default_panel: str | None = None
+    claude_md_template: str | None = None
+    """Bundled `templates/claude_code/<filename>` to render as CLAUDE.md
+    (default: "CLAUDE.md.j2"). Lets a preset pick an alternate persona
+    (e.g. "CLAUDE.ariel.md.j2" for the logbook-research bundle). Internal
+    preset-author primitive — facility profiles override CLAUDE.md via
+    overlay, not via this key.
+    """
     categories: dict[str, dict[str, str]] = field(default_factory=dict)
+
+    def resolved_tier(self) -> int:
+        """Resolve the build-time tier, applying a paradigm-aware default.
+
+        Returns ``self.tier`` if set; otherwise picks tier 1 for ``in_context``
+        and tier 3 for ``hierarchical``/``middle_layer``.  Callers that need a
+        concrete integer (the build pipeline, the materializer) MUST go through
+        this method rather than reading ``self.tier`` directly.
+        """
+        if self.tier is not None:
+            return self.tier
+        return 1 if self.channel_finder_mode == "in_context" else 3
 
     def validate(self, profile_dir: Path) -> None:
         """Validate profile consistency. Raises BuildProfileError with all issues."""
@@ -230,7 +251,7 @@ class BuildProfile:
         if not self.name:
             errors.append("Profile 'name' is required")
 
-        if self.tier not in (1, 2, 3):
+        if self.tier is not None and self.tier not in (1, 2, 3):
             errors.append(f"tier must be 1, 2, or 3 (got {self.tier!r})")
 
         if (
@@ -434,6 +455,7 @@ _KNOWN_PROFILE_KEYS = frozenset(
         "output_styles",
         "web_panels",
         "default_panel",
+        "claude_md_template",
         "categories",
     }
 )
@@ -530,7 +552,7 @@ def _parse_profile(raw: dict[str, Any]) -> BuildProfile:
         provider=raw.get("provider"),
         model=raw.get("model"),
         channel_finder_mode=raw.get("channel_finder_mode"),
-        tier=int(raw.get("tier", 1)),
+        tier=(int(raw["tier"]) if raw.get("tier") is not None else None),
         config=raw.get("config", {}),
         overlay=raw.get("overlay", {}),
         mcp_servers=mcp_servers,
@@ -548,6 +570,7 @@ def _parse_profile(raw: dict[str, Any]) -> BuildProfile:
         output_styles=raw.get("output_styles", []),
         web_panels=raw.get("web_panels", []),
         default_panel=raw.get("default_panel"),
+        claude_md_template=raw.get("claude_md_template"),
         categories=raw.get("categories", {}),
     )
 

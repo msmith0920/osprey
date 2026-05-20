@@ -137,6 +137,7 @@ _issues
 weather-agent/
 my-control-assistant/
 my-lattice-assistant/
+my-ariel-standalone/
 my-agent/_audit/
 
 # Generated benchmark databases (regenerate: uv run python scripts/generate_benchmark_suite.py)
