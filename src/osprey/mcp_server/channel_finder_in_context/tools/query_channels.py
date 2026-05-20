@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
-from typing_extensions import TypedDict
 
 import litellm
+from typing_extensions import TypedDict
 
 from osprey.mcp_server.channel_finder_in_context.server import mcp
 from osprey.mcp_server.channel_finder_in_context.server_context import get_cf_ic_context
