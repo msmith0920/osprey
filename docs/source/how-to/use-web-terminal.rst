@@ -138,18 +138,18 @@ A dedicated session panel lets you inspect the running conversation:
 - **Artifact summary** (``GET /api/session-summary``) -- inventory of workspace
   artifacts with channel extraction.
 
-Prompt Gallery
-^^^^^^^^^^^^^^
+Scaffold Gallery
+^^^^^^^^^^^^^^^^
 
-Browse, edit, and override the prompt artifacts that shape the agent:
+Browse, edit, and override the build artifacts that shape the agent:
 
-- ``GET /api/prompts`` -- list all prompt artifacts with framework/user-owned
+- ``GET /api/scaffold`` -- list all build artifacts with framework/user-owned
   status.
-- ``POST /api/prompts/{name}/scaffold`` -- scaffold an override from the
-  framework template.
-- ``PUT /api/prompts/{name}/override`` -- save a custom override.
-- ``DELETE /api/prompts/{name}/override`` -- revert to the framework version.
-- ``GET /api/prompts/{name}/diff`` -- unified diff between framework and
+- ``POST /api/scaffold/{name}/claim`` -- claim an artifact for editing
+  (scaffold an override from the framework template).
+- ``PUT /api/scaffold/{name}/override`` -- save a custom override.
+- ``DELETE /api/scaffold/{name}/override`` -- revert to the framework version.
+- ``GET /api/scaffold/{name}/diff`` -- unified diff between framework and
   override.
 
 Memory Gallery

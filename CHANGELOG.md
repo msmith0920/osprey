@@ -11,6 +11,9 @@ Compatibility is documented in release notes, not encoded in the version string.
 
 ## [Unreleased]
 
+### Changed
+- **Renamed `prompts` → `scaffold` (user-facing) / `build_artifacts` (internal Python).** The framework's registry of Claude Code build artifacts (CLAUDE.md, hooks, skills, agents, settings.json, .mcp.json, statusline.py, output styles) was historically called "prompts" — a name that became misleading once the registry materialized everything in `.claude/`, not just prompt text. Renames: CLI `osprey prompts …` → `osprey scaffold …`; web routes `/api/prompts/*` → `/api/scaffold/*` (verb `/scaffold` → `/claim`); Python package `osprey.services.prompts` → `osprey.services.build_artifacts` (classes `PromptArtifact` → `BuildArtifact`, `PromptCatalog` → `BuildArtifactCatalog`); config key `prompts.user_owned` → `scaffold.user_owned`. Manifest JSON `user_owned` key unchanged. Hard rename, no compatibility shim — projects with the old `prompts.user_owned:` key in `config.yml` must rename the key by hand.
+
 ### Added
 - **Channel-finder preset ships tier-segmented channel DBs.** All 9 tier databases (3 tiers × 3 paradigms) now live inside the `control_assistant` preset under `data/channel_databases/tiers/{tier1,tier2,tier3}/{hierarchical,in_context,middle_layer}.json` and are copied to user projects by `osprey build`. Users can pick a tier per-run rather than re-initializing. `scripts/generate_benchmark_suite.py` writes into the preset path by default.
 - **Channel Finder**: `osprey channel-finder generate` subcommand produces 3 template databases from the canonical hierarchical source — `in_context.json` (Tier 1, 205 channels with aliases), `hierarchical.json` (Tier 3, 1210 channels), `middle_layer.json` (Tier 3, 1210 channels with setup blocks).

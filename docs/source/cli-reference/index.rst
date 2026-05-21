@@ -26,7 +26,7 @@ without arguments launches an interactive TUI menu.
    osprey ariel              # ARIEL logbook search service
    osprey artifacts          # Artifact gallery
    osprey web                # Launch web terminal
-   osprey prompts            # Prompt artifact overrides
+   osprey scaffold           # Build artifact overrides
    osprey audit              # Audit project or profile safety
    osprey skills             # Manage bundled Osprey skills
    osprey vendor             # Manage locally bundled vendor assets
@@ -351,10 +351,10 @@ and lifecycle scripts.
    osprey audit profile.yml --build
    osprey audit project/ --json
 
-osprey prompts
-==============
+osprey scaffold
+===============
 
-Manage prompt artifact ownership. Framework-managed prompt artifacts (agents,
+Manage build artifact ownership. Framework-managed build artifacts (agents,
 rules, etc.) can be claimed per-facility for in-place editing. Claimed files
 are marked user-owned in ``config.yml`` and ``.osprey-manifest.json``, and
 subsequent ``osprey claude regen`` runs skip them.
@@ -363,29 +363,29 @@ All subcommands accept a common flag:
 
 ``-p, --project DIRECTORY`` — Project directory (default: current directory).
 
-``osprey prompts list``
-   List all prompt artifacts and their ownership status (framework vs.
+``osprey scaffold list``
+   List all build artifacts and their ownership status (framework vs.
    user-owned).
 
-``osprey prompts claim NAME``
+``osprey scaffold claim NAME``
    Claim ownership of a framework artifact for in-place editing. If the file
    doesn't exist yet, the framework template is rendered in place at the
    canonical output path. If it already exists, it is marked user-owned.
 
-``osprey prompts diff NAME``
+``osprey scaffold diff NAME``
    Show a unified diff between the current framework template (re-rendered)
    and your file at the canonical output path.
 
-``osprey prompts unclaim NAME``
+``osprey scaffold unclaim NAME``
    Release ownership and restore framework management. The next
    ``osprey claude regen`` will overwrite the file with the framework template.
 
 .. code-block:: bash
 
-   osprey prompts list                           # Show all artifacts
-   osprey prompts claim agents/channel-finder    # Claim for editing
-   osprey prompts diff agents/channel-finder     # Compare yours vs framework
-   osprey prompts unclaim rules/safety           # Restore framework management
+   osprey scaffold list                           # Show all artifacts
+   osprey scaffold claim agents/channel-finder    # Claim for editing
+   osprey scaffold diff agents/channel-finder     # Compare yours vs framework
+   osprey scaffold unclaim rules/safety           # Restore framework management
 
 osprey skills
 =============

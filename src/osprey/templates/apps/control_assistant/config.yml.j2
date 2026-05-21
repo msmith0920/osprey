@@ -586,13 +586,13 @@ web:
 {%- endif %}
 
 # ──────────────────────────────────────────────────────────────────────
-# User-Owned Prompt Artifacts
+# User-Owned Build Artifacts
 # ──────────────────────────────────────────────────────────────────────
-# Claim framework-managed prompt artifacts for in-place editing.
+# Claim framework-managed build artifacts for in-place editing.
 # Regen skips user-owned files, preserving your customizations.
-# Run `osprey prompts list` to see all available artifacts.
-# Run `osprey prompts claim <name>` to claim an artifact for editing.
+# Run `osprey scaffold list` to see all available artifacts.
+# Run `osprey scaffold claim <name>` to claim an artifact for editing.
 #
-# prompts:
+# scaffold:
 #   user_owned:
 #     - rules/facility    # Auto-claimed on init — edit .claude/rules/facility.md

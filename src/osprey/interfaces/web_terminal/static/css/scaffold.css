@@ -919,7 +919,7 @@
 
 /* ---- Gallery View (scrollable) ---- */
 
-.prompts-gallery-view {
+.scaffold-gallery-view {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;

@@ -12,7 +12,7 @@ import yaml
 from osprey.cli.styles import console
 from osprey.cli.templates import manifest as manifest_mod
 from osprey.cli.templates._rendering import render_template
-from osprey.services.prompts.catalog import PromptCatalog
+from osprey.services.build_artifacts.catalog import BuildArtifactCatalog
 from osprey.utils.config import resolve_env_vars
 
 logger = logging.getLogger("osprey.cli.templates")
@@ -145,7 +145,7 @@ def build_claude_code_context(
     ctx["enabled_servers"] = {s["name"] for s in ctx["servers"] if s["enabled"]}
     ctx["enabled_agents"] = {a["name"] for a in ctx["agents"] if a["enabled"]}
     # User-owned files: regen skips these, users edit in-place
-    ctx["user_owned"] = config.get("prompts", {}).get("user_owned", [])
+    ctx["user_owned"] = config.get("scaffold", {}).get("user_owned", [])
 
     # Textbooks root -- resolve relative to project directory (repo root)
     _textbooks_dir = project_dir.parent / "data" / "textbooks"
@@ -221,7 +221,7 @@ def compute_regen_summary(ctx: dict) -> dict:
 def is_user_owned(rel_path: str, ctx: dict) -> bool:
     """Check if a file is user-owned (regen should skip it).
 
-    User-owned files are listed in ``prompts.user_owned`` in config.yml.
+    User-owned files are listed in ``scaffold.user_owned`` in config.yml.
     During init (empty list), nothing is user-owned so all files are written.
     Agent and skill files are never user-owned (always auto-managed).
 
@@ -236,13 +236,13 @@ def is_user_owned(rel_path: str, ctx: dict) -> bool:
     user_owned = ctx.get("user_owned", [])
     if not user_owned:
         return False
-    registry = PromptCatalog.default()
+    registry = BuildArtifactCatalog.default()
     art = registry.get_by_output(rel_path)
     return art is not None and art.canonical_name in user_owned
 
 
 def auto_register_user_owned(project_dir: Path, canonical_name: str):
-    """Add a canonical name to ``prompts.user_owned`` in config.yml.
+    """Add a canonical name to ``scaffold.user_owned`` in config.yml.
 
     Used during init to mark facility.md as user-owned so regen
     never overwrites user customizations.  Uses ruamel.yaml round-trip
@@ -253,10 +253,10 @@ def auto_register_user_owned(project_dir: Path, canonical_name: str):
     config_path = project_dir / "config.yml"
     if not config_path.exists():
         return
-    config_add_to_list(config_path, ["prompts", "user_owned"], canonical_name)
+    config_add_to_list(config_path, ["scaffold", "user_owned"], canonical_name)
 
 
-def output_path_to_canonical(output_path: str, registry: PromptCatalog) -> str | None:
+def output_path_to_canonical(output_path: str, registry: BuildArtifactCatalog) -> str | None:
     """Reverse-lookup: map an output file path to its canonical artifact name."""
     art = registry.get_by_output(output_path)
     return art.canonical_name if art else None
@@ -501,7 +501,7 @@ def check_user_owned_drift(
 
     import tempfile
 
-    registry = PromptCatalog.default()
+    registry = BuildArtifactCatalog.default()
     claude_code_dir = template_root / "claude_code"
     drift: list[str] = []
 
@@ -540,7 +540,7 @@ def check_user_owned_drift(
             drift.append(canonical_name)
             console.print(
                 f"  [warning]⚠[/warning] Framework updated {canonical_name} since you claimed it.\n"
-                f"    Run `osprey prompts diff {canonical_name}` to review changes.",
+                f"    Run `osprey scaffold diff {canonical_name}` to review changes.",
                 style="yellow",
             )
 

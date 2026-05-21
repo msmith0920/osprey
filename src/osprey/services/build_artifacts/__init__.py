@@ -1,13 +1,13 @@
-"""Prompt catalog and ownership helpers — shared service layer.
+"""Build artifact catalog and ownership helpers — shared service layer.
 
 Re-exports the public API so callers can write::
 
-    from osprey.services.prompts import PromptCatalog, PromptArtifact
-    from osprey.services.prompts import get_user_owned
+    from osprey.services.build_artifacts import BuildArtifactCatalog, BuildArtifact
+    from osprey.services.build_artifacts import get_user_owned
 """
 
-from osprey.services.prompts.catalog import PromptArtifact, PromptCatalog
-from osprey.services.prompts.ownership import (
+from osprey.services.build_artifacts.catalog import BuildArtifact, BuildArtifactCatalog
+from osprey.services.build_artifacts.ownership import (
     get_user_owned,
     update_config_add_user_owned,
     update_config_remove_user_owned,
@@ -16,8 +16,8 @@ from osprey.services.prompts.ownership import (
 )
 
 __all__ = [
-    "PromptArtifact",
-    "PromptCatalog",
+    "BuildArtifact",
+    "BuildArtifactCatalog",
     "get_user_owned",
     "update_config_add_user_owned",
     "update_config_remove_user_owned",

@@ -1,4 +1,4 @@
-"""Tests that PromptGalleryService reads files from disk, not re-rendered templates.
+"""Tests that ScaffoldGalleryService reads files from disk, not re-rendered templates.
 
 Verifies the fix for the bug where framework-managed artifacts showed unresolved
 env vars (e.g. ``${TZ:-America/Los_Angeles}``) because get_content() re-rendered
@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from osprey.cli.build_cmd import build
-from osprey.interfaces.web_terminal.prompt_gallery_service import PromptGalleryService
+from osprey.interfaces.web_terminal.scaffold_gallery_service import ScaffoldGalleryService
 
 # Use an artifact known to exist after osprey build and backed by a .j2 template
 SAFE_ARTIFACT = "rules/safety"
@@ -40,7 +40,7 @@ def project_dir(tmp_path):
 
 @pytest.fixture()
 def service(project_dir):
-    return PromptGalleryService(project_dir)
+    return ScaffoldGalleryService(project_dir)
 
 
 class TestGetContentReadsDisk:
@@ -53,9 +53,9 @@ class TestGetContentReadsDisk:
         re-renders the template, it won't have the marker. If it reads from
         disk, it will.
         """
-        from osprey.services.prompts.catalog import PromptCatalog
+        from osprey.services.build_artifacts.catalog import BuildArtifactCatalog
 
-        registry = PromptCatalog.default()
+        registry = BuildArtifactCatalog.default()
         art = registry.get(SAFE_ARTIFACT)
         assert art is not None
 
@@ -67,7 +67,7 @@ class TestGetContentReadsDisk:
         disk_path.write_text(marker + original, encoding="utf-8")
 
         # Re-create service to avoid any stale caching
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         result = svc.get_content(SAFE_ARTIFACT)
 
         # get_content should return the disk content (with marker)
@@ -76,9 +76,9 @@ class TestGetContentReadsDisk:
 
     def test_get_content_falls_back_to_render_when_file_missing(self, service, project_dir):
         """When the on-disk file is missing, get_content falls back to _render_framework."""
-        from osprey.services.prompts.catalog import PromptCatalog
+        from osprey.services.build_artifacts.catalog import BuildArtifactCatalog
 
-        registry = PromptCatalog.default()
+        registry = BuildArtifactCatalog.default()
         art = registry.get(SAFE_ARTIFACT)
         assert art is not None
 
@@ -88,7 +88,7 @@ class TestGetContentReadsDisk:
         assert not disk_path.exists()
 
         # Re-create service after deleting file
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         result = svc.get_content(SAFE_ARTIFACT)
 
         # Should still return content (from template), not error
@@ -104,7 +104,7 @@ class TestGetContentReadsDisk:
 
         # Claim it
         service.scaffold_override(SAFE_ARTIFACT)
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
 
         # After claiming: user-owned
         result_after = svc.get_content(SAFE_ARTIFACT)

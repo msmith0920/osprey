@@ -10,7 +10,7 @@ class TestLoadConfigResolvesEnvVars:
 
     def test_load_config_resolves_env_vars(self, tmp_path, monkeypatch):
         """Config values like ${MY_VAR:-default} are resolved by _load_config."""
-        from osprey.cli.prompts_cmd import _load_config
+        from osprey.cli.scaffold_cmd import _load_config
 
         # Write a config.yml with bash-style env var syntax
         config_path = tmp_path / "config.yml"

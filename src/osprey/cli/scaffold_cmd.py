@@ -1,7 +1,7 @@
-"""CLI subcommands for managing prompt artifact ownership.
+"""CLI subcommands for managing build artifact ownership.
 
-Provides ``osprey prompts list|claim|diff|unclaim`` commands
-for inspecting and customizing the Claude Code prompt artifacts
+Provides ``osprey scaffold list|claim|diff|unclaim`` commands
+for inspecting and customizing the Claude Code build artifacts
 that OSPREY generates during ``osprey build`` / ``osprey claude regen``.
 """
 
@@ -16,8 +16,8 @@ import yaml
 
 from osprey.cli.styles import console
 from osprey.cli.templates.manager import TemplateManager
-from osprey.services.prompts.catalog import PromptCatalog
-from osprey.services.prompts.ownership import (
+from osprey.services.build_artifacts.catalog import BuildArtifactCatalog
+from osprey.services.build_artifacts.ownership import (
     get_user_owned,
     update_config_add_user_owned,
     update_config_remove_user_owned,
@@ -38,28 +38,28 @@ def _load_config(project_dir: Path) -> dict[str, Any]:
         return resolve_env_vars(yaml.safe_load(f) or {})
 
 
-@click.group(name="prompts", invoke_without_command=True)
+@click.group(name="scaffold", invoke_without_command=True)
 @click.pass_context
-def prompts(ctx):
-    """Manage prompt artifact ownership.
+def scaffold(ctx):
+    """Manage build artifact ownership.
 
-    Framework-managed prompt artifacts can be claimed per-facility
+    Framework-managed build artifacts can be claimed per-facility
     for in-place editing. Use the subcommands to inspect, claim, diff,
     and unclaim artifacts.
 
     Examples:
 
     \b
-      osprey prompts list                       # Show all artifacts
-      osprey prompts claim agents/channel-finder # Claim for editing
-      osprey prompts diff agents/channel-finder  # Compare yours vs framework
-      osprey prompts unclaim agents/channel-finder # Restore framework management
+      osprey scaffold list                       # Show all artifacts
+      osprey scaffold claim agents/channel-finder # Claim for editing
+      osprey scaffold diff agents/channel-finder  # Compare yours vs framework
+      osprey scaffold unclaim agents/channel-finder # Restore framework management
     """
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 
 
-@prompts.command(name="list")
+@scaffold.command(name="list")
 @click.option(
     "--project",
     "-p",
@@ -68,7 +68,7 @@ def prompts(ctx):
     help="Project directory (default: current directory)",
 )
 def list_artifacts(project):
-    """List all prompt artifacts and their ownership status."""
+    """List all build artifacts and their ownership status."""
     project_dir = Path(project) if project else Path.cwd()
 
     try:
@@ -77,7 +77,7 @@ def list_artifacts(project):
         config = {}
 
     user_owned = get_user_owned(config)
-    registry = PromptCatalog.default()
+    registry = BuildArtifactCatalog.default()
 
     framework_managed = []
     owned = []
@@ -88,7 +88,7 @@ def list_artifacts(project):
         else:
             framework_managed.append(art)
 
-    console.print("\n[bold]Prompt Artifacts[/bold]\n")
+    console.print("\n[bold]Build Artifacts[/bold]\n")
 
     if framework_managed:
         console.print("  [dim]Framework-managed:[/dim]")
@@ -105,7 +105,7 @@ def list_artifacts(project):
     console.print()
 
 
-@prompts.command(name="claim")
+@scaffold.command(name="claim")
 @click.argument("name")
 @click.option(
     "--project",
@@ -124,11 +124,11 @@ def claim(name, project):
     Examples:
 
     \b
-      osprey prompts claim agents/channel-finder
-      osprey prompts claim rules/safety
+      osprey scaffold claim agents/channel-finder
+      osprey scaffold claim rules/safety
     """
     project_dir = Path(project) if project else Path.cwd()
-    registry = PromptCatalog.default()
+    registry = BuildArtifactCatalog.default()
     artifact = registry.get(name)
 
     if artifact is None:
@@ -187,7 +187,7 @@ def claim(name, project):
     added = update_config_add_user_owned(project_dir, name)
     if added:
         console.print(
-            f"  [success]\u2713[/success] Updated config.yml \u2014 prompts.user_owned += {name}"
+            f"  [success]\u2713[/success] Updated config.yml \u2014 scaffold.user_owned += {name}"
         )
 
     # Update manifest
@@ -196,7 +196,7 @@ def claim(name, project):
     console.print(f"\n  Edit [path]{artifact.output_path}[/path] \u2014 regen will skip it.\n")
 
 
-@prompts.command(name="diff")
+@scaffold.command(name="diff")
 @click.argument("name")
 @click.option(
     "--project",
@@ -214,8 +214,8 @@ def diff(name, project):
     Examples:
 
     \b
-      osprey prompts diff agents/channel-finder
-      osprey prompts diff rules/facility
+      osprey scaffold diff agents/channel-finder
+      osprey scaffold diff rules/facility
     """
     project_dir = Path(project) if project else Path.cwd()
     config = _load_config(project_dir)
@@ -223,10 +223,10 @@ def diff(name, project):
 
     if name not in user_owned:
         raise click.ClickException(
-            f"'{name}' is not user-owned in config.yml. Run `osprey prompts claim {name}` first."
+            f"'{name}' is not user-owned in config.yml. Run `osprey scaffold claim {name}` first."
         )
 
-    registry = PromptCatalog.default()
+    registry = BuildArtifactCatalog.default()
     artifact = registry.get(name)
     if artifact is None:
         raise click.ClickException(f"Unknown artifact '{name}'.")
@@ -272,7 +272,7 @@ def diff(name, project):
         )
 
 
-@prompts.command(name="unclaim")
+@scaffold.command(name="unclaim")
 @click.argument("name")
 @click.option(
     "--project",
@@ -291,8 +291,8 @@ def unclaim(name, project):
     Examples:
 
     \b
-      osprey prompts unclaim agents/channel-finder
-      osprey prompts unclaim rules/safety
+      osprey scaffold unclaim agents/channel-finder
+      osprey scaffold unclaim rules/safety
     """
     project_dir = Path(project) if project else Path.cwd()
     config = _load_config(project_dir)

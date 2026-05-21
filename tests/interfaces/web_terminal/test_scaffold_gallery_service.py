@@ -1,4 +1,4 @@
-"""Tests for PromptGalleryService — bridges PromptCatalog + TemplateManager for web UI."""
+"""Tests for ScaffoldGalleryService — bridges BuildArtifactCatalog + TemplateManager for web UI."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ import yaml
 from click.testing import CliRunner
 
 from osprey.cli.build_cmd import build
-from osprey.interfaces.web_terminal.prompt_gallery_service import PromptGalleryService
-from osprey.services.prompts.catalog import PromptCatalog
+from osprey.interfaces.web_terminal.scaffold_gallery_service import ScaffoldGalleryService
+from osprey.services.build_artifacts.catalog import BuildArtifactCatalog
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -46,7 +46,7 @@ def project_dir(tmp_path):
 
 @pytest.fixture()
 def service(project_dir):
-    return PromptGalleryService(project_dir)
+    return ScaffoldGalleryService(project_dir)
 
 
 # ---------------------------------------------------------------------------
@@ -61,7 +61,7 @@ def _read_config(project_dir: Path) -> dict:
 
 def _get_user_owned(project_dir: Path) -> list[str]:
     cfg = _read_config(project_dir)
-    return cfg.get("prompts", {}).get("user_owned", [])
+    return cfg.get("scaffold", {}).get("user_owned", [])
 
 
 # ===========================================================================
@@ -70,7 +70,7 @@ def _get_user_owned(project_dir: Path) -> list[str]:
 
 
 class TestListArtifacts:
-    """Tests for PromptGalleryService.list_artifacts()."""
+    """Tests for ScaffoldGalleryService.list_artifacts()."""
 
     def test_list_artifacts_only_existing_files(self, service, project_dir):
         """Every returned artifact corresponds to a file that exists on disk."""
@@ -82,7 +82,7 @@ class TestListArtifacts:
 
     def test_list_artifacts_bounded_by_registry(self, service):
         """Returned count is at most the registry size (no phantom artifacts)."""
-        registry = PromptCatalog.default()
+        registry = BuildArtifactCatalog.default()
         result = service.list_artifacts()
         assert len(result) <= len(registry.all_artifacts())
 
@@ -97,7 +97,7 @@ class TestListArtifacts:
         """After claiming, the artifact shows status 'user-owned'."""
         service.scaffold_override(SAFE_ARTIFACT)
         # Re-create service to pick up refreshed config
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         result = svc.list_artifacts()
         by_name = {a["name"]: a for a in result}
         assert by_name[SAFE_ARTIFACT]["status"] == "user-owned"
@@ -132,7 +132,7 @@ class TestListArtifacts:
             encoding="utf-8",
         )
 
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         result = svc.list_artifacts()
         by_name = {a["name"]: a for a in result}
         assert by_name[SAFE_ARTIFACT]["summary"] == "Custom safety summary"
@@ -145,7 +145,7 @@ class TestListArtifacts:
         if safety_file.exists():
             safety_file.unlink()
 
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         result = svc.list_artifacts()
         names = {a["name"] for a in result}
         assert SAFE_ARTIFACT not in names
@@ -172,7 +172,7 @@ class TestGetContent:
         custom = "# Custom safety rules\nDo not touch anything.\n"
         service.save_override(SAFE_ARTIFACT, custom)
 
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         result = svc.get_content(SAFE_ARTIFACT)
         assert result["source"] == "user-owned"
         assert result["content"] == custom
@@ -198,7 +198,7 @@ class TestGetContent:
         scaffold_result = service.scaffold_override(SAFE_ARTIFACT)
         expected_content = scaffold_result["content"]
 
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         content = svc.get_override_content(SAFE_ARTIFACT)
         assert content is not None
         assert content == expected_content
@@ -225,7 +225,7 @@ class TestComputeDiff:
         service.scaffold_override(SAFE_ARTIFACT)
         service.save_override(SAFE_ARTIFACT, "# Completely replaced content\n")
 
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         result = svc.compute_diff(SAFE_ARTIFACT)
         assert result["has_diff"] is True
         assert result["additions"] > 0
@@ -304,7 +304,7 @@ class TestUnoverride:
         """Unclaim removes the config entry."""
         service.scaffold_override(SAFE_ARTIFACT)
 
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         result = svc.unoverride(SAFE_ARTIFACT)
 
         assert result["status"] == "removed"
@@ -345,7 +345,7 @@ class TestDescriptionExtraction:
 
     def test_config_falls_back_to_registry(self, service):
         """Config artifacts (JSON templates) fall back to registry description."""
-        registry = PromptCatalog.default()
+        registry = BuildArtifactCatalog.default()
         reg_art = registry.get("claude-md")
         result = service.list_artifacts()
         by_name = {a["name"]: a for a in result}
@@ -412,7 +412,7 @@ class TestScanUntracked:
 
         service.register_untracked("rules/already-claimed")
 
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         result = svc.scan_untracked()
         names = [u["canonical_name"] for u in result]
         assert "rules/already-claimed" not in names
@@ -448,7 +448,7 @@ class TestRegisterUntracked:
     """Tests for register_untracked — adding custom files to config."""
 
     def test_register_untracked_adds_to_config(self, service, project_dir):
-        """Registering adds the canonical name to prompts.user_owned in config."""
+        """Registering adds the canonical name to scaffold.user_owned in config."""
         orphan = project_dir / ".claude" / "rules" / "new-rule.md"
         orphan.parent.mkdir(parents=True, exist_ok=True)
         orphan.write_text("# New Rule\n", encoding="utf-8")
@@ -471,7 +471,7 @@ class TestRegisterUntracked:
         orphan.write_text("# Dupe\n", encoding="utf-8")
 
         service.register_untracked("rules/dupe")
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         with pytest.raises(FileExistsError, match="already registered"):
             svc.register_untracked("rules/dupe")
 
@@ -515,7 +515,7 @@ class TestCustomArtifacts:
 
         service.register_untracked("rules/custom")
 
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         result = svc.list_artifacts()
         by_name = {a["name"]: a for a in result}
         assert "rules/custom" in by_name
@@ -534,7 +534,7 @@ class TestCustomArtifacts:
 
         service.register_untracked("rules/readable")
 
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         result = svc.get_content("rules/readable")
         assert result["source"] == "user-owned"
         assert result["content"] == content
@@ -552,7 +552,7 @@ class TestCustomArtifacts:
 
         service.register_untracked("rules/editable")
 
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         new_content = "# Edited Custom Rule\nUpdated content.\n"
         result = svc.save_override("rules/editable", new_content)
         assert result["status"] == "saved"
@@ -566,7 +566,7 @@ class TestCustomArtifacts:
 
         service.register_untracked("rules/removable")
 
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         result = svc.unoverride("rules/removable", delete_file=True)
         assert result["status"] == "removed"
         assert result["deleted_file"] is True
@@ -600,7 +600,7 @@ class TestCreateArtifact:
         assert len(fpath.read_text(encoding="utf-8")) > 0
 
     def test_create_artifact_registers_in_config(self, service, project_dir):
-        """Creating adds the canonical name to prompts.user_owned in config."""
+        """Creating adds the canonical name to scaffold.user_owned in config."""
         service.create_artifact("agents", "my-agent")
         user_owned = _get_user_owned(project_dir)
         assert "agents/my-agent" in user_owned
@@ -632,7 +632,7 @@ class TestCreateArtifact:
     def test_create_artifact_duplicate_raises(self, service, project_dir):
         """Creating the same artifact twice raises FileExistsError."""
         service.create_artifact("rules", "dupe-test")
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         with pytest.raises(FileExistsError, match="already exists"):
             svc.create_artifact("rules", "dupe-test")
 
@@ -662,7 +662,7 @@ class TestCreateArtifact:
         )
         assert content.startswith("# Starter Test")
 
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         svc.create_artifact("skills", "starter-skill")
         skill_content = (project_dir / ".claude" / "skills" / "starter-skill.md").read_text(
             encoding="utf-8"
@@ -699,11 +699,11 @@ class TestUnoverrideFrameworkRestore:
         service.save_override(SAFE_ARTIFACT, custom_text)
 
         # Release to framework with delete_file=True (what the web UI sends)
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         svc.unoverride(SAFE_ARTIFACT, delete_file=True)
 
         # After release, get_content should return framework content, not custom
-        svc2 = PromptGalleryService(project_dir)
+        svc2 = ScaffoldGalleryService(project_dir)
         result = svc2.get_content(SAFE_ARTIFACT)
         assert result["source"] == "framework"
         assert result["content"] != custom_text
@@ -718,7 +718,7 @@ class TestUnoverrideFrameworkRestore:
         service.save_override(SAFE_ARTIFACT, "# Totally different content\n")
 
         # Release to framework
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         result = svc.unoverride(SAFE_ARTIFACT, delete_file=True)
         assert result["restored_file"] is True
 
@@ -735,7 +735,7 @@ class TestUnoverrideFrameworkRestore:
         service.save_override(SAFE_ARTIFACT, custom_text)
 
         # Release WITHOUT delete_file (CLI semantics)
-        svc = PromptGalleryService(project_dir)
+        svc = ScaffoldGalleryService(project_dir)
         svc.unoverride(SAFE_ARTIFACT, delete_file=False)
 
         # File on disk should still be the user's customized version

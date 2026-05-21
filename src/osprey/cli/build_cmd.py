@@ -1257,19 +1257,19 @@ def _copy_overlay_files(
 def _register_overlay_artifacts(project_path: Path, overlay_dict: dict[str, str]) -> int:
     """Register overlay files landing in .claude/ as user_owned in config.yml.
 
-    The Prompts Gallery flags .claude/ files that aren't in the PromptCatalog
-    or config.yml's prompts.user_owned as "untracked."  Profile overlay files
+    The Scaffold Gallery flags .claude/ files that aren't in the BuildArtifactCatalog
+    or config.yml's scaffold.user_owned as "untracked."  Profile overlay files
     (agents, skills, rules) aren't framework artifacts, so they must be
     registered as user_owned to avoid the untracked warning.
     """
-    from osprey.services.prompts.ownership import update_config_add_user_owned
+    from osprey.services.build_artifacts.ownership import update_config_add_user_owned
 
     config_path = project_path / "config.yml"
     if not config_path.exists():
         return 0
 
-    # Subdirectories the Prompts Gallery scans for untracked files
-    # (mirrors PromptGalleryService._scan_dirs)
+    # Subdirectories the Scaffold Gallery scans for untracked files
+    # (mirrors ScaffoldGalleryService._scan_dirs)
     scan_prefixes = tuple(
         f".claude/{d}/" for d in ("agents", "commands", "output-styles", "rules", "skills")
     )

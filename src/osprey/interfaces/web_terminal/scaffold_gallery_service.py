@@ -1,8 +1,8 @@
-"""Prompt Gallery Service — bridges PromptCatalog + TemplateManager for the web UI.
+"""Scaffold Gallery Service — bridges BuildArtifactCatalog + TemplateManager for the web UI.
 
 Stateless service class instantiated per-request with a project directory.
 Provides list/get/diff/claim/save/unclaim operations that the frontend
-gallery consumes via the ``/api/prompts`` route family.
+gallery consumes via the ``/api/scaffold`` route family.
 """
 
 from __future__ import annotations
@@ -15,8 +15,8 @@ from typing import Any
 import yaml
 
 from osprey.cli.templates.manager import TemplateManager
-from osprey.services.prompts.catalog import PromptArtifact, PromptCatalog
-from osprey.services.prompts.ownership import (
+from osprey.services.build_artifacts.catalog import BuildArtifact, BuildArtifactCatalog
+from osprey.services.build_artifacts.ownership import (
     get_user_owned,
     update_config_add_user_owned,
     update_config_remove_user_owned,
@@ -49,8 +49,8 @@ _CONFIG_FILES = (
 )
 
 
-class PromptGalleryService:
-    """Service for the Prompt Gallery web UI.
+class ScaffoldGalleryService:
+    """Service for the Scaffold Gallery web UI.
 
     Instantiated per-request with the project directory. All methods are
     synchronous since the web terminal runs them in a thread pool.
@@ -58,7 +58,7 @@ class PromptGalleryService:
 
     def __init__(self, project_dir: Path) -> None:
         self.project_dir = project_dir
-        self._registry = PromptCatalog.default()
+        self._registry = BuildArtifactCatalog.default()
         self._config = self._load_config()
         self._user_owned = get_user_owned(self._config)
         self._manager: TemplateManager | None = None
@@ -375,7 +375,7 @@ class PromptGalleryService:
 
         Scans .claude/{rules,agents,commands,skills}/ for .md files whose
         output path doesn't match any registered artifact and whose derived
-        canonical name isn't already in ``prompts.user_owned``.
+        canonical name isn't already in ``scaffold.user_owned``.
         """
         claude_dir = self.project_dir / ".claude"
         if not claude_dir.is_dir():
@@ -409,7 +409,7 @@ class PromptGalleryService:
         return untracked
 
     def register_untracked(self, canonical_name: str) -> dict[str, Any]:
-        """Register an untracked file by adding it to ``prompts.user_owned``."""
+        """Register an untracked file by adding it to ``scaffold.user_owned``."""
         output_path = self._canonical_to_path(canonical_name)
         full_path = self.project_dir / output_path
         if not full_path.exists():
@@ -517,13 +517,13 @@ class PromptGalleryService:
     def _read_front_matter_from_disk(
         self,
         rel_path: str,
-        art: PromptArtifact | None = None,
+        art: BuildArtifact | None = None,
     ) -> dict[str, str]:
         """Extract front-matter from on-disk content, falling back to rendered template.
 
         Reads the file at *rel_path* first (reflects user modifications).
         Falls back to ``_render_framework(art)`` only if the file is absent
-        AND a ``PromptArtifact`` is provided.  Uses both ``_FM_RE`` and
+        AND a ``BuildArtifact`` is provided.  Uses both ``_FM_RE`` and
         ``_PY_FM_RE`` patterns so ``.py`` hook files are handled correctly.
         """
         content: str | None = None
@@ -554,7 +554,7 @@ class PromptGalleryService:
                 fields[kv.group(1)] = kv.group(2)
         return fields
 
-    def _get_artifact(self, name: str) -> PromptArtifact:
+    def _get_artifact(self, name: str) -> BuildArtifact:
         """Look up an artifact by name, raising if unknown."""
         art = self._registry.get(name)
         if art is None:
@@ -572,7 +572,7 @@ class PromptGalleryService:
             )
         return self._manager, self._ctx  # type: ignore[return-value]
 
-    def _render_framework(self, art: PromptArtifact) -> str:
+    def _render_framework(self, art: BuildArtifact) -> str:
         """Render the framework template with the current config context."""
         manager, ctx = self._ensure_template_context()
         claude_code_dir = manager.template_root / "claude_code"
@@ -588,7 +588,7 @@ class PromptGalleryService:
         else:
             return template_file.read_text(encoding="utf-8")
 
-    def _read_user_file(self, art: PromptArtifact) -> str | None:
+    def _read_user_file(self, art: BuildArtifact) -> str | None:
         """Read the user's file at the canonical output path."""
         output_path = self.project_dir / art.output_path
         if not output_path.exists():

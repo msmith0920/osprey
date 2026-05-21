@@ -699,11 +699,11 @@ class TestUserOwnedSkipBehavior:
         safety_path.write_text(custom_content)
 
         config = yaml.safe_load((project_dir / "config.yml").read_text())
-        if "prompts" not in config:
-            config["prompts"] = {}
-        user_owned = config["prompts"].get("user_owned", [])
+        if "scaffold" not in config:
+            config["scaffold"] = {}
+        user_owned = config["scaffold"].get("user_owned", [])
         user_owned.append("rules/safety")
-        config["prompts"]["user_owned"] = user_owned
+        config["scaffold"]["user_owned"] = user_owned
         (project_dir / "config.yml").write_text(yaml.dump(config))
 
         manager.regenerate_claude_code(project_dir)
@@ -724,11 +724,11 @@ class TestUserOwnedSkipBehavior:
         (project_dir / "CLAUDE.md").write_text(custom_content)
 
         config = yaml.safe_load((project_dir / "config.yml").read_text())
-        if "prompts" not in config:
-            config["prompts"] = {}
-        user_owned = config["prompts"].get("user_owned", [])
+        if "scaffold" not in config:
+            config["scaffold"] = {}
+        user_owned = config["scaffold"].get("user_owned", [])
         user_owned.append("claude-md")
-        config["prompts"]["user_owned"] = user_owned
+        config["scaffold"]["user_owned"] = user_owned
         (project_dir / "config.yml").write_text(yaml.dump(config))
 
         manager.regenerate_claude_code(project_dir)
@@ -749,11 +749,11 @@ class TestUserOwnedSkipBehavior:
         (project_dir / ".mcp.json").write_text(custom_content)
 
         config = yaml.safe_load((project_dir / "config.yml").read_text())
-        if "prompts" not in config:
-            config["prompts"] = {}
-        user_owned = config["prompts"].get("user_owned", [])
+        if "scaffold" not in config:
+            config["scaffold"] = {}
+        user_owned = config["scaffold"].get("user_owned", [])
         user_owned.append("mcp-json")
-        config["prompts"]["user_owned"] = user_owned
+        config["scaffold"]["user_owned"] = user_owned
         (project_dir / "config.yml").write_text(yaml.dump(config))
 
         manager.regenerate_claude_code(project_dir)

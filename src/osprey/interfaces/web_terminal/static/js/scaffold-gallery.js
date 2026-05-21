@@ -1,21 +1,21 @@
-/* OSPREY Web Terminal — Prompt Gallery
+/* OSPREY Web Terminal — Scaffold Gallery
  *
- * Drives the "Prompt Gallery" UI inside the settings drawer tab panels.
+ * Drives the "Scaffold Gallery" UI inside the settings drawer tab panels.
  * Provides a reusable ArtifactGallery class that can be instantiated
  * multiple times for different tab panels (Behavior, Safety, Config).
  *
  *   - Gallery view: filterable/searchable card grid grouped by category
  *   - Detail view: preview (rendered markdown / highlighted code), diff, and edit modes
- *   - Scaffold/override workflow for customizing framework prompts
+ *   - Claim/override workflow for customizing framework build artifacts
  *
  * API endpoints consumed:
- *   GET    /api/prompts                          -> list all artifacts
- *   GET    /api/prompts/{name}                   -> artifact content (active layer)
- *   GET    /api/prompts/{name}/framework         -> framework-layer content
- *   GET    /api/prompts/{name}/diff              -> unified diff between layers
- *   POST   /api/prompts/{name}/scaffold          -> create override scaffold
- *   PUT    /api/prompts/{name}/override           -> save override content
- *   DELETE /api/prompts/{name}/override?delete_file=true -> remove override
+ *   GET    /api/scaffold                          -> list all artifacts
+ *   GET    /api/scaffold/{name}                   -> artifact content (active layer)
+ *   GET    /api/scaffold/{name}/framework         -> framework-layer content
+ *   GET    /api/scaffold/{name}/diff              -> unified diff between layers
+ *   POST   /api/scaffold/{name}/claim          -> create override scaffold
+ *   PUT    /api/scaffold/{name}/override           -> save override content
+ *   DELETE /api/scaffold/{name}/override?delete_file=true -> remove override
  */
 
 import { fetchJSON } from './api.js';
@@ -30,7 +30,7 @@ const AGENT_MODEL_OPTIONS = ['haiku', 'sonnet', 'opus'];
 
 /** Brief descriptions for each artifact category, shown in the help tooltip. */
 const CATEGORY_HELP = {
-  'system prompt': 'The main CLAUDE.md file that defines the AI assistant\'s identity, capabilities, and behavioral guidelines.',
+  'system instructions': 'The main CLAUDE.md file that defines the AI assistant\'s identity, capabilities, and behavioral guidelines.',
   agents: 'Sub-agents that Claude delegates specialized tasks to (search, analysis, visualization). Each agent has its own model, tools, and instructions.',
   config: 'Top-level configuration files: MCP server definitions (.mcp.json) and permissions (settings.json).',
   hooks: 'Python scripts that run before or after Claude uses a tool. They enforce safety rules, validate inputs, and inject error guidance.',
@@ -55,7 +55,7 @@ let _fetchPromise = null;
  * gallery instances don't duplicate the request.
  */
 async function fetchArtifactsShared() {
-  if (!_fetchPromise) _fetchPromise = fetchJSON('/api/prompts');
+  if (!_fetchPromise) _fetchPromise = fetchJSON('/api/scaffold');
   return _fetchPromise;
 }
 
@@ -179,7 +179,7 @@ class ArtifactGallery {
     this.container.appendChild(this.errorEl);
 
     // Gallery view
-    this.galleryView = _el('div', 'prompts-gallery-view');
+    this.galleryView = _el('div', 'scaffold-gallery-view');
 
     if (this.showSearch) {
       const searchBar = _el('div', 'prompts-search-bar');
@@ -237,7 +237,7 @@ class ArtifactGallery {
     try {
       const [data, untrackedData] = await Promise.all([
         fetchArtifactsShared(),
-        fetchJSON('/api/prompts/untracked').catch(() => ({ untracked: [] })),
+        fetchJSON('/api/scaffold/untracked').catch(() => ({ untracked: [] })),
       ]);
       const allArtifacts = data.artifacts || [];
 
@@ -359,7 +359,7 @@ class ArtifactGallery {
 
   async registerUntracked(canonicalName) {
     try {
-      const resp = await fetch('/api/prompts/untracked/register', {
+      const resp = await fetch('/api/scaffold/untracked/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: canonicalName }),
@@ -380,7 +380,7 @@ class ArtifactGallery {
 
     try {
       const resp = await fetch(
-        `/api/prompts/untracked/${encodeURIComponent(canonicalName)}`,
+        `/api/scaffold/untracked/${encodeURIComponent(canonicalName)}`,
         { method: 'DELETE' }
       );
       if (!resp.ok) {
@@ -398,7 +398,7 @@ class ArtifactGallery {
     resetFetchCache();
     const [data, untrackedData] = await Promise.all([
       fetchArtifactsShared(),
-      fetchJSON('/api/prompts/untracked').catch(() => ({ untracked: [] })),
+      fetchJSON('/api/scaffold/untracked').catch(() => ({ untracked: [] })),
     ]);
 
     const allArtifacts = data.artifacts || [];
@@ -755,7 +755,7 @@ class ArtifactGallery {
       return;
     }
 
-    fetchJSON('/api/prompts/create', {
+    fetchJSON('/api/scaffold/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ category, name: sanitized }),
@@ -929,7 +929,7 @@ class ArtifactGallery {
   }
 
   async renderPreview() {
-    const data = await fetchJSON(`/api/prompts/${encodeURIComponent(this.selectedArtifact.name)}`);
+    const data = await fetchJSON(`/api/scaffold/${encodeURIComponent(this.selectedArtifact.name)}`);
     const content = data.content || '';
     const language = data.language || this.selectedArtifact.language || 'text';
     const artifactName = this.selectedArtifact.name || '';
@@ -1022,7 +1022,7 @@ class ArtifactGallery {
 
   async renderDiff() {
     const data = await fetchJSON(
-      `/api/prompts/${encodeURIComponent(this.selectedArtifact.name)}/diff`
+      `/api/scaffold/${encodeURIComponent(this.selectedArtifact.name)}/diff`
     );
 
     this.detailContentEl.innerHTML = '';
@@ -1101,7 +1101,7 @@ class ArtifactGallery {
   }
 
   async renderEdit() {
-    const data = await fetchJSON(`/api/prompts/${encodeURIComponent(this.selectedArtifact.name)}`);
+    const data = await fetchJSON(`/api/scaffold/${encodeURIComponent(this.selectedArtifact.name)}`);
     const content = data.content || '';
     const artifactName = this.selectedArtifact.name || '';
     const language = data.language || this.selectedArtifact.language || 'text';
@@ -1256,7 +1256,7 @@ class ArtifactGallery {
 
     try {
       const resp = await fetch(
-        `/api/prompts/${encodeURIComponent(this.selectedArtifact.name)}/scaffold`,
+        `/api/scaffold/${encodeURIComponent(this.selectedArtifact.name)}/claim`,
         { method: 'POST' }
       );
 
@@ -1285,7 +1285,7 @@ class ArtifactGallery {
 
     try {
       const resp = await fetch(
-        `/api/prompts/${encodeURIComponent(this.selectedArtifact.name)}/scaffold`,
+        `/api/scaffold/${encodeURIComponent(this.selectedArtifact.name)}/claim`,
         { method: 'POST' }
       );
 
@@ -1373,7 +1373,7 @@ class ArtifactGallery {
 
       // Scaffold (claim) the file before writing the override
       const scaffoldResp = await fetch(
-        `/api/prompts/${encodeURIComponent(this.selectedArtifact.name)}/scaffold`,
+        `/api/scaffold/${encodeURIComponent(this.selectedArtifact.name)}/claim`,
         { method: 'POST' }
       );
       if (!scaffoldResp.ok) {
@@ -1386,7 +1386,7 @@ class ArtifactGallery {
 
     try {
       const resp = await fetch(
-        `/api/prompts/${encodeURIComponent(this.selectedArtifact.name)}/override`,
+        `/api/scaffold/${encodeURIComponent(this.selectedArtifact.name)}/override`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -1482,7 +1482,7 @@ class ArtifactGallery {
 
     try {
       const resp = await fetch(
-        `/api/prompts/${encodeURIComponent(this.selectedArtifact.name)}/override?delete_file=true`,
+        `/api/scaffold/${encodeURIComponent(this.selectedArtifact.name)}/override?delete_file=true`,
         { method: 'DELETE' }
       );
 
@@ -1577,7 +1577,7 @@ class ArtifactGallery {
  * Initialize the Prompt Gallery. Call once on DOMContentLoaded.
  * Creates three ArtifactGallery instances for the Behavior, Safety, and Config tabs.
  */
-export function initPromptsGallery() {
+export function initScaffoldGallery() {
   const drawer = document.getElementById('settings-drawer');
   if (!drawer) return;
 

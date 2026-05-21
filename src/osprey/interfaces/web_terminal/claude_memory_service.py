@@ -2,7 +2,7 @@
 
 Provides CRUD operations on ``~/.claude/projects/<encoded>/memory/*.md``
 files. Stateless service class instantiated per-request with a project
-directory, following the same pattern as :class:`PromptGalleryService`.
+directory, following the same pattern as :class:`ScaffoldGalleryService`.
 """
 
 from __future__ import annotations

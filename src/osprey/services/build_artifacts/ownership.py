@@ -1,8 +1,8 @@
-"""Prompt ownership helpers — config.yml and manifest updates.
+"""Build artifact ownership helpers — config.yml and manifest updates.
 
-These functions manage the ``prompts.user_owned`` list in ``config.yml``
+These functions manage the ``scaffold.user_owned`` list in ``config.yml``
 and the corresponding ``user_owned`` section of ``.osprey-manifest.json``.
-Extracted from ``cli.prompts_cmd`` so that both the CLI and web UI can
+Extracted from ``cli.scaffold_cmd`` so that both the CLI and web UI can
 share ownership logic without a layering violation.
 """
 
@@ -13,34 +13,34 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from osprey.services.prompts.catalog import PromptCatalog
+from osprey.services.build_artifacts.catalog import BuildArtifactCatalog
 
 
 def get_user_owned(config: dict) -> list[str]:
-    """Extract prompts.user_owned list from config."""
-    return config.get("prompts", {}).get("user_owned", [])
+    """Extract scaffold.user_owned list from config."""
+    return config.get("scaffold", {}).get("user_owned", [])
 
 
 # ── Config.yml helpers ───────────────────────────────────────────────
 
 
 def update_config_add_user_owned(project_dir: Path, name: str) -> bool:
-    """Add a name to prompts.user_owned list in config.yml, preserving comments.
+    """Add a name to scaffold.user_owned list in config.yml, preserving comments.
 
     Returns True if the name was added, False if it was already present.
     """
     from osprey.utils.config_writer import config_add_to_list
 
     config_path = project_dir / "config.yml"
-    return config_add_to_list(config_path, ["prompts", "user_owned"], name)
+    return config_add_to_list(config_path, ["scaffold", "user_owned"], name)
 
 
 def update_config_remove_user_owned(project_dir: Path, name: str) -> None:
-    """Remove a name from prompts.user_owned list in config.yml."""
+    """Remove a name from scaffold.user_owned list in config.yml."""
     from osprey.utils.config_writer import config_remove_from_list
 
     config_path = project_dir / "config.yml"
-    config_remove_from_list(config_path, ["prompts", "user_owned"], name)
+    config_remove_from_list(config_path, ["scaffold", "user_owned"], name)
 
 
 # ── Manifest helpers ─────────────────────────────────────────────────
@@ -69,7 +69,7 @@ def update_manifest_add_user_owned(
         manifest["user_owned"] = {}
 
     # Compute framework hash
-    registry = PromptCatalog.default()
+    registry = BuildArtifactCatalog.default()
     artifact = registry.get(name)
     framework_hash = None
     if artifact:
