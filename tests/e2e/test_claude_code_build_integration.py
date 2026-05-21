@@ -392,10 +392,9 @@ class TestClaudeExecutesArchiverAndPlots:
             "Use the archiver_read tool to retrieve data for channels "
             "'DIAG:BPM01:POSITION:X', 'DIAG:BPM02:POSITION:X', "
             "'DIAG:BPM03:POSITION:X' over the last 24 hours. "
-            "Then use the execute tool with execution_mode='readonly' to create "
-            "a timeseries plot of the data and save it as a PNG file in the "
-            "current directory. All permissions are pre-approved; do not ask "
-            "for confirmation."
+            "Then create a timeseries plot of the data and save it as a PNG "
+            "file. All permissions are pre-approved; do not ask for "
+            "confirmation."
         )
 
         result = run_claude(project_dir, prompt, timeout=300)
@@ -428,13 +427,16 @@ class TestClaudeExecutesArchiverAndPlots:
             f"Workspace contents: {list(workspace_dir.rglob('*')) if workspace_dir.exists() else 'N/A'}"
         )
 
-        # A plot PNG was created somewhere in the project tree
+        # A plot PNG was created somewhere in the project tree. The agent
+        # may produce it via either the execute tool (raw python) or the
+        # data-visualizer subagent's create_static_plot — both are valid
+        # routes; we only assert the artifact landed.
         png_files = find_png_files(project_dir)
         exec_diag = diagnose_python_execute(project_dir)
         workspace_tree = diagnose_workspace(project_dir)
         assert len(png_files) > 0, (
-            "No PNG files found anywhere in the project. "
-            "execute tool may not have created a plot.\n"
+            "No PNG files found anywhere in the project — the agent did "
+            "not produce a plot.\n"
             f"--- Execution diagnostics ---\n{exec_diag}\n"
             f"--- Workspace tree ---\n{workspace_tree}\n"
             f"--- stderr (first 1000) ---\n{result.stderr[:1000]}\n"
@@ -469,12 +471,16 @@ class TestClaudeExecutesArchiverAndPlots:
 
 
 class TestClaudeFullBpmAnalysisPipeline:
-    """Full multi-tool pipeline: channel_find -> archiver_read -> execute.
+    """Full multi-tool pipeline: channel_find → archiver_read → plot.
 
     This is the Claude Code equivalent of
     ``test_tutorials.py::test_bpm_timeseries_and_correlation_tutorial``.
     It exercises channel_find (which makes its own LLM call internally)
     to discover BPM channels, then retrieves archiver data and plots.
+
+    The plotting step may route through either the execute tool (raw
+    python) or the data-visualizer subagent (create_static_plot) — both
+    are valid solutions and the test does not prescribe one.
     """
 
     @pytest.mark.slow
@@ -489,9 +495,8 @@ class TestClaudeFullBpmAnalysisPipeline:
             "Give me a timeseries and a correlation plot of all horizontal "
             "BPM positions over the last 24 hours. Use the channel_find tool "
             "to discover BPM channels, then archiver_read to get historical "
-            "data, then the execute tool with execution_mode='readonly' to create "
-            "the plots. Save the plots as PNG files. All permissions are "
-            "pre-approved; do not ask for confirmation."
+            "data, then create the plots. Save the plots as PNG files. All "
+            "permissions are pre-approved; do not ask for confirmation."
         )
 
         result = run_claude(project_dir, prompt, timeout=360, max_budget="1.50")
@@ -524,13 +529,15 @@ class TestClaudeFullBpmAnalysisPipeline:
             f"Workspace contents: {list(workspace_dir.rglob('*')) if workspace_dir.exists() else 'N/A'}"
         )
 
-        # At least one PNG plot was created
+        # At least one PNG plot was created. The agent may produce it via
+        # either the execute tool (raw python) or the data-visualizer
+        # subagent's create_static_plot — both are valid routes.
         png_files = find_png_files(project_dir)
         exec_diag = diagnose_python_execute(project_dir)
         workspace_tree = diagnose_workspace(project_dir)
         assert len(png_files) > 0, (
-            "No PNG files found in the project. "
-            "execute tool may not have created plots.\n"
+            "No PNG files found in the project — the agent did not produce "
+            "plots.\n"
             f"--- Execution diagnostics ---\n{exec_diag}\n"
             f"--- Workspace tree ---\n{workspace_tree}\n"
             f"--- stderr (first 1000) ---\n{result.stderr[:1000]}\n"
