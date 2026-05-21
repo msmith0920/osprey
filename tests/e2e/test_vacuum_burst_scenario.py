@@ -7,18 +7,19 @@ suite. The operator prompt is intentionally bare:
     do anything weird around then?"
 
 That is the full prompt. No channel names, no PV patterns, no time-window
-shape, no "if any" hedging. The agent must do the full discovery work:
+shape, no "if any" hedging. The agent must do the discovery work:
 
-  1. Translate "beam current" → DCCT subsystem and "vacuum" → pressure
-     gauges, then use the channel-finder pipeline to resolve actual
-     addresses (``SR:DIAG:DCCT:...`` and ``SR:VAC:GAUGE:SR{01..12}:...``).
+  1. Translate "vacuum" → pressure gauges and use the channel-finder
+     pipeline to resolve actual addresses (``SR:VAC:GAUGE:SR{01..12}:...``).
+     Refetching DCCT is welcome but not required: the operator already
+     announced the beam-loss event with a timestamp.
   2. Resolve "yesterday around 14:32" to a concrete past timestamp and
      choose a sensible time window straddling 14:32:08, then call
-     ``mcp__controls__archiver_read`` to fetch the time series.
-  3. Compute / inspect cross-channel correlation and finger Sector 7
-     (SR07) — the only sector whose pressure spike aligns with the
-     beam-current dip (mock-archiver ground truth: Pearson r ≈ -0.88
-     against DCCT; max|r| for the other 11 sectors ≤ 0.077).
+     ``mcp__controls__archiver_read`` to fetch the vacuum time series.
+  3. Inspect across sectors and finger Sector 7 (SR07) — the only
+     sector whose pressure spike aligns with the beam-loss event
+     (mock-archiver ground truth: Pearson r ≈ -0.88 against DCCT;
+     max|r| for the other 11 sectors ≤ 0.077).
 
 If the agent can't do this, the failure is in the OSPREY preset config
 (channel-finder agent context, archiver tool description, planner prompt) —
@@ -128,16 +129,13 @@ async def test_sector7_vacuum_burst_flow(tmp_path: Path) -> None:
         f"retrieved time-series data. Tools called: {result.tool_names}"
     )
 
-    # The archiver payload(s), taken together, must address both subsystems:
-    # the DCCT (beam current) and at least one vacuum gauge — otherwise the
-    # agent cannot have observed a correlation, regardless of what its
-    # prose says.
+    # The archiver payload(s) must hit at least one vacuum gauge — that's
+    # the literal subject of the operator's question. The DCCT side is NOT
+    # required: the operator already announced the beam-loss event with a
+    # timestamp, so a competent answer can scope to vacuum at ~14:32
+    # without refetching beam current. The LLM judge below is the final
+    # arbiter of whether the agent named SR07.
     archiver_payloads = " ".join(str(t.input) for t in archiver_calls).lower()
-    assert "dcct" in archiver_payloads or "current" in archiver_payloads, (
-        f"archiver_read called but no beam-current PV in inputs — agent did "
-        f"not retrieve the DCCT side of the correlation: "
-        f"{[t.input for t in archiver_calls]}"
-    )
     assert "gauge" in archiver_payloads or "vac" in archiver_payloads, (
         f"archiver_read called but no vacuum-gauge PV in inputs — agent did "
         f"not retrieve the vacuum side of the correlation: "
