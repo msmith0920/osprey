@@ -6,12 +6,13 @@ This directory contains channel databases, benchmark datasets, and tools for man
 
 ```
 data/
+{%- if channel_finder_mode == 'in_context' %}
 ├── raw/                          # Raw address data (CSV files)
 │   ├── CSV_EXAMPLE.csv          # Example CSV format
 │   └── address_list.csv         # Sample address list data
+{%- endif %}
 ├── channel_databases/            # Processed channel databases
-│   ├── in_context.json          # In-context pipeline database
-│   ├── hierarchical.json        # Hierarchical pipeline database
+│   ├── {{ channel_finder_mode }}.json
 │   └── TEMPLATE_EXAMPLE.json    # Database format example
 └── benchmarks/                   # Benchmark datasets and results
     ├── datasets/                # Test query datasets
@@ -22,9 +23,9 @@ data/
 
 ## Database Tools
 
-Database tools are available as native ``osprey channel-finder`` CLI subcommands:
-
-### 1. Build Channel Database
+Database tools are available as native `osprey channel-finder` CLI subcommands:
+{% if channel_finder_mode == 'in_context' %}
+### Build Channel Database
 
 Build a channel database from CSV files:
 
@@ -32,25 +33,25 @@ Build a channel database from CSV files:
 osprey channel-finder build-database --csv data/raw/address_list.csv
 osprey channel-finder build-database --csv data/raw/address_list.csv --use-llm
 ```
-
-### 2. Validate Database
+{% endif %}
+### Validate Database
 
 Validate database format and structure:
 
 ```bash
 osprey channel-finder validate
-osprey channel-finder validate --database data/channel_databases/in_context.json
+osprey channel-finder validate --database data/channel_databases/{{ channel_finder_mode }}.json
 ```
 
-### 3. Preview Database
+### Preview Database
 
 Preview database contents:
 
 ```bash
 osprey channel-finder preview
-osprey channel-finder preview --database data/channel_databases/in_context.json
+osprey channel-finder preview --database data/channel_databases/{{ channel_finder_mode }}.json
 ```
-
+{% if channel_finder_mode == 'in_context' %}
 ## CSV Format
 
 Your CSV file should have these columns:
@@ -66,14 +67,24 @@ For template-based channels (with multiple instances):
 template_base_name,base_address,description,instances_start,instances_end,sub_channels
 QuadrupoleMagnet,Q{instance:02d},Quadrupole magnets,1,17,SetPoint|ReadBack
 ```
-
-## Database Formats
-
+{% endif %}
+## Database Format
+{% if channel_finder_mode == 'in_context' %}
 ### In-Context Database (Flat Structure)
-Best for < 1,000 channels. Direct semantic search.
 
+Best for < 1,000 channels. Direct semantic search over a flat list of
+channel/template entries.
+{%- elif channel_finder_mode == 'hierarchical' %}
 ### Hierarchical Database (Nested Structure)
-Best for > 1,000 channels. Multi-level navigation.
+
+Best for > 1,000 channels. Multi-level navigation through a unified
+`RING:SYSTEM:FAMILY:DEVICE:FIELD:SUBFIELD` hierarchy.
+{%- elif channel_finder_mode == 'middle_layer' %}
+### Middle-Layer Database (Functional Structure)
+
+MML-organized functional hierarchy: System / Family / Field / Subfield.
+Navigation mirrors the way operators reason about devices.
+{%- endif %}
 
 ## Benchmarks
 

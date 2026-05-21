@@ -114,22 +114,22 @@ python -m {{ package_name }}.services.channel_finder.cli --facility my_facility 
 
 ### Database Tools
 
-Build and manage channel databases:
+Manage channel databases via the `osprey channel-finder` CLI:
 
 ```bash
-# Build database from CSV
-python -m {{ package_name }}.data.tools.build_channel_database \
-  --csv src/{{ package_name }}/data/raw/address_list.csv \
-  --output src/{{ package_name }}/data/channel_databases/custom.json \
+{% if channel_finder_mode == 'in_context' %}# Build database from CSV
+osprey channel-finder build-database \
+  --csv data/raw/address_list.csv \
+  --output data/channel_databases/{{ channel_finder_mode }}.json \
   --use-llm  # Optional: generate descriptive names
 
-# Validate database format
-python -m {{ package_name }}.data.tools.validate_database \
-  --database src/{{ package_name }}/data/channel_databases/in_context.json
+{% endif %}# Validate database format
+osprey channel-finder validate \
+  --database data/channel_databases/{{ channel_finder_mode }}.json
 
 # Preview database contents
-python -m {{ package_name }}.data.tools.preview_database \
-  --database src/{{ package_name }}/data/channel_databases/in_context.json
+osprey channel-finder preview \
+  --database data/channel_databases/{{ channel_finder_mode }}.json
 ```
 
 ### Benchmark Runner

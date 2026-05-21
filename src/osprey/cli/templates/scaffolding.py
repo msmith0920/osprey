@@ -432,6 +432,36 @@ def materialize_tier_artifacts(project_dir: Path, tier: int, channel_finder_mode
     )
 
 
+def prune_csv_build_artifacts(project_dir: Path, channel_finder_mode: str) -> None:
+    """Remove ``data/raw/`` for paradigms that have no CSV → DB build path.
+
+    The bundled ``osprey channel-finder build-database`` tool consumes a flat
+    CSV (``data/raw/address_list.csv``) and emits a flat in_context-format
+    JSON. Hierarchical and middle_layer databases have a nested structure
+    that the CSV format cannot express, so the ``raw/`` directory is dead
+    weight in those projects.
+
+    Args:
+        project_dir: Root directory of the rendered project.
+        channel_finder_mode: Paradigm selector from the build profile.
+
+    No-op when ``channel_finder_mode == "in_context"`` or when the rendered
+    project carries no ``data/raw/`` subtree.
+    """
+    if channel_finder_mode == "in_context":
+        return
+
+    raw_dir = project_dir / "data" / "raw"
+    if not raw_dir.exists():
+        return
+
+    shutil.rmtree(raw_dir)
+    console.print(
+        f"  [success]✓[/success] Removed [path]{raw_dir}[/path] "
+        f"(no CSV build path for {channel_finder_mode!r} paradigm)"
+    )
+
+
 def rebase_logbook_timestamps(project_dir: Path) -> None:
     """Shift demo logbook timestamps so the most recent entry is near 'now'.
 

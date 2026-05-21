@@ -307,6 +307,7 @@ class TemplateManager:
         channel_finder_mode = ctx.get("channel_finder_mode")
         if channel_finder_mode is not None:
             scaffolding.materialize_tier_artifacts(project_dir, tier, channel_finder_mode)
+            scaffolding.prune_csv_build_artifacts(project_dir, channel_finder_mode)
 
         # 7. Create _agent_data directory structure
         scaffolding.create_agent_data_structure(self.template_root, project_dir, ctx)

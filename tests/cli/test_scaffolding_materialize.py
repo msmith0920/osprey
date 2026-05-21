@@ -19,7 +19,10 @@ from pathlib import Path
 
 import pytest
 
-from osprey.cli.templates.scaffolding import materialize_tier_artifacts
+from osprey.cli.templates.scaffolding import (
+    materialize_tier_artifacts,
+    prune_csv_build_artifacts,
+)
 
 # Absolute paths to the preset's source-of-truth artifacts.
 _PRESET_DATA_DIR = (
@@ -203,3 +206,38 @@ class TestNoOpOnMissingTiersSubtree:
         materialize_tier_artifacts(project_dir, tier=1, channel_finder_mode="hierarchical")
         # Nothing got created — flat root doesn't exist either.
         assert not (project_dir / "data" / "channel_databases").exists()
+
+
+class TestPruneCsvBuildArtifacts:
+    """``data/raw/`` is removed for paradigms without a CSV → DB build path."""
+
+    def _make_raw_dir(self, project_dir: Path) -> Path:
+        raw = project_dir / "data" / "raw"
+        raw.mkdir(parents=True)
+        (raw / "address_list.csv").write_text("channel,address,description\n")
+        (raw / "CSV_EXAMPLE.csv").write_text("channel,address,description\n")
+        return raw
+
+    def test_in_context_keeps_raw_dir(self, tmp_path: Path):
+        project_dir = tmp_path / "proj"
+        raw = self._make_raw_dir(project_dir)
+        prune_csv_build_artifacts(project_dir, channel_finder_mode="in_context")
+        assert raw.is_dir()
+        assert (raw / "address_list.csv").exists()
+
+    @pytest.mark.parametrize("mode", ["hierarchical", "middle_layer"])
+    def test_non_in_context_removes_raw_dir(self, tmp_path: Path, mode: str):
+        project_dir = tmp_path / "proj"
+        raw = self._make_raw_dir(project_dir)
+        prune_csv_build_artifacts(project_dir, channel_finder_mode=mode)
+        assert not raw.exists()
+
+    def test_no_op_when_raw_dir_absent(self, tmp_path: Path):
+        # Bundles that don't ship a raw/ directory (e.g. hello_world) must not
+        # raise. Run with a non-in_context mode to exercise the second guard.
+        project_dir = tmp_path / "proj"
+        (project_dir / "data").mkdir(parents=True)
+        prune_csv_build_artifacts(project_dir, channel_finder_mode="hierarchical")
+        # data/ still exists; nothing else was created.
+        assert (project_dir / "data").is_dir()
+        assert not (project_dir / "data" / "raw").exists()
