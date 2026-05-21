@@ -39,12 +39,27 @@ from tests.e2e.sdk_helpers import provider_env_for_project
 # ---------------------------------------------------------------------------
 
 
-def is_claude_code_available() -> bool:
-    """Check if Claude Code CLI is installed and functional."""
+def _bundled_claude_path() -> Path | None:
+    """Return the SDK's bundled ``claude`` binary, or None if absent.
+
+    The Claude Agent SDK ships a vendored CLI at
+    ``claude_agent_sdk/_bundled/claude`` and the SDK's own transport falls
+    back to it when no system ``claude`` is on PATH. We mirror that lookup
+    here so this file's subprocess-based tests work on CI runners that
+    have the SDK installed but not the standalone CLI.
+    """
     try:
-        # Must unset CLAUDECODE to avoid nested-session guard when
-        # this test file is collected from within a Claude Code session.
-        env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+        import claude_agent_sdk
+    except ImportError:
+        return None
+    candidate = Path(claude_agent_sdk.__file__).parent / "_bundled" / "claude"
+    return candidate if candidate.is_file() else None
+
+
+def _resolve_claude_binary() -> str | None:
+    """Locate a runnable ``claude`` binary — system PATH first, then bundled."""
+    env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
+    try:
         result = subprocess.run(
             ["claude", "--version"],
             capture_output=True,
@@ -52,9 +67,17 @@ def is_claude_code_available() -> bool:
             timeout=10,
             env=env,
         )
-        return result.returncode == 0
+        if result.returncode == 0:
+            return "claude"
     except (FileNotFoundError, subprocess.TimeoutExpired):
-        return False
+        pass
+    bundled = _bundled_claude_path()
+    return str(bundled) if bundled is not None else None
+
+
+def is_claude_code_available() -> bool:
+    """Check if a ``claude`` binary is reachable (PATH or SDK-bundled)."""
+    return _resolve_claude_binary() is not None
 
 
 def init_project(
@@ -116,8 +139,10 @@ def run_claude(
     """
     env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
     env.update(provider_env_for_project(project_dir))
+    binary = _resolve_claude_binary()
+    assert binary is not None, "no claude binary reachable — neither system PATH nor SDK-bundled"
     cmd = [
-        "claude",
+        binary,
         "--print",
         "--dangerously-skip-permissions",
         "--permission-mode",

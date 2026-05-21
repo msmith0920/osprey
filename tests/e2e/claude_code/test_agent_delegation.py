@@ -230,83 +230,7 @@ class TestAgentDelegation:
             )
 
     # -------------------------------------------------------------------
-    # Test 2 — Logbook deep research delegation
-    # -------------------------------------------------------------------
-
-    @pytest.mark.skip(reason="Very expensive: opus model, skip by default")
-    @pytest.mark.asyncio
-    async def test_logbook_deep_research_delegation(self, delegation_project):
-        """Logbook-deep-research agent: delegation contract + (when ARIEL is up) retrieval.
-
-        Same pattern as ``test_logbook_search_delegation`` — one LLM run,
-        delegation assertions always check, retrieval assertions only when
-        ARIEL is reachable. Skipped by default because it uses the opus
-        model and costs several dollars per run; enable explicitly to
-        validate.
-        """
-        prompt = (
-            "I need a deep investigation of all logbook entries about beam loss "
-            "events. Analyze patterns, identify root causes, and cross-reference "
-            "entries."
-        )
-
-        result = await run_sdk_query(
-            delegation_project,
-            prompt,
-            max_turns=30,
-            max_budget_usd=3.0,
-        )
-
-        print_trace_debug("logbook-deep-research delegation", result)
-
-        # --- Delegation contract (always asserted) ---
-
-        assert result.result is not None, "No ResultMessage received"
-        assert not result.result.is_error, f"SDK query ended in error: {result.result.result}"
-
-        sa_traces = sub_agent_traces(result)
-        assert len(sa_traces) > 0, f"No sub-agent tool calls found. Tools: {result.tool_names}"
-
-        # Deep research does iterative searching — expect multiple search calls.
-        search_calls = (
-            result.tools_matching("keyword_search")
-            + result.tools_matching("semantic_search")
-            + result.tools_matching("sql_query")
-        )
-        assert len(search_calls) >= 2, (
-            f"Expected ≥2 search calls for deep research, got {len(search_calls)}. "
-            f"Tools: {result.tool_names}"
-        )
-
-        # Orchestrator must not have called any logbook MCP tool directly.
-        direct_logbook_calls = [
-            t
-            for t in result.tool_traces
-            if "mcp__ariel__" in t.name and t.parent_tool_use_id is None
-        ]
-        assert not direct_logbook_calls, (
-            f"Orchestrator called {len(direct_logbook_calls)} logbook tool(s) "
-            "directly instead of delegating to logbook-deep-research. The "
-            f"CLAUDE.md directive was ignored. Names: {[t.name for t in direct_logbook_calls]}"
-        )
-
-        # --- Retrieval-success contract (only when ARIEL is reachable) ---
-
-        if _is_ariel_db_available():
-            submit_calls = result.tools_matching("submit_response")
-            assert len(submit_calls) > 0, (
-                f"submit_response not called — agent didn't complete. Tools: {result.tool_names}"
-            )
-            assert_no_tool_errors(result)
-
-        # Cost under budget (always asserted).
-        if result.cost_usd is not None:
-            assert result.cost_usd < 3.0, (
-                f"Test cost ${result.cost_usd:.4f} — exceeded $3.00 budget"
-            )
-
-    # -------------------------------------------------------------------
-    # Test 3 — Channel-finder delegation
+    # Test 2 — Channel-finder delegation
     # -------------------------------------------------------------------
 
     @pytest.mark.asyncio
@@ -379,7 +303,7 @@ class TestAgentDelegation:
             )
 
     # -------------------------------------------------------------------
-    # Test 4 — Data visualizer delegation
+    # Test 3 — Data visualizer delegation
     # -------------------------------------------------------------------
 
     @pytest.mark.asyncio

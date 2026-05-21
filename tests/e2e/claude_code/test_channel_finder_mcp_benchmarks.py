@@ -30,7 +30,6 @@ from osprey.services.channel_finder.benchmarks.runner import BenchmarkRunner
 from tests.e2e.sdk_helpers import (
     HAS_SDK,
     init_project,
-    is_claude_code_available,
 )
 
 pytestmark = [
@@ -39,7 +38,6 @@ pytestmark = [
     pytest.mark.slow,
     pytest.mark.requires_als_apg,
     pytest.mark.skipif(not HAS_SDK, reason="claude_agent_sdk not installed"),
-    pytest.mark.skipif(not is_claude_code_available(), reason="Claude Code CLI not installed"),
 ]
 
 PARADIGMS = ("hierarchical", "middle_layer", "in_context")
