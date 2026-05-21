@@ -67,6 +67,7 @@ pytestmark = [
 ]
 
 
+@pytest.mark.order(2)  # actively debugging; run second for fail-fast feedback in CI
 @pytest.mark.asyncio
 async def test_sector7_vacuum_burst_flow(tmp_path: Path) -> None:
     """Operator gives a vague beam-loss complaint; agent must finger SR07.

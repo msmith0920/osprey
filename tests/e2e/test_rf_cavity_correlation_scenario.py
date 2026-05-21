@@ -69,6 +69,7 @@ pytestmark = [
 ]
 
 
+@pytest.mark.order(1)  # actively debugging; run first for fail-fast feedback in CI
 @pytest.mark.asyncio
 async def test_rf_cavity_c1_correlation_flow(tmp_path: Path) -> None:
     """Operator reports a beam dump; agent must cross-reference logbook +

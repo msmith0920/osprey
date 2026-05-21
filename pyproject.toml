@@ -133,6 +133,7 @@ dev = [
     "pytest",
     "pytest-asyncio",
     "pytest-cov",  # Code coverage reporting
+    "pytest-order",  # Run flaky/in-debug e2e tests first via @pytest.mark.order
     "mypy",
     "pre-commit",
     "ruff",
