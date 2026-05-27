@@ -141,6 +141,7 @@ dev = [
     "pytest-asyncio",
     "pytest-cov",  # Code coverage reporting
     "pytest-order",  # Run flaky/in-debug e2e tests first via @pytest.mark.order
+    "pytest-rerunfailures",  # Absorb rare LLM nondeterminism in agentic e2e via @pytest.mark.flaky
     "mypy",
     "pre-commit",
     "ruff",
@@ -270,6 +271,7 @@ markers = [
     "requires_als_apg: Tests that require ALS-APG API key (AWS Bedrock proxy; reachable from GitHub Actions runners)",
     "requires_ollama: Tests that require local Ollama service",
     "asyncio: Async test marker",
+    "flaky: Rerun on failure to absorb rare LLM nondeterminism (pytest-rerunfailures)",
     "e2e_services: E2E tests requiring local MCP service infrastructure (PostgreSQL, AccelPapers, etc.)",
 ]
 
