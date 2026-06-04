@@ -93,3 +93,33 @@ def test_copy_service_templates_root_always_present_with_valid_pkg_services(
     _write_config(tmp_path, deployed_services=services)
     _copy_service_templates(tmp_path)
     assert (tmp_path / "services" / "docker-compose.yml.j2").is_file()
+
+
+def test_dev_wheel_build_uses_sys_executable(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The --dev wheel build must invoke the running interpreter, not bare python3.
+
+    In a non-activated venv, PATH ``python3`` is the system/pyenv interpreter,
+    which lacks the ``build`` package — so ``python3 -m build`` failed and --dev
+    silently fell back to the PyPI release, booting containers with stale osprey
+    that lacked unreleased modules. ``sys.executable`` is the venv that has build.
+    """
+    import subprocess
+    import sys
+
+    from osprey.deployment import compose_generator
+
+    captured: dict = {}
+
+    def _fake_run(cmd, **kwargs):  # type: ignore[no-untyped-def]
+        captured["cmd"] = cmd
+        # Return non-zero so the function bails before trying to copy a wheel.
+        return subprocess.CompletedProcess(cmd, 1, stdout="", stderr="stop here")
+
+    monkeypatch.setattr(subprocess, "run", _fake_run)
+    compose_generator._copy_local_framework_for_override("/tmp/ignored")
+
+    assert captured.get("cmd"), "the wheel build subprocess was never invoked"
+    assert captured["cmd"][0] == sys.executable, (
+        f"wheel build must use sys.executable ({sys.executable}), not {captured['cmd'][0]!r}"
+    )
+    assert captured["cmd"][1:4] == ["-m", "build", "--wheel"]

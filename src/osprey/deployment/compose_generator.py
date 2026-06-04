@@ -254,6 +254,7 @@ def _copy_local_framework_for_override(out_dir):
     try:
         # Try to import osprey to get its location
         import subprocess
+        import sys
         import tempfile
         from pathlib import Path
 
@@ -287,8 +288,13 @@ def _copy_local_framework_for_override(out_dir):
         # Build the wheel package from local source
         logger.info("Building osprey wheel from local source...")
         with tempfile.TemporaryDirectory() as tmpdir:
+            # Use sys.executable, NOT bare "python3": in a non-activated venv,
+            # PATH "python3" resolves to the system/pyenv interpreter (which
+            # lacks the 'build' package), not the venv running osprey. Bare
+            # python3 made --dev silently fall back to the PyPI release, booting
+            # containers with stale osprey that lacks unreleased modules.
             result = subprocess.run(
-                ["python3", "-m", "build", "--wheel", "--outdir", tmpdir],
+                [sys.executable, "-m", "build", "--wheel", "--outdir", tmpdir],
                 cwd=osprey_source_root,
                 capture_output=True,
                 text=True,
