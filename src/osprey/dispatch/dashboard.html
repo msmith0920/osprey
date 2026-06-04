@@ -1294,7 +1294,9 @@ function buildJsonView(text) {
 }
 
 async function apiGet(path) {
-  const r = await fetch(path, { credentials: 'same-origin' });
+  // Attach the bearer token for the standalone (direct-to-dispatcher) path; in
+  // the in-terminal proxy path bearer() is empty and the proxy injects it.
+  const r = await fetch(path, { credentials: 'same-origin', headers: { ...bearer() } });
   if (!r.ok) throw new Error(`GET ${path} → ${r.status}`);
   return r.json();
 }
@@ -1348,11 +1350,17 @@ async function fetchState() {
     const hours = filters.timelineHours;
     const data = await apiGet(`/dashboard/state?timeline_hours=${hours}`);
     state = data;
+    // Surface a degraded worker once per transition (not every 3s poll).
+    if (data.worker_error && data.worker_error !== lastWorkerError) {
+      showToast('Dispatch worker unreachable — run list may be stale', 'err');
+    }
+    lastWorkerError = data.worker_error || null;
     render();
   } catch (e) {
     console.error('fetchState failed:', e);
   }
 }
+let lastWorkerError = null;
 function startPolling() {
   if (pollTimer) clearInterval(pollTimer);
   fetchState();
@@ -1795,6 +1803,11 @@ function renderJsonSection(label, text) {
 }
 
 function startStream(tab) {
+  // EventSource cannot set an Authorization header. In the in-terminal EVENTS
+  // tab the web-terminal proxy injects the bearer server-side so the stream is
+  // authorized. A direct standalone browser cannot authenticate the stream (we
+  // intentionally do NOT pass the token in the URL); onerror closes it and the
+  // run is still visible via the polled state. No token is ever placed in the URL.
   tab.eventSource = new EventSource('/dashboard/stream/' + tab.runId);
   tab.eventSource.onmessage = (e) => {
     try {

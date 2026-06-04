@@ -56,7 +56,14 @@ async def dispatch_to_worker(
     if response.status_code == 401:
         raise AuthError(f"Unauthorized (401) from {dispatch_url}")
 
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        # Surface only the status code — never echo the worker's response body
+        # into the dispatcher's registry history; it can carry a stack trace or
+        # other internal detail. Raise a typed DispatchError so the on_error
+        # policy treats it like any other dispatch failure.
+        raise DispatchError(f"HTTP {response.status_code} from worker") from exc
     return cast(dict[str, Any], response.json())
 
 

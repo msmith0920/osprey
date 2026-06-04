@@ -170,13 +170,83 @@ def test_webhook_disabled_returns_409(app):
 def test_dashboard_state_shape(app):
     """/dashboard/state returns the aggregate snapshot keys; runs is [] (no worker)."""
     with TestClient(app) as client:
-        resp = client.get("/dashboard/state")
+        resp = client.get("/dashboard/state", headers={"Authorization": "Bearer secret"})
     assert resp.status_code == 200
     body = resp.json()
     assert set(body) >= {"pool", "triggers", "runs", "timeline", "server_time_iso"}
     # No worker is reachable, so fetch_worker_runs fails and is caught -> [].
     assert body["runs"] == []
     assert any(t["name"] == "deploy" for t in body["triggers"])
+
+
+# ---------------------------------------------------------------------------
+# Dashboard READ endpoints are now bearer-gated (they surface agent output).
+# ---------------------------------------------------------------------------
+
+_GATED_READ_ROUTES = [
+    "/dashboard/triggers",
+    "/dashboard/runs",
+    "/dashboard/state",
+    "/dashboard/stream/some-run-id",
+    "/dispatch/some-dispatch-id",
+]
+
+
+@pytest.mark.parametrize("path", _GATED_READ_ROUTES)
+def test_gated_read_route_requires_auth(app, path):
+    """Each gated read route → 401 without a credential."""
+    with TestClient(app) as client:
+        resp = client.get(path)
+    assert resp.status_code == 401
+
+
+@pytest.mark.parametrize("path", ["/dashboard/triggers", "/dashboard/state"])
+def test_gated_read_route_allows_valid_token(app, path):
+    """A valid bearer token is accepted on the gated read routes."""
+    with TestClient(app) as client:
+        resp = client.get(path, headers={"Authorization": "Bearer secret"})
+    assert resp.status_code == 200
+
+
+def test_dashboard_html_shell_is_ungated(app):
+    """The HTML shell stays open so the standalone #token= handoff can run."""
+    with TestClient(app) as client:
+        resp = client.get("/dashboard")
+    assert resp.status_code == 200
+    assert "text/html" in resp.headers.get("content-type", "")
+
+
+def test_stream_accepts_header_token(app, monkeypatch):
+    """The stream route is header-gated; a valid bearer header reaches the SSE proxy.
+
+    The worker is stubbed (none is reachable in tests); the point is that a valid
+    Authorization header passes the auth gate (200), not 401.
+    """
+
+    async def _fake_stream(url, token, run_id):
+        yield b"data: {}\n\n"
+
+    monkeypatch.setattr(server, "proxy_worker_stream", _fake_stream)
+    with TestClient(app) as client:
+        resp = client.get(
+            "/dashboard/stream/some-run-id", headers={"Authorization": "Bearer secret"}
+        )
+    assert resp.status_code == 200
+
+
+def test_stream_rejects_query_token(app):
+    """A ?token= query must NOT authenticate — the bearer is header-only (no URL leak)."""
+    with TestClient(app) as client:
+        resp = client.get("/dashboard/stream/some-run-id?token=secret")
+    assert resp.status_code == 401
+
+
+def test_get_dispatch_result_omits_dispatch_target(app):
+    """The poll response must not echo the internal worker URL."""
+    with TestClient(app) as client:
+        # Unknown id is fine — we only assert the field never appears.
+        resp = client.get("/dispatch/does-not-exist", headers={"Authorization": "Bearer secret"})
+    assert "dispatch_target" not in resp.json()
 
 
 def test_check_auth_routes_reject_unconfigured_token(triggers_yml, monkeypatch):
@@ -359,3 +429,160 @@ def test_sanitize_source_config_redacts_secret_keys():
     assert sanitized["pv"] == "X:Y"
     assert sanitized["signing_secret"] == "***"
     assert sanitized["API_KEY"] == "***"  # case-insensitive match
+
+
+@pytest.mark.asyncio
+async def test_dispatch_with_policy_alert_records_and_returns_none(monkeypatch):
+    """``on_error: alert`` logs + records the error and returns None (no retry)."""
+    from osprey.dispatch.registry import TriggerRegistry
+    from osprey.dispatch.trigger_config import TriggerConfig
+    from osprey.dispatch.worker_client import DispatchError
+
+    async def always_fails(url, prompt, allowed_tools, token, timeout=30.0):
+        raise DispatchError("worker unreachable")
+
+    monkeypatch.setattr(server, "dispatch_to_worker", always_fails)
+
+    reg = TriggerRegistry()
+    trig = TriggerConfig(
+        name="alert-trigger",
+        source="webhook",
+        action={"prompt": "x"},
+        on_error={"action": "alert", "max_retries": 0, "backoff_sec": 0.0},
+    )
+    await reg.register(trig)
+
+    result = await server._dispatch_with_policy(trig, {}, reg, "http://w", "tok")
+    assert result is None
+    history = await reg.get_history("alert-trigger")
+    assert any(str(e["result"]).startswith("error:") for e in history)
+
+
+@pytest.mark.asyncio
+async def test_dispatch_with_policy_auth_error_flows_through_policy(monkeypatch):
+    """An AuthError is handled by the policy (recorded + dropped), not raised."""
+    from osprey.dispatch.registry import TriggerRegistry
+    from osprey.dispatch.trigger_config import TriggerConfig
+    from osprey.dispatch.worker_client import AuthError
+
+    async def auth_fails(url, prompt, allowed_tools, token, timeout=30.0):
+        raise AuthError("Unauthorized (401)")
+
+    monkeypatch.setattr(server, "dispatch_to_worker", auth_fails)
+
+    reg = TriggerRegistry()
+    trig = TriggerConfig(name="auth-trigger", source="webhook", action={"prompt": "x"})
+    await reg.register(trig)
+
+    result = await server._dispatch_with_policy(trig, {}, reg, "http://w", "tok")
+    assert result is None
+    history = await reg.get_history("auth-trigger")
+    assert any("Unauthorized" in str(e["result"]) for e in history)
+
+
+@pytest.mark.asyncio
+async def test_dispatch_with_policy_generic_exception_propagates(monkeypatch):
+    """A genuine bug (non-Dispatch/Auth) is NOT swallowed by the policy."""
+    from osprey.dispatch.registry import TriggerRegistry
+    from osprey.dispatch.trigger_config import TriggerConfig
+
+    async def boom(url, prompt, allowed_tools, token, timeout=30.0):
+        raise RuntimeError("genuine bug")
+
+    monkeypatch.setattr(server, "dispatch_to_worker", boom)
+
+    reg = TriggerRegistry()
+    trig = TriggerConfig(name="bug-trigger", source="webhook", action={"prompt": "x"})
+    await reg.register(trig)
+
+    with pytest.raises(RuntimeError, match="genuine bug"):
+        await server._dispatch_with_policy(trig, {}, reg, "http://w", "tok")
+
+
+def test_dashboard_state_surfaces_worker_error(app, monkeypatch):
+    """When the worker is unreachable, /dashboard/state carries a worker_error marker."""
+    from osprey.dispatch.worker_client import DispatchError
+
+    async def fetch_fails(url, token, timeout=10.0):
+        raise DispatchError("Connection error")
+
+    monkeypatch.setattr(server, "fetch_worker_runs", fetch_fails)
+    with TestClient(app) as client:
+        resp = client.get("/dashboard/state", headers={"Authorization": "Bearer secret"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["worker_error"] and "Connection error" in body["worker_error"]
+    assert body["runs"] == []
+
+
+def test_dashboard_runs_worker_down_returns_502(app, monkeypatch):
+    from osprey.dispatch.worker_client import DispatchError
+
+    async def fetch_fails(url, token, timeout=10.0):
+        raise DispatchError("Connection error")
+
+    monkeypatch.setattr(server, "fetch_worker_runs", fetch_fails)
+    with TestClient(app) as client:
+        resp = client.get("/dashboard/runs", headers={"Authorization": "Bearer secret"})
+    assert resp.status_code == 502
+    assert "worker_error" in resp.json()
+
+
+def test_retry_non_dict_payload_returns_400(app):
+    with TestClient(app) as client:
+        resp = client.post(
+            "/retry/deploy",
+            json={"payload": "not-an-object"},
+            headers={"Authorization": "Bearer secret"},
+        )
+    assert resp.status_code == 400
+    assert "payload must be an object" in resp.json()["detail"]
+
+
+def test_retry_queue_full_returns_429(app, monkeypatch):
+    """When the pool is saturated, /retry surfaces 429 from QueueFullError."""
+    from osprey.dispatch.pool import QueueFullError
+
+    async def _full(*a, **k):
+        raise QueueFullError("Queue depth 10 exceeded")
+
+    # Patch the pool's submit on the live server instance.
+    server.mcp._dispatcher_pool.submit = _full  # type: ignore[attr-defined]
+    with TestClient(app) as client:
+        resp = client.post(
+            "/retry/deploy",
+            json={"payload": {}},
+            headers={"Authorization": "Bearer secret"},
+        )
+    assert resp.status_code == 429
+
+
+def test_dashboard_cancel_requires_auth(app):
+    with TestClient(app) as client:
+        resp = client.post("/dashboard/cancel/some-run-id")
+    assert resp.status_code == 401
+
+
+def test_dashboard_cancel_proxies_to_worker(app, monkeypatch):
+    """A valid cancel proxies to the worker client and returns its result."""
+
+    async def fake_cancel(url, token, run_id):
+        return {"run_id": run_id, "cancelled": True}
+
+    monkeypatch.setattr(server, "cancel_worker_run", fake_cancel)
+    with TestClient(app) as client:
+        resp = client.post("/dashboard/cancel/run-1", headers={"Authorization": "Bearer secret"})
+    assert resp.status_code == 200
+    assert resp.json()["cancelled"] is True
+
+
+def test_dashboard_cancel_worker_auth_failure_returns_502(app, monkeypatch):
+    from osprey.dispatch.worker_client import AuthError
+
+    async def fake_cancel(url, token, run_id):
+        raise AuthError("nope")
+
+    monkeypatch.setattr(server, "cancel_worker_run", fake_cancel)
+    with TestClient(app) as client:
+        resp = client.post("/dashboard/cancel/run-1", headers={"Authorization": "Bearer secret"})
+    assert resp.status_code == 502

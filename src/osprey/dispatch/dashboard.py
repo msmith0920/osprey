@@ -12,9 +12,8 @@ def render_dashboard_html(facility_name: str = "", pv_strip_prefix: str = "") ->
     """Read dashboard.html and inject runtime config via the OSPREY_CONFIG_PLACEHOLDER sentinel.
 
     The HTML carries a ``/* OSPREY_CONFIG_PLACEHOLDER */`` comment that this replaces
-    with a ``window.__OSPREY_CONFIG__ = {...};`` literal. If the sentinel is absent
-    (e.g. before the dashboard is de-ALSed in a later task), the HTML is returned
-    unchanged — the replacement is a harmless no-op.
+    with a ``window.__OSPREY_CONFIG__ = {...};`` literal. If the sentinel is absent,
+    the HTML is returned unchanged — the replacement is a harmless no-op.
 
     Args:
         facility_name: Facility display name injected into the dashboard config.

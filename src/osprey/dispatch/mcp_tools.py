@@ -3,19 +3,37 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fastmcp import FastMCP
 
 from osprey.dispatch.pool import DispatchPool, QueueFullError
 from osprey.dispatch.registry import TriggerRegistry
+from osprey.dispatch.trigger_config import TriggerConfig
+
+# The dispatcher's fire callback: (trigger, payload) -> dispatch_id, or None if
+# the trigger is disabled. Raises QueueFullError when the pool is saturated.
+FireCallback = Callable[[TriggerConfig, dict[str, Any]], Awaitable[str | None]]
 
 
-def register_tools(mcp: FastMCP, registry: TriggerRegistry, pool: DispatchPool) -> None:
+def register_tools(
+    mcp: FastMCP,
+    registry: TriggerRegistry,
+    pool: DispatchPool,
+    fire_callback: FireCallback | None = None,
+) -> None:
     """Register all event dispatcher MCP tools on the given FastMCP instance.
 
     Uses closures so each tool has access to registry and pool without
     relying on module-level globals.
+
+    ``fire_callback`` is the server's real dispatch entry point — the same
+    callback the webhook/cron sources use. ``manual_fire`` routes through it so
+    a manual fire honors the disabled short-circuit and the per-trigger tool
+    allowlist (rather than merely recording an event). When omitted (e.g. a
+    bare inspection-only server), ``manual_fire`` reports that dispatch is
+    unavailable instead of silently recording without dispatching.
     """
 
     @mcp.tool()
@@ -86,15 +104,30 @@ def register_tools(mcp: FastMCP, registry: TriggerRegistry, pool: DispatchPool) 
         except KeyError as exc:
             return json.dumps({"error": str(exc)})
 
+        if fire_callback is None:
+            return json.dumps({"error": "dispatch is not available on this server"})
+
+        trigger_cfg = registry._triggers.get(name)
+        if trigger_cfg is None:  # pragma: no cover - get_status above already guards this
+            return json.dumps({"error": f"Trigger '{name}' not registered"})
+
         event_payload: dict[str, Any] = {"manual": True, **payload}
 
-        async def dispatch_fn() -> None:
-            await registry.record_event(name, event_payload, "manual_fire")
-
+        # Route through the real dispatch path so a manual fire honors the
+        # disabled short-circuit and the per-trigger allowlist, exactly like a
+        # webhook/cron fire. fire_callback returns None when the trigger is
+        # disabled (and records "ignored: disabled" itself) and raises
+        # QueueFullError when the pool is saturated.
         try:
-            dispatch_id = await pool.submit(name, dispatch_fn)
+            dispatch_id = await fire_callback(trigger_cfg, event_payload)
         except QueueFullError as exc:
             return json.dumps({"error": str(exc)})
+
+        if dispatch_id is None:
+            return json.dumps(
+                {"dispatched": False, "reason": "disabled", "trigger": name},
+                indent=2,
+            )
 
         return json.dumps(
             {
