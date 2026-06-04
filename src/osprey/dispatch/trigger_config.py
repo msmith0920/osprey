@@ -36,6 +36,8 @@ def _parse_trigger(raw: dict[str, Any], index: int) -> TriggerConfig:
         raise ValueError(f"Trigger at index {index} is missing required field 'name'")
 
     source = raw.get("source", "")
+    if not source:
+        raise ValueError(f"Trigger '{name}' is missing required field 'source'")
 
     action = raw.get("action")
     if not action or not action.get("prompt"):
@@ -63,6 +65,14 @@ def load_triggers(path: str) -> tuple[DispatcherConfig, list[TriggerConfig]]:
     with open(path) as f:
         doc = yaml.safe_load(f)
 
+    # Fail loud on an empty or non-mapping document rather than the cryptic
+    # AttributeError ``'NoneType' object has no attribute 'get'`` a bare
+    # ``doc.get(...)`` would raise on an empty file.
+    if doc is None:
+        raise ValueError(f"triggers file {path!r} is empty (no YAML document)")
+    if not isinstance(doc, dict):
+        raise ValueError(f"triggers file {path!r} must be a YAML mapping at the top level")
+
     dispatcher_raw = doc.get("dispatcher", {})
     dispatcher_cfg = DispatcherConfig(
         dispatch_target=dispatcher_raw.get("dispatch_target", ""),
@@ -72,5 +82,16 @@ def load_triggers(path: str) -> tuple[DispatcherConfig, list[TriggerConfig]]:
 
     raw_triggers = doc.get("triggers") or []
     triggers = [_parse_trigger(t, i) for i, t in enumerate(raw_triggers)]
+
+    # Detect duplicate trigger names at load time. The registry registers
+    # triggers by name, so a duplicate would otherwise SILENTLY overwrite the
+    # earlier one at registration — fail loud here instead.
+    seen: set[str] = set()
+    for t in triggers:
+        if t.name in seen:
+            raise ValueError(
+                f"Duplicate trigger name {t.name!r} in {path!r}; trigger names must be unique"
+            )
+        seen.add(t.name)
 
     return dispatcher_cfg, triggers

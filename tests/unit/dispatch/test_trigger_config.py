@@ -212,3 +212,68 @@ def test_dispatcher_config_defaults_when_omitted(tmp_path):
 
     assert dispatcher_cfg.max_concurrent_runs == 5
     assert dispatcher_cfg.max_queue_depth == 100
+
+
+# ---------------------------------------------------------------------------
+# Test 7: Duplicate trigger names raise (would silently overwrite at registry)
+# ---------------------------------------------------------------------------
+
+
+def test_duplicate_trigger_names_raise(tmp_path):
+    yaml_content = """\
+        dispatcher:
+          dispatch_target: http://localhost:8010/dispatch
+
+        triggers:
+          - name: dup
+            source: webhook
+            action:
+              prompt: "first"
+              allowed_tools: []
+          - name: dup
+            source: webhook
+            action:
+              prompt: "second"
+              allowed_tools: []
+    """
+    path = write_yaml(tmp_path, yaml_content)
+    with pytest.raises(ValueError, match="Duplicate trigger name"):
+        load_triggers(path)
+
+
+# ---------------------------------------------------------------------------
+# Test 8: Missing/empty `source` raises (was silently accepted as "")
+# ---------------------------------------------------------------------------
+
+
+def test_missing_source_raises_value_error(tmp_path):
+    yaml_content = """\
+        dispatcher:
+          dispatch_target: http://localhost:8010/dispatch
+
+        triggers:
+          - name: no-source
+            action:
+              prompt: "Handle event"
+              allowed_tools: []
+    """
+    path = write_yaml(tmp_path, yaml_content)
+    with pytest.raises(ValueError, match="source"):
+        load_triggers(path)
+
+
+# ---------------------------------------------------------------------------
+# Test 9: Empty / non-mapping YAML raises a clean error (not AttributeError)
+# ---------------------------------------------------------------------------
+
+
+def test_empty_yaml_raises_clean_error(tmp_path):
+    path = write_yaml(tmp_path, "")
+    with pytest.raises(ValueError, match="empty"):
+        load_triggers(path)
+
+
+def test_non_mapping_yaml_raises_clean_error(tmp_path):
+    path = write_yaml(tmp_path, "- just\n- a\n- list\n")
+    with pytest.raises(ValueError, match="mapping"):
+        load_triggers(path)
