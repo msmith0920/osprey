@@ -23,7 +23,7 @@ import threading
 import time
 from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import unquote, urlparse
 
 import click
@@ -32,6 +32,9 @@ from osprey.errors import BuildProfileError
 from osprey.utils.logger import get_logger
 
 from .templates.manager import TemplateManager
+
+if TYPE_CHECKING:
+    from osprey.cli.build_profile import DispatchConfig
 
 logger = get_logger("build")
 
@@ -409,6 +412,10 @@ def build(
         if build_profile.services:
             psvc_count = _inject_profile_services(profile_dir, project_path, build_profile.services)
             logger.info("  ✓ Injected %d profile service(s) for deploy", psvc_count)
+
+        # 10b. Inject event-dispatch services + triggers
+        if build_profile.dispatch is not None:
+            _inject_dispatch(build_profile.dispatch, profile_dir, project_path)
 
         # 11. Copy overlay files
         if build_profile.overlay:
@@ -1211,6 +1218,119 @@ def _inject_profile_services(
         yaml.dump(config, fh)
 
     return count
+
+
+def _inject_dispatch(dispatch: DispatchConfig, profile_dir: Path, project_path: Path) -> None:
+    """Wire the event-dispatch feature into a built project.
+
+    1. Resolve and copy the triggers file to ``<project>/triggers.yml``.
+    2. Copy the bundled event_dispatcher + dispatch_worker compose templates
+       into ``<project>/services/``.
+    3. Write ``services.{event_dispatcher,dispatch_worker}`` config + register
+       both in ``deployed_services``.
+    4. Print a post-build hint (dashboard URL + sample curl + image prerequisite).
+
+    Args:
+        dispatch: Validated dispatch configuration from the build profile.
+        profile_dir: Directory containing the build profile (triggers source).
+        project_path: Root of the built project.
+
+    Raises:
+        BuildProfileError: If the configured triggers file cannot be resolved.
+    """
+    from ruamel.yaml import YAML
+
+    from osprey.cli.build_profile import _triggers_dir
+
+    # 1. Resolve + copy triggers file (profile-relative path or bundled triggers name).
+    if (profile_dir / dispatch.triggers).is_file():
+        triggers_src = profile_dir / dispatch.triggers
+    elif (_triggers_dir() / dispatch.triggers).is_file():
+        triggers_src = _triggers_dir() / dispatch.triggers
+    else:
+        raise BuildProfileError(f"dispatch.triggers not found: {dispatch.triggers!r}")
+    shutil.copy2(triggers_src, project_path / "triggers.yml")
+
+    # 2. Copy bundled compose templates (located the same way as service templates).
+    try:
+        import osprey.templates
+
+        pkg_services = Path(osprey.templates.__file__).parent / "services"
+    except (ImportError, AttributeError):
+        pkg_services = Path(__file__).parent.parent / "templates" / "services"
+
+    dest_services_root = project_path / "services"
+    dest_services_root.mkdir(exist_ok=True)
+
+    for name in ("event_dispatcher", "dispatch_worker"):
+        src_dir = pkg_services / name
+        if not src_dir.is_dir():
+            logger.warning("No package template for dispatch service %r at %s", name, src_dir)
+            continue
+        dest_dir = dest_services_root / name
+        if dest_dir.exists():
+            shutil.rmtree(dest_dir)
+        shutil.copytree(src_dir, dest_dir)
+
+    # 3. Write config.yml entries + register in deployed_services.
+    config_path = project_path / "config.yml"
+    if not config_path.exists():
+        logger.warning("config.yml not found — skipping dispatch config registration")
+        return
+
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    with open(config_path) as fh:
+        config = yaml.load(fh)
+
+    # No ``image`` key: both services build the shared local image
+    # (services/event_dispatcher/Dockerfile) on first ``osprey deploy up``.
+    # Override with OSPREY_DISPATCH_IMAGE/OSPREY_WORKER_IMAGE, or set
+    # ``services.<name>.image`` here, to use a prebuilt/published image.
+    config.setdefault("services", {})
+    config["services"]["event_dispatcher"] = {
+        "path": "./services/event_dispatcher",
+        "port": dispatch.dispatcher_port,
+        "facility_name": dispatch.facility_name,
+        "pv_strip_prefix": dispatch.pv_strip_prefix,
+        # Copy the project's triggers.yml into the service build context so the
+        # compose ``./triggers.yml`` bind-mount resolves to a file (otherwise the
+        # container runtime auto-creates an empty directory at the mount source).
+        "additional_dirs": [{"src": "triggers.yml", "dst": "triggers.yml"}],
+    }
+    config["services"]["dispatch_worker"] = {
+        "path": "./services/dispatch_worker",
+        "worker_count": dispatch.worker_count,
+        "worker_port_base": dispatch.worker_port_base,
+        "workspace_mode": dispatch.workspace_mode,
+        "timeout_sec": dispatch.timeout_sec,
+    }
+    deployed = config.get("deployed_services", []) or []
+    for name in ("event_dispatcher", "dispatch_worker"):
+        if name not in [str(s) for s in deployed]:
+            deployed.append(name)
+    config["deployed_services"] = deployed
+
+    with open(config_path, "w") as fh:
+        yaml.dump(config, fh)
+
+    # 4. Post-build hint.
+    logger.info(
+        "  ✓ Injected event dispatch (%d worker(s), port %d)",
+        dispatch.worker_count,
+        dispatch.dispatcher_port,
+    )
+    logger.info("    Dashboard:  http://localhost:%d/dashboard", dispatch.dispatcher_port)
+    logger.info(
+        "    Try it:     curl -X POST http://localhost:%d/webhook/hello-dispatch "
+        "-H 'Authorization: Bearer dev-token' -H 'Content-Type: application/json' -d '{}'",
+        dispatch.dispatcher_port,
+    )
+    logger.info(
+        "    Images:     `osprey deploy up` builds the shared dispatch image locally "
+        "(first run is slow). Use `--dev` to bake in your local osprey checkout; "
+        "set OSPREY_DISPATCH_IMAGE/OSPREY_WORKER_IMAGE to use a published image."
+    )
 
 
 def _copy_overlay_files(
