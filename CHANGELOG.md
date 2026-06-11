@@ -13,6 +13,7 @@ Compatibility is documented in release notes, not encoded in the version string.
 
 ### Added
 
+- **Data-driven simulation engine** (`osprey.simulation`) backing the mock control-system and archiver connectors: a `machine.json` defines channels (baseline values or derived expressions), scenarios (override sets), and archiver event scripts (step/ramp/spike, window-fraction or wall-clock anchored), so corrective writes propagate through physics couplings and archived history correlates with live values. Ships with a generic `sim-scenarios` skill for listing/switching scenarios.
 - New e2e scenario `tests/e2e/test_corrector_limit_honest_refusal_scenario.py` — asserts the agent's *behavior under refusal* (no channel-shopping, no intent-splitting, no false success, clear safety-attribution, operator looped in), complementing the existing mechanism-level safety tests. Two-layer grading (deterministic + LLM judge).
 
 ### Changed
