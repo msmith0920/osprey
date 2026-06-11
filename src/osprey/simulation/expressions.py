@@ -77,6 +77,10 @@ def extract_channel_refs(node: ast.expr) -> set[str]:
 def evaluate(node: ast.expr, resolver: Callable[[str], float]) -> float:
     """Evaluate a validated expression node.
 
+    Node invariants (numeric literals, allowed operators/functions,
+    string-literal ``ch()`` arguments) are enforced by
+    :func:`compile_expression` at parse time and are not re-checked here.
+
     Args:
         node: AST node previously returned by :func:`compile_expression`.
         resolver: Callable mapping a channel name to its numeric value;
@@ -86,8 +90,6 @@ def evaluate(node: ast.expr, resolver: Callable[[str], float]) -> float:
         The numeric result of the expression.
     """
     if isinstance(node, ast.Constant):
-        if isinstance(node.value, bool) or not isinstance(node.value, (int, float)):
-            raise ExpressionError(f"Non-numeric literal {node.value!r}")
         return float(node.value)
     if isinstance(node, ast.BinOp):
         op = _BINARY_OPS[type(node.op)]
@@ -97,10 +99,7 @@ def evaluate(node: ast.expr, resolver: Callable[[str], float]) -> float:
         return -operand if isinstance(node.op, ast.USub) else operand
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
         if node.func.id == _CHANNEL_FUNC:
-            arg = node.args[0]
-            if not isinstance(arg, ast.Constant) or not isinstance(arg.value, str):
-                raise ExpressionError("ch() requires a single string-literal channel name")
-            return float(resolver(arg.value))
+            return float(resolver(node.args[0].value))
         func = _FUNCTIONS[node.func.id]
         return float(func(*[evaluate(arg, resolver) for arg in node.args]))
     raise ExpressionError(f"Cannot evaluate node type {type(node).__name__!r}")
