@@ -52,6 +52,58 @@ class TestGetLiteLLMModelName:
         result = get_litellm_model_name("amsc", "anthropic/claude-haiku")
         assert result == "openai/anthropic/claude-haiku"
 
+    def test_vllm_model(self):
+        """vLLM uses openai/ prefix (OpenAI-compatible)."""
+        result = get_litellm_model_name("vllm", "some-model")
+        assert result == "openai/some-model"
+
+    def test_als_apg_model(self):
+        """als-apg uses openai/ prefix (OpenAI-compatible)."""
+        result = get_litellm_model_name("als-apg", "some-model")
+        assert result == "openai/some-model"
+
+    def test_ds4_model(self):
+        """ds4 uses openai/ prefix (OpenAI-compatible)."""
+        result = get_litellm_model_name("ds4", "some-model")
+        assert result == "openai/some-model"
+
+    def test_registry_class_attributes_drive_routing(self, monkeypatch):
+        """A registry-resolved provider class drives routing even when the
+        provider name is absent from the hardcoded fallback maps."""
+        import osprey.models.provider_registry as registry_module
+
+        class _StubProvider:
+            is_openai_compatible = True
+
+        class _StubRegistry:
+            def get_provider(self, name):
+                return _StubProvider if name == "synthetic_oai" else None
+
+        monkeypatch.setattr(
+            registry_module, "get_provider_registry", lambda: _StubRegistry()
+        )
+        result = get_litellm_model_name("synthetic_oai", "m")
+        assert result == "openai/m"
+
+    def test_registry_prefix_attribute_drives_routing(self, monkeypatch):
+        """A registry-resolved provider class's litellm_prefix drives routing
+        even when the provider name is absent from the hardcoded fallback maps."""
+        import osprey.models.provider_registry as registry_module
+
+        class _StubProvider:
+            litellm_prefix = "xprefix"
+            is_openai_compatible = False
+
+        class _StubRegistry:
+            def get_provider(self, name):
+                return _StubProvider if name == "synthetic_prefixed" else None
+
+        monkeypatch.setattr(
+            registry_module, "get_provider_registry", lambda: _StubRegistry()
+        )
+        result = get_litellm_model_name("synthetic_prefixed", "m")
+        assert result == "xprefix/m"
+
     def test_unknown_provider(self):
         """Unknown providers use provider/model format (LiteLLM's default routing)."""
         result = get_litellm_model_name("unknown_provider", "some-model")

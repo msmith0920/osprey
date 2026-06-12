@@ -17,7 +17,7 @@ Provider Integration:
     - is_openai_compatible: True for OpenAI-compatible endpoints (CBORG, vLLM, etc.)
     - supports_native_structured_output: True=native json_schema, False=prompt fallback, None=auto-detect
 
-    This eliminates hardcoded provider checks and allows custom providers to integrate
+    This prefers provider-declared attributes over the hardcoded fallback maps and allows custom providers to integrate
     without modifying this adapter.
 """
 
@@ -68,7 +68,7 @@ def get_litellm_model_name(
     - openai/{model} with api_base for OpenAI-compatible endpoints
 
     This function reads provider-declared attributes (litellm_prefix, is_openai_compatible)
-    to determine the correct routing, eliminating hardcoded provider checks.
+    to determine the correct routing, preferring them over the hardcoded fallback maps below.
 
     :param provider: Osprey provider name
     :param model_id: Model identifier
@@ -76,6 +76,14 @@ def get_litellm_model_name(
     :param provider_class: Optional provider class with LiteLLM configuration attributes
     :return: LiteLLM-formatted model string
     """
+    if provider_class is None:
+        # Lazy import avoids an import cycle: provider_registry imports provider
+        # modules, which import this adapter. Resolving the class here makes routing
+        # driven by provider-declared attributes instead of the hardcoded maps below.
+        from osprey.models.provider_registry import get_provider_registry
+
+        provider_class = get_provider_registry().get_provider(provider)
+
     # If provider class is available, use its declared attributes
     if provider_class is not None:
         # OpenAI-compatible providers use openai/ prefix with custom api_base
@@ -90,8 +98,9 @@ def get_litellm_model_name(
                 return model_id
             return f"{litellm_prefix}/{model_id}"
 
-    # Fallback for backwards compatibility when provider_class is not provided
-    # This allows the adapter to work even without the provider class
+    # Last-resort fallback for providers the registry can't resolve (unregistered
+    # names that have no provider class). Registered providers are routed above via
+    # their declared attributes, so these maps no longer drive normal routing.
     _fallback_prefixes = {
         "anthropic": "anthropic",
         "google": "gemini",
