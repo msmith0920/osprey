@@ -18,7 +18,7 @@ Usage:
 from typing import Any
 
 from .base import BaseProvider
-from .litellm_adapter import check_litellm_health, execute_litellm_completion
+from .litellm_adapter import _ERR_SNIPPET, check_litellm_health, execute_litellm_completion
 
 
 class DS4ProviderAdapter(BaseProvider):
@@ -96,7 +96,7 @@ class DS4ProviderAdapter(BaseProvider):
             try:
                 import httpx
 
-                models_url = f"{effective_base_url.removesuffix('/v1')}/v1/models"
+                models_url = f"{effective_base_url.rstrip('/').removesuffix('/v1')}/v1/models"
                 response = httpx.get(models_url, timeout=timeout)
                 if response.status_code == 200:
                     models = response.json().get("data", [])
@@ -109,7 +109,7 @@ class DS4ProviderAdapter(BaseProvider):
             except httpx.ConnectError:
                 return False, f"Cannot connect to ds4 server at {effective_base_url}"
             except Exception as e:
-                return False, f"Error querying ds4: {str(e)[:50]}"
+                return False, f"Error querying ds4: {str(e)[:_ERR_SNIPPET]}"
 
         if not model_id:
             return False, "No model available for health check"

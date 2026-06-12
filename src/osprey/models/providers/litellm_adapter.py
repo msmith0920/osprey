@@ -5,7 +5,8 @@ replacing Osprey's custom provider implementations with a single adapter layer.
 
 Key features:
 - Model name mapping using provider-declared attributes (litellm_prefix, is_openai_compatible)
-- Structured output detection via LiteLLM's supports_response_schema()
+- Structured output routing via the provider-declared supports_native_structured_output
+  flag, falling back to LiteLLM's supports_response_schema() when the flag is None
 - Extended thinking support via LiteLLM's standardized interface
 - HTTP proxy configuration
 - Health check utilities
@@ -14,13 +15,13 @@ Provider Integration:
     Providers declare their LiteLLM routing behavior via class attributes:
     - litellm_prefix: The LiteLLM prefix (e.g., "anthropic", "gemini")
     - is_openai_compatible: True for OpenAI-compatible endpoints (CBORG, vLLM, etc.)
+    - supports_native_structured_output: True=native json_schema, False=prompt fallback, None=auto-detect
 
     This eliminates hardcoded provider checks and allows custom providers to integrate
     without modifying this adapter.
 """
 
 import json
-import os
 import warnings
 from typing import TYPE_CHECKING, Any
 
@@ -47,6 +48,9 @@ warnings.filterwarnings(
 )
 
 logger = get_logger("litellm_adapter")
+
+# Max characters of an error or response string to surface in user-facing messages.
+_ERR_SNIPPET = 200
 
 
 def get_litellm_model_name(
@@ -169,12 +173,8 @@ def execute_litellm_completion(
         completion_kwargs["tools"] = tools
         completion_kwargs["tool_choice"] = tool_choice if tool_choice is not None else "auto"
 
-    # Handle HTTP proxy from environment
-    proxy_url = os.environ.get("HTTP_PROXY")
-    if proxy_url:
-        # LiteLLM respects standard proxy environment variables
-        # No additional configuration needed
-        pass
+    # HTTP proxy needs no handling here: LiteLLM honors the standard
+    # HTTP_PROXY / HTTPS_PROXY environment variables automatically.
 
     # Handle extended thinking
     enable_thinking = kwargs.get("enable_thinking", False)
@@ -354,7 +354,7 @@ def _handle_structured_output(
     except Exception as e:
         raise ValueError(
             f"Failed to parse structured output from {provider}: {e}\n"
-            f"Response: {response_text[:200]}"
+            f"Response: {response_text[:_ERR_SNIPPET]}"
         ) from e
 
 
@@ -523,7 +523,7 @@ Respond ONLY with the JSON object, no additional text."""
         return result
     except Exception as e:
         raise ValueError(
-            f"Failed to parse structured output from Ollama: {e}\nResponse: {content[:200]}"
+            f"Failed to parse structured output from Ollama: {e}\nResponse: {content[:_ERR_SNIPPET]}"
         ) from e
 
 
@@ -582,12 +582,12 @@ def check_litellm_health(
     except litellm.NotFoundError:
         return False, f"Model '{model_id}' not found (check model ID)"
     except litellm.BadRequestError as e:
-        return False, f"Bad request: {str(e)[:50]}"
+        return False, f"Bad request: {str(e)[:_ERR_SNIPPET]}"
     except litellm.Timeout:
         return False, "Request timeout"
     except litellm.APIConnectionError as e:
-        return False, f"Connection failed: {str(e)[:50]}"
+        return False, f"Connection failed: {str(e)[:_ERR_SNIPPET]}"
     except litellm.APIError as e:
-        return False, f"API error: {str(e)[:50]}"
+        return False, f"API error: {str(e)[:_ERR_SNIPPET]}"
     except Exception as e:
-        return False, f"Unexpected error: {str(e)[:50]}"
+        return False, f"Unexpected error: {str(e)[:_ERR_SNIPPET]}"
