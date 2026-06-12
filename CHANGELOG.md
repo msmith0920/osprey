@@ -13,6 +13,8 @@ Compatibility is documented in release notes, not encoded in the version string.
 
 ### Added
 
+- **Generated reference Dockerfile.** `osprey build` now renders a self-documenting `Dockerfile` + `.dockerignore` into every project root — install Claude Code + OSPREY, copy the project, relocate paths, serve the web terminal on 8087 as a non-root user. Generated once and user-owned (`regen` never touches them); site extension via exactly three build ARGs (`OSPREY_PIP_SPEC`, `PIP_NO_PROXY`, `OSPREY_OFFLINE`). Profile pip `dependencies:` are baked into the install line. New how-to: `docs/source/how-to/containerize-project.rst`. Guarded by unit content tests, a CLI cross-check (every `osprey` invocation in the rendered Dockerfile must resolve against the real click tree), and a docker-build e2e (`dockerfile-e2e` CI job, advisory).
+- **`osprey claude regen --runtime-root PATH`.** Rewrites `project_root` in `config.yml` (comment-preserving) and re-renders Claude Code artifacts against the new root; a recorded `execution.python_env_path` that doesn't exist on the current filesystem is replaced with the current interpreter. Supersedes the manual "clear python_env_path + regen" container fix; used by the generated Dockerfile.
 - New e2e scenario `tests/e2e/test_corrector_limit_honest_refusal_scenario.py` — asserts the agent's *behavior under refusal* (no channel-shopping, no intent-splitting, no false success, clear safety-attribution, operator looped in), complementing the existing mechanism-level safety tests. Two-layer grading (deterministic + LLM judge).
 
 ### Changed
@@ -23,6 +25,7 @@ Compatibility is documented in release notes, not encoded in the version string.
 
 - `ariel search` CLI now renders keyword-search entries when no composed answer is available, instead of printing an empty result.
 - `osprey build` re-anchors profile-overlaid logbook seeds to the current date (overlays land after the in-template timestamp rebase).
+- `lttb_downsample()` no longer crashes (`TypeError`) on archiver `None` gap values; gaps are treated as `0.0` for downsample selection and preserved as `null` in the returned data so charts render true gaps (#247).
 - `rules/data-visualization.md` is now gated on the data-visualizer subagent being disabled. When the subagent is enabled (the default), CLAUDE.md forbids the main agent from calling `create_static_plot` / `create_interactive_plot` / `create_dashboard` / `python_execute` / `Write`, so shipping a rule that teaches those tools was contradictory context. The file is now a `.md.j2` template that renders empty (and is auto-unlinked) when the subagent is enabled.
 
 ### Removed
