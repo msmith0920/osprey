@@ -132,8 +132,6 @@ class TestCleanJsonResponse:
 class TestStructuredOutputCapabilityFlag:
     """The capability attribute drives the structured-output path."""
 
-    # Routing wiring (litellm_adapter reading this flag) lands in the structured-output refactor task; this test pins the base default only.
-
     @pytest.mark.unit
     def test_base_default_is_none(self):
         from osprey.models.providers.base import BaseProvider
