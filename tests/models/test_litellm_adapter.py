@@ -79,9 +79,7 @@ class TestGetLiteLLMModelName:
             def get_provider(self, name):
                 return _StubProvider if name == "synthetic_oai" else None
 
-        monkeypatch.setattr(
-            registry_module, "get_provider_registry", lambda: _StubRegistry()
-        )
+        monkeypatch.setattr(registry_module, "get_provider_registry", lambda: _StubRegistry())
         result = get_litellm_model_name("synthetic_oai", "m")
         assert result == "openai/m"
 
@@ -98,9 +96,7 @@ class TestGetLiteLLMModelName:
             def get_provider(self, name):
                 return _StubProvider if name == "synthetic_prefixed" else None
 
-        monkeypatch.setattr(
-            registry_module, "get_provider_registry", lambda: _StubRegistry()
-        )
+        monkeypatch.setattr(registry_module, "get_provider_registry", lambda: _StubRegistry())
         result = get_litellm_model_name("synthetic_prefixed", "m")
         assert result == "xprefix/m"
 
@@ -209,28 +205,20 @@ class TestStructuredOutputCapabilityFlag:
 
     @pytest.mark.unit
     def test_flag_true_takes_native_path(self):
-        from osprey.models.providers.litellm_adapter import _supports_native_structured_output
-
         assert _supports_native_structured_output("openai/anything", "vllm") is True
 
     @pytest.mark.unit
     def test_flag_none_defers_to_litellm(self):
-        from osprey.models.providers.litellm_adapter import _supports_native_structured_output
-
         # openai provider has supports_native_structured_output = None, so defers to litellm.
         # Use a model string litellm knows natively (gpt-4o returns True).
         assert _supports_native_structured_output("gpt-4o", "openai") is True
 
     @pytest.mark.unit
     def test_unknown_provider_defers_and_is_safe(self):
-        from osprey.models.providers.litellm_adapter import _supports_native_structured_output
-
         assert _supports_native_structured_output("unknown/nonexistent-xyz", "unknown") is False
 
     @pytest.mark.unit
     def test_ds4_declares_false_end_to_end(self):
-        from osprey.models.providers.litellm_adapter import _supports_native_structured_output
-
         # gpt-4o is known to litellm as supporting response_schema (True for "openai").
         # ds4 overrides this to False because it ignores json_schema despite being
         # OpenAI-compatible — so a False result here can ONLY come from ds4's registered flag.

@@ -44,13 +44,61 @@ class TestDS4Provider:
             captured["url"] = url
             return _Resp()
 
+        def fake_health(**kw):
+            captured["health_kwargs"] = kw
+            return True, "ok"
+
         import httpx
 
         import osprey.models.providers.ds4 as ds4mod
 
         monkeypatch.setattr(httpx, "get", fake_get)
-        # Short-circuit the downstream litellm health call.
-        monkeypatch.setattr(ds4mod, "check_litellm_health", lambda **kw: (True, "ok"))
+        # Capture the downstream litellm health call's kwargs and short-circuit it.
+        monkeypatch.setattr(ds4mod, "check_litellm_health", fake_health)
 
-        DS4ProviderAdapter().check_health(api_key="EMPTY", base_url="http://host:8001/v1")
+        result = DS4ProviderAdapter().check_health(api_key="EMPTY", base_url="http://host:8001/v1")
         assert captured["url"] == "http://host:8001/v1/models"
+        # The discovered model_id must be forwarded to the litellm health check.
+        assert captured["health_kwargs"]["model_id"] == "deepseek-v4-flash"
+        # check_health must return check_litellm_health's result verbatim.
+        assert result == (True, "ok")
+
+    @pytest.mark.unit
+    def test_check_health_no_models_loaded(self, monkeypatch):
+        """200 with empty data short-circuits before the litellm health call."""
+
+        class _Resp:
+            status_code = 200
+
+            def json(self):
+                return {"data": []}
+
+        def fake_get(url, timeout=None):
+            return _Resp()
+
+        import httpx
+
+        monkeypatch.setattr(httpx, "get", fake_get)
+
+        result = DS4ProviderAdapter().check_health(api_key="EMPTY", base_url="http://host:8001/v1")
+        assert result == (False, "ds4 server running but no models loaded")
+
+    @pytest.mark.unit
+    def test_check_health_non_200(self, monkeypatch):
+        """A non-200 response reports the status code and stops."""
+
+        class _Resp:
+            status_code = 503
+
+            def json(self):
+                return {}
+
+        def fake_get(url, timeout=None):
+            return _Resp()
+
+        import httpx
+
+        monkeypatch.setattr(httpx, "get", fake_get)
+
+        result = DS4ProviderAdapter().check_health(api_key="EMPTY", base_url="http://host:8001/v1")
+        assert result == (False, "ds4 server returned 503")

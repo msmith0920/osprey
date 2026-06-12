@@ -46,6 +46,7 @@ class TuningDecision(BaseModel):
 def main():
     ok, msg = DS4ProviderAdapter().check_health(api_key="EMPTY", base_url=BASE)
     print("health:", ok, "-", msg)
+    assert ok, msg
 
     tc = execute_litellm_completion(
         message="What is the current value of SR:DCCT? Use a tool.",
@@ -54,6 +55,8 @@ def main():
         **COMMON,
     )
     print("tool_call:", tc)
+    # A tool call comes back as a non-empty list; plain text falls through to "".
+    assert tc and isinstance(tc, list), repr(tc)
 
     res = execute_litellm_completion(
         message="Beam loss rose after the last booster RF phase change. "
@@ -61,12 +64,8 @@ def main():
         output_format=TuningDecision,
         **COMMON,
     )
-    print(
-        "structured:",
-        type(res).__name__,
-        "->",
-        res.model_dump() if isinstance(res, TuningDecision) else repr(res),
-    )
+    assert isinstance(res, TuningDecision), repr(res)
+    print("structured:", type(res).__name__, "->", res.model_dump())
 
 
 if __name__ == "__main__":
