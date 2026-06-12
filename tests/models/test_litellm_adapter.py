@@ -1,5 +1,7 @@
 """Tests for LiteLLM adapter module."""
 
+import pytest
+
 from osprey.models.providers.litellm_adapter import (
     _clean_json_response,
     _supports_native_structured_output,
@@ -121,3 +123,14 @@ class TestCleanJsonResponse:
         """Handles only trailing markdown."""
         result = _clean_json_response('{"key": "value"}```')
         assert result == '{"key": "value"}'
+
+
+class TestStructuredOutputCapabilityFlag:
+    """The capability attribute drives the structured-output path."""
+
+    # Routing wiring (litellm_adapter reading this flag) lands in the structured-output refactor task; this test pins the base default only.
+
+    @pytest.mark.unit
+    def test_base_default_is_none(self):
+        from osprey.models.providers.base import BaseProvider
+        assert BaseProvider.supports_native_structured_output is None
