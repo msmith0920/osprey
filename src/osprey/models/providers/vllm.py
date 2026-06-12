@@ -63,7 +63,9 @@ class VLLMProviderAdapter(BaseProvider):
 
     # LiteLLM integration - vLLM is an OpenAI-compatible server
     is_openai_compatible = True
-    supports_native_structured_output = True  # vLLM enforces response_format json_schema via constrained decoding
+    supports_native_structured_output = (
+        True  # vLLM enforces response_format json_schema via constrained decoding
+    )
 
     def execute_completion(
         self,
