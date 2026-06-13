@@ -20,7 +20,6 @@ import json
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from datetime import time as dtime
 from pathlib import Path
 from typing import Any, ClassVar
@@ -30,8 +29,15 @@ import numpy as np
 from osprey.simulation.expressions import (
     ExpressionError,
     compile_expression,
-    evaluate,
+    evaluate_channel,
     extract_channel_refs,
+)
+from osprey.simulation.series import (
+    apply_events,
+    clamp,
+    epoch_seconds_array,
+    ref_value,
+    string_series,
 )
 from osprey.utils.logger import get_logger
 
@@ -206,7 +212,7 @@ class SimulationEngine:
         if not isinstance(value, str):
             if channel.noise > 0.0:
                 value = float(value) * (1.0 + float(self._rng.normal(0.0, channel.noise)))
-            value = _clamp(float(value), channel.min_value, channel.max_value)
+            value = clamp(float(value), channel.min_value, channel.max_value)
         return SimReading(value=value, units=channel.units, description=channel.description)
 
     def write(self, pv: str, value: Any) -> None:
@@ -270,7 +276,7 @@ class SimulationEngine:
         n = len(timestamps)
         if n == 0:
             return []
-        t_abs = _epoch_seconds_array(timestamps)
+        t_abs = epoch_seconds_array(timestamps)
         anchor = self._scenario_anchor()
         cache: dict[str, np.ndarray | list[str]] = {}
         series = self._synthesize(pv, n, cache, t_abs, anchor)
@@ -330,14 +336,7 @@ class SimulationEngine:
             return scenario.overrides[pv]
         channel = self._channels[pv]
         if channel.expr is not None:
-            try:
-                return evaluate(channel.expr, self._numeric_effective)
-            except ExpressionError as exc:
-                raise ExpressionError(f"Channel {pv!r}: {exc}") from exc
-            except (ZeroDivisionError, ValueError, OverflowError) as exc:
-                raise ExpressionError(
-                    f"Channel {pv!r}: expression {channel.expr_source!r} failed to evaluate: {exc}"
-                ) from exc
+            return evaluate_channel(channel.expr, channel.expr_source, pv, self._numeric_effective)
         assert channel.value is not None  # guaranteed by _parse_channel
         return channel.value
 
@@ -348,7 +347,7 @@ class SimulationEngine:
                 f"Channel {pv!r} holds a string value and cannot be used in an expression"
             )
         channel = self._channels[pv]
-        return _clamp(float(value), channel.min_value, channel.max_value)
+        return clamp(float(value), channel.min_value, channel.max_value)
 
     def _scenario_anchor(self) -> float:
         """Scenario-activation time in epoch seconds (state-file mtime).
@@ -376,34 +375,27 @@ class SimulationEngine:
         events = self._scenarios[self._active].archiver.get(pv, [])
 
         if channel.expr is None and isinstance(channel.value, str):
-            string_series = _string_series(channel.value, events, n, t_abs, anchor)
-            cache[pv] = string_series
-            return string_series
+            series_str = string_series(channel.value, events, n, t_abs, anchor)
+            cache[pv] = series_str
+            return series_str
 
         if channel.expr is not None:
             ref_series = {
                 ref: self._synthesize(ref, n, cache, t_abs, anchor) for ref in channel.refs
             }
             values: list[float] = []
-            try:
-                for i in range(n):
+            for i in range(n):
 
-                    def resolver(name: str, _index: int = i) -> float:
-                        return _ref_value(ref_series, name, _index)
+                def resolver(name: str, _index: int = i) -> float:
+                    return ref_value(ref_series, name, _index)
 
-                    values.append(evaluate(channel.expr, resolver))
-            except ExpressionError as exc:
-                raise ExpressionError(f"Channel {pv!r}: {exc}") from exc
-            except (ZeroDivisionError, ValueError, OverflowError) as exc:
-                raise ExpressionError(
-                    f"Channel {pv!r}: expression {channel.expr_source!r} failed to evaluate: {exc}"
-                ) from exc
+                values.append(evaluate_channel(channel.expr, channel.expr_source, pv, resolver))
             series = np.asarray(values, dtype=np.float64)
         else:
             assert channel.value is not None  # guaranteed by _parse_channel
             series = np.full(n, float(channel.value))
 
-        series = _apply_events(series, events, n, t_abs, anchor)
+        series = apply_events(series, events, n, t_abs, anchor)
         if channel.noise > 0.0:
             series = series * (1.0 + self._rng.normal(0.0, channel.noise, n))
         if channel.min_value is not None or channel.max_value is not None:
@@ -672,146 +664,3 @@ def _validate_event(scenario: str, pv: str, event: Any, channel: SimChannel) -> 
     if shape == "spike":
         _require_number("amplitude")
         _require_number("width", minimum=0.0)
-
-
-def _clamp(value: float, min_value: float | None, max_value: float | None) -> float:
-    """Clamp a scalar into ``[min_value, max_value]`` (either bound optional)."""
-    if min_value is not None and value < min_value:
-        return min_value
-    if max_value is not None and value > max_value:
-        return max_value
-    return value
-
-
-def _ref_value(ref_series: dict[str, "np.ndarray | list[str]"], name: str, index: int) -> float:
-    """Resolver for pointwise expression evaluation over referenced series."""
-    value = ref_series[name][index]
-    if isinstance(value, str):
-        raise ExpressionError(
-            f"Channel {name!r} holds string values and cannot be used in an expression"
-        )
-    return float(value)
-
-
-def _epoch_seconds_array(timestamps: Sequence[Any]) -> "np.ndarray | None":
-    """Convert timestamps to epoch seconds, or None when not convertible."""
-    values: list[float] = []
-    for ts in timestamps:
-        if hasattr(ts, "timestamp"):
-            values.append(float(ts.timestamp()))
-        elif isinstance(ts, (int, float)) and not isinstance(ts, bool):
-            values.append(float(ts))
-        else:
-            return None
-    return np.asarray(values, dtype=np.float64)
-
-
-def _event_positions(
-    event: dict[str, Any], t_frac: "np.ndarray", t_abs: "np.ndarray | None", anchor: float
-) -> "list[tuple[np.ndarray, float]]":
-    """Coordinate axis and event position(s) for one event.
-
-    Fraction-positioned (``at``) and offset-anchored (``at_offset``) events
-    yield one position, on the normalized window axis and the epoch-seconds
-    axis respectively. Daily ``at_time`` events yield one epoch-seconds
-    position per calendar date whose time-of-day occurrence falls inside the
-    window. Returns an empty list when an anchored or time-of-day event
-    cannot be placed because the timestamps were not convertible to epoch
-    seconds.
-    """
-    if "at_offset" in event:
-        if t_abs is None:
-            logger.debug(
-                "Skipping offset-anchored event: timestamps not convertible to epoch seconds"
-            )
-            return []
-        return [(t_abs, anchor + float(event["at_offset"]))]
-    if "at_time" in event:
-        if t_abs is None:
-            logger.debug("Skipping time-of-day event: timestamps not convertible to epoch seconds")
-            return []
-        return [(t_abs, at) for at in _daily_occurrences(str(event["at_time"]), t_abs)]
-    return [(t_frac, float(event["at"]))]
-
-
-def _daily_occurrences(at_time: str, t_abs: "np.ndarray") -> list[float]:
-    """Epoch-second positions of a daily time-of-day within ``[t_abs[0], t_abs[-1]]``.
-
-    Walks calendar dates (local time) from the window start to its end and
-    keeps every occurrence of ``at_time`` that falls inside the window.
-    Assumes ascending timestamps (the same contract ``_apply_events`` relies
-    on via ``np.searchsorted``).
-    """
-    tod = dtime.fromisoformat(at_time)
-    start = datetime.fromtimestamp(float(t_abs[0]))
-    end = datetime.fromtimestamp(float(t_abs[-1]))
-    cursor = start.replace(hour=0, minute=0, second=0, microsecond=0)
-    positions: list[float] = []
-    while cursor <= end:
-        candidate = cursor.replace(
-            hour=tod.hour, minute=tod.minute, second=tod.second, microsecond=tod.microsecond
-        )
-        if start <= candidate <= end:
-            positions.append(candidate.timestamp())
-        cursor += timedelta(days=1)
-    return positions
-
-
-def _string_series(
-    baseline: str,
-    events: list[dict[str, Any]],
-    n: int,
-    t_abs: "np.ndarray | None",
-    anchor: float,
-) -> list[str]:
-    """Constant string series; only 'step' events are meaningful for strings."""
-    t_frac = np.linspace(0.0, 1.0, n)
-    series = [baseline] * n
-    for event in events:
-        if event["shape"] != "step":
-            continue
-        for x, at in _event_positions(event, t_frac, t_abs, anchor):
-            for i in range(n):
-                if x[i] >= at:
-                    series[i] = str(event["to"])
-    return series
-
-
-def _apply_events(
-    series: "np.ndarray",
-    events: list[dict[str, Any]],
-    n: int,
-    t_abs: "np.ndarray | None",
-    anchor: float,
-) -> "np.ndarray":
-    """Apply step/ramp/spike events in order (window-fraction or wall-clock)."""
-    if not events:
-        return series
-    t_frac = np.linspace(0.0, 1.0, n)
-    series = series.copy()
-    for event in events:
-        shape = event["shape"]
-        offset_anchored = "at_offset" in event
-        for x, at in _event_positions(event, t_frac, t_abs, anchor):
-            if shape == "step":
-                series[x >= at] = float(event["to"])
-            elif shape == "ramp":
-                until = (
-                    anchor + float(event["until_offset"])
-                    if offset_anchored
-                    else float(event["until"])
-                )
-                to = float(event["to"])
-                if until <= at:
-                    series[x >= at] = to
-                    continue
-                idx = int(np.searchsorted(x, at))
-                start = float(series[min(idx, n - 1)])
-                mask = (x >= at) & (x <= until)
-                series[mask] = start + (to - start) * (x[mask] - at) / (until - at)
-                series[x > until] = to
-            else:  # spike (gaussian bump; width as window fraction, or seconds when anchored)
-                amplitude = float(event["amplitude"])
-                width = float(event["width"])
-                series = series + amplitude * np.exp(-((x - at) ** 2) / (2.0 * width**2))
-    return series
