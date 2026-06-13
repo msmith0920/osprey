@@ -6,12 +6,12 @@ time-series to the mock control-system and archiver connectors.
 """
 
 from osprey.simulation.engine import (
-    DEFAULT_SCENARIO,
     SimReading,
     SimulationEngine,
     engine_from_connector_config,
 )
 from osprey.simulation.expressions import ExpressionError
+from osprey.simulation.machine import DEFAULT_SCENARIO
 
 __all__ = [
     "DEFAULT_SCENARIO",
