@@ -57,6 +57,21 @@ setpoint changes written during the session are cleared and channels return
 to the new scenario's state. Warn the user before switching if writes were
 made this session.
 
+## Archiver event format (for scenario authors)
+
+A scenario's `archiver` entries attach events to a channel's synthesized
+history. Each event has a `shape` (`step`, `ramp`, or `spike`) and exactly
+one positioning style:
+
+- `at` — fraction (0..1) of whatever time window is requested; ramps use
+  `until`. Spike `width` is a window fraction.
+- `at_offset` — seconds relative to scenario activation (negative = past);
+  ramps use `until_offset`. Spike `width` is in seconds.
+- `at_time` — daily wall-clock recurrence (`"HH:MM:SS"`, local time): the
+  event fires at that time of day on every calendar date inside the
+  requested window. `step` and `spike` only (no ramps). Spike `width` is
+  in seconds.
+
 ## Anti-patterns
 
 Do NOT:

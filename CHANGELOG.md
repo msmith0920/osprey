@@ -11,6 +11,10 @@ Compatibility is documented in release notes, not encoded in the version string.
 
 ## [Unreleased]
 
+### Added
+
+- Simulation engine: `at_time: "HH:MM:SS"` event anchor — daily local-time recurrence for archiver events (step/spike; width in seconds), complementing window-fraction `at` and activation-relative `at_offset`.
+
 ## [2026.6.0] - 2026-06-12
 
 ### Added

@@ -423,3 +423,52 @@ class TestOffsetEventValidation:
         )
         with pytest.raises(ValueError, match="'at_offset' must be a number"):
             SimulationEngine.from_file(make_machine_file(bad))
+
+
+class TestAtTimeEventValidation:
+    """at_time (daily time-of-day) variants are validated at load time."""
+
+    def _machine_with_event(self, machine_dict, event):
+        machine_dict["scenarios"]["nominal"]["archiver"] = [{"channel": "T:VAC", "events": [event]}]
+        return machine_dict
+
+    @pytest.mark.parametrize(
+        ("event", "match"),
+        [
+            (
+                {"shape": "spike", "at": 0.5, "at_time": "14:32:08", "amplitude": 1, "width": 1},
+                "exactly one of",
+            ),
+            (
+                {"shape": "ramp", "at_time": "14:32:08", "to": 1, "until": 0.9},
+                "'ramp'.*'at_time'",
+            ),
+            (
+                {"shape": "spike", "at_time": "14:99:00", "amplitude": 1, "width": 1},
+                "'at_time'.*'14:99:00'",
+            ),
+            (
+                {"shape": "spike", "at_time": "noon", "amplitude": 1, "width": 1},
+                "'at_time'.*'noon'",
+            ),
+            (
+                {"shape": "spike", "at_time": 1432, "amplitude": 1, "width": 1},
+                "'at_time'.*1432",
+            ),
+            (
+                {"shape": "spike", "at_time": "14:32:08+02:00", "amplitude": 1, "width": 1},
+                "timezone",
+            ),
+        ],
+    )
+    def test_at_time_validation_errors(self, machine_dict, make_machine_file, event, match):
+        bad = self._machine_with_event(machine_dict, event)
+        with pytest.raises(ValueError, match=match):
+            SimulationEngine.from_file(make_machine_file(bad))
+
+    def test_valid_at_time_spike_accepted(self, machine_dict, make_machine_file):
+        good = self._machine_with_event(
+            machine_dict, {"shape": "spike", "at_time": "14:32:08", "amplitude": 1.0, "width": 15}
+        )
+        engine = SimulationEngine.from_file(make_machine_file(good))
+        assert engine.has_channel("T:VAC")

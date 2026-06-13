@@ -241,3 +241,84 @@ class TestWallClockAnchoredEvents:
         t = np.linspace(0, 1, 200)
         assert all(v == 42.0 for v, ti in zip(series, t, strict=True) if ti < 0.35)
         assert all(v == 28.4 for v, ti in zip(series, t, strict=True) if ti >= 0.35)
+
+
+class TestDailyTimeAnchor:
+    """at_time events fire at a wall-clock time-of-day, every date in window."""
+
+    @staticmethod
+    def _burst_machine(machine_dict, events, channel="T:VAC"):
+        machine_dict["scenarios"]["burst"] = {
+            "description": "Daily vacuum burst.",
+            "archiver": [{"channel": channel, "events": events}],
+        }
+        return machine_dict
+
+    def _engine(self, machine_dict, make_machine_file, events, channel="T:VAC"):
+        machine = self._burst_machine(machine_dict, events, channel)
+        engine = SimulationEngine.from_file(make_machine_file(machine))
+        engine.set_active_scenario("burst")
+        return engine
+
+    def test_spike_fires_at_time_of_day(self, machine_dict, make_machine_file):
+        engine = self._engine(
+            machine_dict,
+            make_machine_file,
+            [{"shape": "spike", "at_time": "14:32:08", "amplitude": 1.5e-7, "width": 15}],
+        )
+        day = datetime.now().replace(hour=14, minute=30, second=0, microsecond=0)
+        ts = [day + timedelta(seconds=i) for i in range(600)]  # 14:30-14:40
+        series = engine.synthesize_series("T:VAC", ts)
+        peak_idx = max(range(len(series)), key=lambda i: series[i])
+        assert abs((ts[peak_idx] - day).total_seconds() - 128) < 5  # peak at 14:32:08
+        assert max(series) > 1.0e-7
+
+    def test_no_event_outside_window(self, machine_dict, make_machine_file):
+        engine = self._engine(
+            machine_dict,
+            make_machine_file,
+            [{"shape": "spike", "at_time": "14:32:08", "amplitude": 1.5e-7, "width": 15}],
+        )
+        day = datetime.now().replace(hour=9, minute=0, second=0, microsecond=0)
+        ts = [day + timedelta(seconds=i) for i in range(600)]
+        series = engine.synthesize_series("T:VAC", ts)
+        assert max(series) < 1.0e-7  # flat baseline
+
+    def test_fires_every_date_in_multiday_window(self, machine_dict, make_machine_file):
+        # width 300 s so the Gaussian is still detectable at the 10-min sample grid
+        engine = self._engine(
+            machine_dict,
+            make_machine_file,
+            [{"shape": "spike", "at_time": "14:32:08", "amplitude": 1.5e-7, "width": 300}],
+        )
+        start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        ts = [start + timedelta(minutes=10 * i) for i in range(288)]  # 2 days @ 10 min
+        series = engine.synthesize_series("T:VAC", ts)
+        peaks = [i for i in range(1, 287) if series[i] > 1.0e-7]
+        days_hit = {ts[i].date() for i in peaks}
+        assert len(days_hit) == 2
+
+    def test_epoch_second_timestamps_supported(self, machine_dict, make_machine_file):
+        engine = self._engine(
+            machine_dict,
+            make_machine_file,
+            [{"shape": "spike", "at_time": "14:32:08", "amplitude": 1.5e-7, "width": 15}],
+        )
+        day = datetime.now().replace(hour=14, minute=30, second=0, microsecond=0)
+        ts = [(day + timedelta(seconds=i)).timestamp() for i in range(600)]
+        series = engine.synthesize_series("T:VAC", ts)
+        assert max(series) > 1.0e-7
+
+    def test_string_step_at_time_of_day(self, machine_dict, make_machine_file):
+        engine = self._engine(
+            machine_dict,
+            make_machine_file,
+            [{"shape": "step", "at_time": "14:32:08", "to": "FAULT"}],
+            channel="T:MODE",
+        )
+        day = datetime.now().replace(hour=14, minute=30, second=0, microsecond=0)
+        ts = [day + timedelta(seconds=i) for i in range(600)]
+        series = engine.synthesize_series("T:MODE", ts)
+        for value, t in zip(series, ts, strict=True):
+            expected = "FAULT" if (t - day).total_seconds() >= 128 else "CW"
+            assert value == expected

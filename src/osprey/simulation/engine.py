@@ -20,6 +20,8 @@ import json
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from datetime import time as dtime
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -39,8 +41,9 @@ DEFAULT_SCENARIO = "nominal"
 ACTIVE_SCENARIO_FILENAME = "active_scenario"
 
 # Non-position keys required per event shape. Position is validated
-# separately: exactly one of 'at' (window fraction) or 'at_offset' (seconds
-# relative to scenario-activation time); ramps need the matching
+# separately: exactly one of 'at' (window fraction), 'at_offset' (seconds
+# relative to scenario-activation time), or 'at_time' (daily 'HH:MM:SS'
+# wall-clock recurrence; step/spike only); ramps need the matching
 # 'until'/'until_offset' flavor.
 _EVENT_VALUE_KEYS = {
     "step": ("to",),
@@ -235,13 +238,16 @@ class SimulationEngine:
         synthesized series of their referenced channels, so derived channels
         show correlated history.
 
-        Event positioning has two flavors: ``at`` places an event at a fixed
+        Event positioning has three flavors: ``at`` places an event at a fixed
         fraction of whatever window is requested, while ``at_offset`` (with
         ``until_offset`` for ramps) anchors it in wall-clock time, in seconds
         relative to the scenario-activation time (the ``active_scenario``
-        state-file mtime; negative = past). Anchored events honor the actual
-        timestamp values, so an event outside the requested window does not
-        appear in it. For anchored spikes, ``width`` is in seconds.
+        state-file mtime; negative = past). ``at_time`` (``"HH:MM:SS"``, local
+        time; step/spike only) recurs daily: the event fires at that time of
+        day on every calendar date inside the requested window. Anchored and
+        time-of-day events honor the actual timestamp values, so an event
+        outside the requested window does not appear in it. For anchored and
+        time-of-day spikes, ``width`` is in seconds.
 
         Args:
             pv: Channel name.
@@ -562,12 +568,18 @@ def _validate_event(scenario: str, pv: str, event: Any, channel: SimChannel) -> 
 
     has_at = "at" in event
     has_offset = "at_offset" in event
-    if has_at == has_offset:
+    has_time = "at_time" in event
+    if has_at + has_offset + has_time != 1:
         raise ValueError(
-            f"{prefix}: event requires exactly one of 'at' (window fraction) or "
-            f"'at_offset' (seconds relative to scenario activation)"
+            f"{prefix}: event requires exactly one of 'at' (window fraction), "
+            f"'at_offset' (seconds relative to scenario activation), or "
+            f"'at_time' (daily 'HH:MM:SS' wall-clock time)"
         )
     if shape == "ramp":
+        if has_time:
+            raise ValueError(
+                f"{prefix}: 'ramp' events do not support 'at_time' (use 'step' or 'spike')"
+            )
         if (has_at and "until_offset" in event) or (has_offset and "until" in event):
             raise ValueError(
                 f"{prefix}: 'ramp' event must not mix fraction and offset position keys"
@@ -601,8 +613,26 @@ def _validate_event(scenario: str, pv: str, event: Any, channel: SimChannel) -> 
 
     if has_at:
         _require_number("at", 0.0, 1.0)
-    else:
+    elif has_offset:
         _require_number("at_offset")
+    else:
+        raw_time = event["at_time"]
+        if not isinstance(raw_time, str):
+            raise ValueError(
+                f"{prefix}: event key 'at_time' must be an 'HH:MM:SS' time string, got {raw_time!r}"
+            )
+        try:
+            parsed_time = dtime.fromisoformat(raw_time)
+        except ValueError:
+            raise ValueError(
+                f"{prefix}: event key 'at_time' must be a valid 'HH:MM:SS' time of day, "
+                f"got {raw_time!r}"
+            ) from None
+        if parsed_time.tzinfo is not None:
+            raise ValueError(
+                f"{prefix}: event key 'at_time' is local time and must not carry a "
+                f"timezone offset, got {raw_time!r}"
+            )
     if shape == "ramp":
         if has_at:
             _require_number("until", 0.0, 1.0)
@@ -638,23 +668,55 @@ def _epoch_seconds_array(timestamps: Sequence[Any]) -> "np.ndarray | None":
     return np.asarray(values, dtype=np.float64)
 
 
-def _event_position(
+def _event_positions(
     event: dict[str, Any], t_frac: "np.ndarray", t_abs: "np.ndarray | None", anchor: float
-) -> "tuple[np.ndarray, float] | None":
-    """Coordinate axis and event position for one event.
+) -> "list[tuple[np.ndarray, float]]":
+    """Coordinate axis and event position(s) for one event.
 
-    Fraction-positioned events use the normalized window axis; offset-anchored
-    events use epoch seconds. Returns None when an anchored event cannot be
-    placed because the timestamps were not convertible to epoch seconds.
+    Fraction-positioned (``at``) and offset-anchored (``at_offset``) events
+    yield one position, on the normalized window axis and the epoch-seconds
+    axis respectively. Daily ``at_time`` events yield one epoch-seconds
+    position per calendar date whose time-of-day occurrence falls inside the
+    window. Returns an empty list when an anchored or time-of-day event
+    cannot be placed because the timestamps were not convertible to epoch
+    seconds.
     """
     if "at_offset" in event:
         if t_abs is None:
             logger.debug(
                 "Skipping offset-anchored event: timestamps not convertible to epoch seconds"
             )
-            return None
-        return t_abs, anchor + float(event["at_offset"])
-    return t_frac, float(event["at"])
+            return []
+        return [(t_abs, anchor + float(event["at_offset"]))]
+    if "at_time" in event:
+        if t_abs is None:
+            logger.debug("Skipping time-of-day event: timestamps not convertible to epoch seconds")
+            return []
+        return [(t_abs, at) for at in _daily_occurrences(str(event["at_time"]), t_abs)]
+    return [(t_frac, float(event["at"]))]
+
+
+def _daily_occurrences(at_time: str, t_abs: "np.ndarray") -> list[float]:
+    """Epoch-second positions of a daily time-of-day within ``[t_abs[0], t_abs[-1]]``.
+
+    Walks calendar dates (local time) from the window start to its end and
+    keeps every occurrence of ``at_time`` that falls inside the window.
+    Assumes ascending timestamps (the same contract ``_apply_events`` relies
+    on via ``np.searchsorted``).
+    """
+    tod = dtime.fromisoformat(at_time)
+    start = datetime.fromtimestamp(float(t_abs[0]))
+    end = datetime.fromtimestamp(float(t_abs[-1]))
+    cursor = start.replace(hour=0, minute=0, second=0, microsecond=0)
+    positions: list[float] = []
+    while cursor <= end:
+        candidate = cursor.replace(
+            hour=tod.hour, minute=tod.minute, second=tod.second, microsecond=tod.microsecond
+        )
+        if start <= candidate <= end:
+            positions.append(candidate.timestamp())
+        cursor += timedelta(days=1)
+    return positions
 
 
 def _string_series(
@@ -670,13 +732,10 @@ def _string_series(
     for event in events:
         if event["shape"] != "step":
             continue
-        position = _event_position(event, t_frac, t_abs, anchor)
-        if position is None:
-            continue
-        x, at = position
-        for i in range(n):
-            if x[i] >= at:
-                series[i] = str(event["to"])
+        for x, at in _event_positions(event, t_frac, t_abs, anchor):
+            for i in range(n):
+                if x[i] >= at:
+                    series[i] = str(event["to"])
     return series
 
 
@@ -694,28 +753,27 @@ def _apply_events(
     series = series.copy()
     for event in events:
         shape = event["shape"]
-        position = _event_position(event, t_frac, t_abs, anchor)
-        if position is None:
-            continue
-        x, at = position
         offset_anchored = "at_offset" in event
-        if shape == "step":
-            series[x >= at] = float(event["to"])
-        elif shape == "ramp":
-            until = (
-                anchor + float(event["until_offset"]) if offset_anchored else float(event["until"])
-            )
-            to = float(event["to"])
-            if until <= at:
-                series[x >= at] = to
-                continue
-            idx = int(np.searchsorted(x, at))
-            start = float(series[min(idx, n - 1)])
-            mask = (x >= at) & (x <= until)
-            series[mask] = start + (to - start) * (x[mask] - at) / (until - at)
-            series[x > until] = to
-        else:  # spike (gaussian bump; width as window fraction, or seconds when anchored)
-            amplitude = float(event["amplitude"])
-            width = float(event["width"])
-            series = series + amplitude * np.exp(-((x - at) ** 2) / (2.0 * width**2))
+        for x, at in _event_positions(event, t_frac, t_abs, anchor):
+            if shape == "step":
+                series[x >= at] = float(event["to"])
+            elif shape == "ramp":
+                until = (
+                    anchor + float(event["until_offset"])
+                    if offset_anchored
+                    else float(event["until"])
+                )
+                to = float(event["to"])
+                if until <= at:
+                    series[x >= at] = to
+                    continue
+                idx = int(np.searchsorted(x, at))
+                start = float(series[min(idx, n - 1)])
+                mask = (x >= at) & (x <= until)
+                series[mask] = start + (to - start) * (x[mask] - at) / (until - at)
+                series[x > until] = to
+            else:  # spike (gaussian bump; width as window fraction, or seconds when anchored)
+                amplitude = float(event["amplitude"])
+                width = float(event["width"])
+                series = series + amplitude * np.exp(-((x - at) ** 2) / (2.0 * width**2))
     return series
