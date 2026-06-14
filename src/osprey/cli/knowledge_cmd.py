@@ -20,6 +20,29 @@ def knowledge() -> None:
     """Manage OKF facility knowledge bundles."""
 
 
+def _resolve_bundle(bundle: Path | None) -> Path:
+    """Return *bundle*, or fall back to ``facility_knowledge.bundle_path`` from config.
+
+    Commands accept an optional BUNDLE argument; when omitted, the bundle root is
+    read from the ``facility_knowledge.bundle_path`` config key and expanded to an
+    absolute path.  This is the single source of that fallback rule and its error.
+
+    Raises:
+        click.UsageError: When *bundle* is None and the config key is unset.
+    """
+    if bundle is not None:
+        return bundle
+
+    from osprey.utils.config import get_config_value
+
+    raw = get_config_value("facility_knowledge.bundle_path", None)
+    if raw is None:
+        raise click.UsageError(
+            "No bundle path given and facility_knowledge.bundle_path is not set in config."
+        )
+    return Path(raw).expanduser().resolve()
+
+
 @knowledge.command("regen-index")
 @click.argument(
     "bundle",
@@ -40,15 +63,7 @@ def regen_index(bundle: Path | None) -> None:
     (OKF §6).  Running the command a second time produces bit-identical
     output (idempotent).
     """
-    if bundle is None:
-        from osprey.utils.config import get_config_value
-
-        raw = get_config_value("facility_knowledge.bundle_path", None)
-        if raw is None:
-            raise click.UsageError(
-                "No bundle path given and facility_knowledge.bundle_path is not set in config."
-            )
-        bundle = Path(raw).expanduser().resolve()
+    bundle = _resolve_bundle(bundle)
 
     from osprey.services.facility_knowledge.okf.index import regenerate_indexes
 
@@ -84,15 +99,7 @@ def validate(bundle: Path | None) -> None:
     per-file report is printed and the command exits non-zero if any
     file fails.
     """
-    if bundle is None:
-        from osprey.utils.config import get_config_value
-
-        raw = get_config_value("facility_knowledge.bundle_path", None)
-        if raw is None:
-            raise click.UsageError(
-                "No bundle path given and facility_knowledge.bundle_path is not set in config."
-            )
-        bundle = Path(raw).expanduser().resolve()
+    bundle = _resolve_bundle(bundle)
 
     from osprey.services.facility_knowledge.okf.document import OKFDocument, OKFDocumentError
     from osprey.services.facility_knowledge.okf.index import OKFIndexError, validate_index
