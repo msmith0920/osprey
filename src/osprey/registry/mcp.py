@@ -223,6 +223,22 @@ FRAMEWORK_SERVERS: dict[str, ServerDefinition] = {
         ],
         hooks_post=[_post_error("mcp__ariel__.*")],
     ),
+    "osprey_facility_knowledge": ServerDefinition(
+        name="osprey_facility_knowledge",
+        module="osprey.mcp_server.facility_knowledge",
+        env={
+            "OSPREY_CONFIG": "{project_root}/config.yml",
+        },
+        permissions_allow=["list_concepts", "read_concept", "search"],
+        permissions_ask=["draft_concept"],
+        hooks_pre=[
+            HookRule(
+                matcher="mcp__osprey_facility_knowledge__draft_concept",
+                hooks=[_APPROVAL],
+            ),
+        ],
+        hooks_post=[_post_error("mcp__osprey_facility_knowledge__.*")],
+    ),
     "channel-finder": ServerDefinition(
         name="channel-finder",
         module="osprey.mcp_server.channel_finder_{channel_finder_pipeline}",

@@ -11,6 +11,10 @@ Compatibility is documented in release notes, not encoded in the version string.
 
 ## [Unreleased]
 
+### Added
+
+- **Facility Knowledge (OKF).** Structured markdown bundle (`osprey_facility_knowledge` MCP server, `list_concepts` / `read_concept` / `search` tools) for on-demand retrieval of subsystem descriptions, device details, operational procedures, and facility-specific references. `facility.md` is thinned to facility identity only; deep content is fetched via the agent on demand. The `control_assistant` preset ships an Example Research Facility bundle. Includes `draft_concept` write tool (approval-gated) for authoring new concept docs directly from an agent session. See :doc:`/how-to/use-facility-knowledge`.
+
 ## [2026.6.0] - 2026-06-12
 
 ### Added
