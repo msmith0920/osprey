@@ -56,6 +56,7 @@ class LazyGroup(click.Group):
             "audit": "osprey.cli.audit_cmd",  # Safety auditor
             "skills": "osprey.cli.skills_cmd",  # Bundled skill management
             "vendor": "osprey.cli.vendor_cmd",  # Vendor asset management
+            "knowledge": "osprey.cli.knowledge_cmd",  # OKF facility knowledge
         }
 
         if cmd_name not in commands:
@@ -99,6 +100,7 @@ class LazyGroup(click.Group):
             "audit",
             "skills",
             "vendor",
+            "knowledge",
         ]
 
 

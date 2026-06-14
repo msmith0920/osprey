@@ -123,14 +123,100 @@ Cross-links between documents use bundle-relative paths:
    See [Timing System](/subsystems/timing-system.md) for synchronisation details.
 
 
+.. _knowledge-cli:
+
+``osprey knowledge`` CLI
+========================
+
+The ``osprey knowledge`` command group provides three operations for managing
+an OKF bundle from the terminal.
+
+.. code-block:: console
+
+   $ osprey knowledge --help
+   Usage: osprey knowledge [OPTIONS] COMMAND [ARGS]...
+
+     Manage OKF facility knowledge bundles.
+
+   Commands:
+     regen-index    Regenerate index.md files throughout an OKF bundle.
+     validate       Validate all OKF documents in a bundle.
+     seed-from-ttl  Seed OKF stub documents from a NARAD/als-ontology TTL file.
+
+
+regen-index
+-----------
+
+Regenerates ``index.md`` files throughout the bundle.  Run this after adding
+or removing concept documents:
+
+.. code-block:: console
+
+   $ osprey knowledge regen-index data/facility_knowledge
+
+When called without an argument the bundle path is read from
+``facility_knowledge.bundle_path`` in ``config.yml``.  The command is
+idempotent — a second run produces bit-identical output.
+
+
+validate
+--------
+
+Validates every ``*.md`` file in the bundle and reports all failures in one
+pass (collect-all, never aborts on the first error):
+
+.. code-block:: console
+
+   $ osprey knowledge validate data/facility_knowledge
+   All files in data/facility_knowledge are valid.
+
+Concept documents are checked at the *authoring* level (``type``, ``title``,
+and ``description`` must be present and non-empty).  Index files are checked
+for frontmatter compliance (OKF §6/§11).  The command exits 0 on a clean
+bundle, 1 if any file fails.
+
+
+seed-from-ttl
+-------------
+
+Seeds one OKF stub document per device node in a NARAD/als-ontology
+Turtle file.  Requires the ``knowledge`` extra:
+
+.. code-block:: console
+
+   $ pip install "osprey-framework[knowledge]"
+   $ osprey knowledge seed-from-ttl devices.ttl data/facility_knowledge
+
+Idempotency rules applied per stub:
+
+* **File absent** — write and report ``written``.
+* **File present, same body** — skip and report ``unchanged``.
+* **File present, body differs, no** ``--force`` — skip and report
+  ``differs, use --force``.
+* **File present, body differs,** ``--force`` set — overwrite and report
+  ``overwritten``.
+
+Use ``--force`` only when you want to reset hand-edited stubs to the
+auto-generated content.
+
+.. warning::
+
+   ``--force`` overwrites existing stubs.  Omit it to protect hand-edited
+   documents.
+
+
 .. _regenerating-indexes:
 
 Regenerating Indexes
 ====================
 
-Index files (``index.md`` in each directory) are generated automatically
-from the concept documents they contain.  After adding or removing concept
-documents, regenerate them via the Python API:
+After adding or removing concept documents, regenerate the index files:
+
+.. code-block:: console
+
+   $ osprey knowledge regen-index data/facility_knowledge
+
+Or via the Python API:
 
 .. code-block:: python
 
@@ -145,9 +231,11 @@ directly).
 
 .. note::
 
-   ``regenerate_indexes`` is idempotent — running it twice produces the same
+   ``regen-index`` is idempotent — running it twice produces the same
    output.  It never touches concept documents, only index files.
 
+
+.. _drafting-concepts:
 
 Drafting Concepts from an Agent Session
 ========================================
@@ -168,6 +256,33 @@ body.  You review and approve in the standard approval dialog; the document
 is written into the bundle and the index is regenerated.
 
 
+The ``facility-knowledge`` Subagent
+=====================================
+
+When the ``facility-knowledge`` subagent is enabled in a project's config, the
+main OSPREY agent delegates facility knowledge questions to a dedicated
+specialist rather than handling them inline.  The subagent has access only to
+the three read-only MCP tools (``list_concepts``, ``read_concept``, ``search``)
+and follows a fixed retrieval strategy: list first to orient, search to narrow,
+read to synthesize, then submit the result.
+
+The subagent is enabled by default in the ``control_assistant`` preset.  To
+enable or disable it in another preset, set the ``agents.facility-knowledge``
+flag in ``config.yml``:
+
+.. code-block:: yaml
+
+   agents:
+     facility-knowledge: true   # set to false to disable
+
+.. note::
+
+   The subagent never writes to the bundle.  Authoring new concept documents
+   is done via the ``draft_concept`` MCP tool in the main agent session
+   (see :ref:`drafting-concepts`) or directly via ``osprey knowledge
+   seed-from-ttl`` (see :ref:`knowledge-cli`).
+
+
 Replacing the Example Bundle
 ==============================
 
@@ -179,7 +294,7 @@ facility's knowledge:
    guide, or start fresh).
 2. Author concept documents for your facility's subsystems, devices,
    procedures, physics notes, and references.
-3. Call ``regenerate_indexes(Path("data/facility_knowledge"))``
+3. Run ``osprey knowledge regen-index data/facility_knowledge``
    (see :ref:`regenerating-indexes`) to rebuild the index files.
 4. Update ``facility.md`` with your facility's name, type, and mission
    (the identity section at the top).

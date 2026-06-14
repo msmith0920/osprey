@@ -229,7 +229,7 @@ FRAMEWORK_SERVERS: dict[str, ServerDefinition] = {
         env={
             "OSPREY_CONFIG": "{project_root}/config.yml",
         },
-        permissions_allow=["list_concepts", "read_concept", "search"],
+        permissions_allow=["capabilities", "list_concepts", "read_concept", "search"],
         permissions_ask=["draft_concept"],
         hooks_pre=[
             HookRule(
@@ -316,6 +316,15 @@ FRAMEWORK_AGENTS: dict[str, AgentDefinition] = {
         description=(
             "Creates plots, dashboards, and compiles LaTeX documents. "
             "You do NOT have visualization tools."
+        ),
+    ),
+    "facility-knowledge": AgentDefinition(
+        name="facility-knowledge",
+        description=(
+            "Answers questions about facility design, accelerator physics concepts, "
+            "and operational knowledge from the facility knowledge bundle. Delegate to "
+            "this agent when the user asks about facility layout, terminology, beam "
+            "parameters, or any documented facility knowledge."
         ),
     ),
 }

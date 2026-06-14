@@ -146,6 +146,52 @@ def create_server() -> FastMCP:
 
 
 @mcp.tool()
+async def capabilities() -> str:
+    """Report facility knowledge bundle capabilities.
+
+    Returns bundle path, concept count, sorted list of distinct concept types,
+    and whether draft writes are enabled.  Does NOT require database connectivity
+    beyond the already-initialised bundle singleton.
+
+    Returns:
+        JSON object with ``bundle_path``, ``count``, ``types`` (sorted list of
+        distinct ``type`` frontmatter values), and ``write_enabled: true``.
+    """
+    try:
+        bundle = _get_bundle()
+        entries = bundle.list_concepts()
+        # ConceptEntry.type is populated only when the index parser emits it;
+        # fall back to reading each document's frontmatter to collect types.
+        raw_types: set[str] = {e.type for e in entries if e.type}
+        if not raw_types:
+            for entry in entries:
+                try:
+                    doc = bundle.read_concept(entry.concept_id)
+                    t = doc.frontmatter.get("type", "")
+                    if t:
+                        raw_types.add(str(t))
+                except Exception:
+                    pass
+        return json.dumps(
+            {
+                "bundle_path": str(bundle.root),
+                "count": len(entries),
+                "types": sorted(raw_types),
+                "write_enabled": True,
+            }
+        )
+    except ToolError:
+        raise
+    except Exception as exc:
+        logger.exception("capabilities failed")
+        return make_error(
+            "internal_error",
+            f"Failed to get capabilities: {exc}",
+            ["Check MCP server logs for details."],
+        )
+
+
+@mcp.tool()
 async def list_concepts() -> str:
     """List all concepts in the facility knowledge bundle.
 
