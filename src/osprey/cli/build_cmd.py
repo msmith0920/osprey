@@ -248,7 +248,7 @@ def build(
         if not build_profile.provider:
             raise click.UsageError(
                 "Profile does not specify a provider. Add `provider: "
-                "<als-apg|cborg|anthropic|amsc|argo>` to your profile or "
+                "<als-apg|cborg|anthropic|amsc-i2|argo>` to your profile or "
                 "pass `--set provider=<...>` on the build command."
             )
 
