@@ -15,7 +15,7 @@ Framework & Infrastructure
       :link-type: doc
 
       Set up and switch between supported LLM providers — Anthropic, OpenAI, Google,
-      CBORG, AMSC, Ollama, and others — via ``config.yml``.
+      CBORG, AMSC i2, Ollama, and others — via ``config.yml``.
 
    .. grid-item-card:: Deploy a Project
       :link: deploy-project
@@ -23,6 +23,13 @@ Framework & Infrastructure
 
       Create, configure, and deploy an OSPREY project from ``osprey build`` through
       ``osprey deploy`` to a running instance.
+
+   .. grid-item-card:: Containerize a Project
+      :link: containerize-project
+      :link-type: doc
+
+      Build and run the container image generated for every project — build args,
+      path relocation, air-gapped mode, and Kubernetes notes.
 
    .. grid-item-card:: Build Profiles
       :link: build-profiles
@@ -100,12 +107,20 @@ Services & Connectors
       Intelligent search over facility electronic logbooks with keyword, semantic,
       RAG, and agentic retrieval modes.
 
+   .. grid-item-card:: Facility Knowledge
+      :link: use-facility-knowledge
+      :link-type: doc
+
+      Author and serve structured facility knowledge (subsystems, devices, procedures)
+      to the OSPREY agent via an on-demand markdown bundle.
+
 
 .. toctree::
    :hidden:
 
    configure-providers
    deploy-project
+   containerize-project
    build-profiles
    add-mcp-server
    use-web-terminal
@@ -115,4 +130,5 @@ Services & Connectors
    add-connector
    use-channel-finder
    ariel/index
+   use-facility-knowledge
    /cli-reference/index

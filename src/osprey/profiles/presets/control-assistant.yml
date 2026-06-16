@@ -34,6 +34,7 @@ hooks:
   - memory-guard      # Warn when context window approaches threshold
   - notebook-update   # Sync CLAUDE.md notebook after each session
   - cf-feedback-capture  # Capture channel-finder accuracy feedback for tuning
+  - config-drift      # Warn at session start when config.yml drifted from generated artifacts
 
 rules:
   - safety              # Core safety rules: never write without approval
@@ -57,6 +58,7 @@ agents:
   - data-visualizer         # Produce strip charts and correlation plots
   - logbook-search          # Search facility logbook for historical entries
   - logbook-deep-research   # Multi-hop logbook research with synthesis
+  - facility-knowledge      # Look up facility documentation, procedures, and device specs
 
 output_styles:
   - control-operator  # Terse, actionable output style for control-room operators

@@ -252,7 +252,7 @@ def build(
         if not build_profile.provider:
             raise click.UsageError(
                 "Profile does not specify a provider. Add `provider: "
-                "<als-apg|cborg|anthropic|amsc|argo>` to your profile or "
+                "<als-apg|cborg|anthropic|amsc-i2|argo>` to your profile or "
                 "pass `--set provider=<...>` on the build command."
             )
 
@@ -382,6 +382,11 @@ def build(
         # 6e. Override project_root for container builds
         if runtime_root:
             context["project_root"] = str(runtime_root)
+
+        # 6f. Profile pip dependencies for the generated Dockerfile's install line
+        deps = list(build_profile.dependencies or [])
+        context["dependencies"] = deps
+        context["pip_dependency_args"] = " ".join(shlex.quote(d) for d in deps)
 
         # 7. Create project from template (also materializes tier-specific
         # channel DBs from the preset's tiers/ subtree, before the Claude Code
@@ -527,6 +532,15 @@ def build(
             )
 
         logger.info("✓ Project built successfully at: %s", project_path)
+
+        # Sim-backed presets ship scenario bundles whose logbook entries are
+        # seeded into ARIEL on demand (build must never require a running
+        # Postgres). Point the user at the one command that makes them live.
+        if (project_path / "data" / "simulation" / "scenarios").is_dir():
+            logger.info(
+                "  → Seed the demo logbook with: cd %s && osprey sim apply nominal",
+                project_path,
+            )
 
     except click.Abort:
         raise

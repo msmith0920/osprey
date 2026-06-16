@@ -92,6 +92,12 @@ def _get_default_artifacts() -> list[BuildArtifact]:
             output_path=".claude/agents/logbook-deep-research.md",
             description="Logbook deep-research sub-agent",
         ),
+        BuildArtifact(
+            canonical_name="agents/facility-knowledge",
+            template_path="claude/agents/facility-knowledge.md.j2",
+            output_path=".claude/agents/facility-knowledge.md",
+            description="Facility knowledge sub-agent",
+        ),
         # ── Rules ────────────────────────────────────────────────────
         BuildArtifact(
             canonical_name="rules/safety",
@@ -208,6 +214,12 @@ def _get_default_artifacts() -> list[BuildArtifact]:
             output_path=".claude/hooks/osprey_focus_validate.py",
             description="UserPromptSubmit hook that strips stale artifact IDs from focus_state.txt",
         ),
+        BuildArtifact(
+            canonical_name="hooks/config-drift",
+            template_path="claude/hooks/osprey_config_drift.py",
+            output_path=".claude/hooks/osprey_config_drift.py",
+            description="SessionStart hook that warns when config.yml drifted from generated artifacts",
+        ),
         # ── Skills ──────────────────────────────────────────────────
         BuildArtifact(
             canonical_name="skills/session-report",
@@ -238,6 +250,12 @@ def _get_default_artifacts() -> list[BuildArtifact]:
             template_path="claude/skills/demo-gallery/SKILL.md",
             output_path=".claude/skills/demo-gallery/SKILL.md",
             description="Artifact Gallery demo showcase skill",
+        ),
+        BuildArtifact(
+            canonical_name="skills/sim-scenarios",
+            template_path="claude/skills/sim-scenarios/SKILL.md",
+            output_path=".claude/skills/sim-scenarios/SKILL.md",
+            description="List and switch simulated machine scenarios",
         ),
         BuildArtifact(
             canonical_name="skills/logbook-deep-research",
