@@ -260,7 +260,7 @@ def provider_env_for_project(project_dir: Path) -> dict[str, str]:
     if spec is None:
         raise RuntimeError(
             f"Project at {project_dir} has no resolvable provider in "
-            "config.yml — pass provider=<als-apg|cborg|anthropic|amsc|argo> "
+            "config.yml — pass provider=<als-apg|cborg|anthropic|amsc-i2|argo> "
             "to init_project()."
         )
     env: dict[str, str] = dict(spec.env_block)
