@@ -78,12 +78,25 @@ class _PvWatcher:
         """pyepics CA-thread callback. Schedules the fire coroutine on the loop."""
         if value is None:
             return
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            # Non-numeric PV (enum string, waveform, …): nothing to threshold on.
+            # Log and return rather than raise on the CA thread, where pyepics
+            # swallows the exception and the watcher would silently die.
+            logger.warning(
+                "EPICS CA trigger '%s' PV '%s' produced non-numeric value %r; ignoring",
+                self._trigger.name,
+                self._pv_name,
+                value,
+            )
+            return
         if self._last_value is None:
             # Suppress fire on first (connect-time) read — just record the value.
-            self._last_value = value
+            self._last_value = numeric
             return
-        prev, self._last_value = self._last_value, value
-        if not self._detect_edge(prev, value):
+        prev, self._last_value = self._last_value, numeric
+        if not self._detect_edge(prev, numeric):
             return
         now = time.monotonic()
         if now - self._last_fire_ts < self._cool_down:
@@ -92,7 +105,7 @@ class _PvWatcher:
         payload = {
             "source": "epics_ca",
             "pv": self._pv_name,
-            "value": value,
+            "value": numeric,
             "previous_value": prev,
             "threshold": self._threshold,
             "edge": self._edge,

@@ -1315,10 +1315,10 @@ def _inject_dispatch(dispatch: DispatchConfig, profile_dir: Path, project_path: 
             deployed.append(name)
     config["deployed_services"] = deployed
 
-    # 3b. Derive web.panels.events.url from dispatcher_port so it is a single
-    # source of truth.  Write only if the profile has not already set an
-    # explicit URL via a ``web.panels.events.url`` config override (applied in
-    # step 8, before this step 10b); explicit overrides take precedence.
+    # Derive web.panels.events.url from dispatcher_port so the port is a single
+    # source of truth.  Write only if the profile has not already set an explicit
+    # ``web.panels.events.url`` via a config override (merged earlier in the
+    # build); explicit overrides take precedence.
     existing_events_url = (
         config.get("web", {}).get("panels", {}).get("events", {}).get("url", "")
     )

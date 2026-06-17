@@ -221,6 +221,38 @@ class TestCoolDown:
         assert fire_cb.call_count == 2
 
 
+class TestNonNumericValue:
+    """Non-numeric PV values are logged and ignored, not raised on the CA thread."""
+
+    def test_non_numeric_value_does_not_fire_or_raise(self, event_loop) -> None:
+        fire_cb = AsyncMock(return_value="dispatch-id")
+        trigger = _trigger(pv="SIM:ENUM", threshold=1.0, edge="rising", cool_down_sec=0.0)
+        watcher, fake_pv = _arm_watcher(trigger, fire_cb, event_loop)
+
+        fake_pv.fire(0.0)        # numeric first read (suppressed)
+        fake_pv.fire("Enabled")  # non-numeric — must be ignored, not raise
+        _run(asyncio.sleep(0), event_loop)
+        fire_cb.assert_not_called()
+
+        # A subsequent numeric crossing still fires (watcher survived the bad value).
+        fake_pv.fire(2.0)
+        _run(asyncio.sleep(0), event_loop)
+        fire_cb.assert_called_once()
+
+    def test_numeric_string_is_coerced(self, event_loop) -> None:
+        fire_cb = AsyncMock(return_value="dispatch-id")
+        trigger = _trigger(pv="SIM:STR", threshold=1.0, edge="rising", cool_down_sec=0.0)
+        watcher, fake_pv = _arm_watcher(trigger, fire_cb, event_loop)
+
+        fake_pv.fire("0.0")  # numeric string first read (suppressed)
+        fake_pv.fire("2.0")  # numeric string crossing — coerced and fires
+        _run(asyncio.sleep(0), event_loop)
+        fire_cb.assert_called_once()
+        payload = fire_cb.call_args[0][1]
+        assert payload["value"] == 2.0
+        assert payload["previous_value"] == 0.0
+
+
 # ---------------------------------------------------------------------------
 # Multi-PV independence
 # ---------------------------------------------------------------------------
