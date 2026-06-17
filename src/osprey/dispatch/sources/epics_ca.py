@@ -44,14 +44,14 @@ class _PvWatcher:
         cfg = trigger.source_config
         self._pv_name: str = cfg["pv"]
         self._threshold: float = float(cfg.get("threshold", 0.0))
-        self._edge: str = cfg.get("edge", "rising")          # rising | falling | both
+        self._edge: str = cfg.get("edge", "rising")  # rising | falling | both
         self._cool_down: float = float(cfg.get("cool_down_sec", 60.0))
         self._trigger = trigger
         self._fire = fire_callback
         self._loop = loop
         self._pv: epics.PV | None = None
         self._last_fire_ts: float = 0.0
-        self._last_value: float | None = None                 # None = first read not yet seen
+        self._last_value: float | None = None  # None = first read not yet seen
 
     def start(self) -> None:
         self._pv = epics.PV(self._pv_name, callback=self._on_change)
@@ -111,9 +111,7 @@ class _PvWatcher:
             "edge": self._edge,
             "timestamp": datetime.now(tz=UTC).isoformat(),
         }
-        asyncio.run_coroutine_threadsafe(
-            self._dispatch(payload), self._loop
-        )
+        asyncio.run_coroutine_threadsafe(self._dispatch(payload), self._loop)
 
     async def _dispatch(self, payload: dict[str, Any]) -> None:
         """Coroutine executed on the asyncio loop after an edge is detected."""

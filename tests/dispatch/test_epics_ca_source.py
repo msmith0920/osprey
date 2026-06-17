@@ -17,7 +17,6 @@ import pytest
 from osprey.dispatch.sources.epics_ca import EpicsCaSource, _PvWatcher
 from osprey.dispatch.trigger_config import TriggerConfig
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -81,8 +80,8 @@ class TestPvWatcherEdgeDetection:
 
     def test_rising_edge_detected(self) -> None:
         w = self._make_watcher("rising", threshold=1.0)
-        assert w._detect_edge(0.5, 1.0) is True   # exactly at threshold
-        assert w._detect_edge(0.0, 2.0) is True   # crosses above
+        assert w._detect_edge(0.5, 1.0) is True  # exactly at threshold
+        assert w._detect_edge(0.0, 2.0) is True  # crosses above
 
     def test_rising_edge_not_detected_when_falling(self) -> None:
         w = self._make_watcher("rising", threshold=1.0)
@@ -91,8 +90,8 @@ class TestPvWatcherEdgeDetection:
 
     def test_falling_edge_detected(self) -> None:
         w = self._make_watcher("falling", threshold=1.0)
-        assert w._detect_edge(1.5, 0.5) is True   # crosses below
-        assert w._detect_edge(2.0, 1.0) is True   # exactly at threshold
+        assert w._detect_edge(1.5, 0.5) is True  # crosses below
+        assert w._detect_edge(2.0, 1.0) is True  # exactly at threshold
 
     def test_falling_edge_not_detected_when_rising(self) -> None:
         w = self._make_watcher("falling", threshold=1.0)
@@ -101,8 +100,8 @@ class TestPvWatcherEdgeDetection:
 
     def test_both_edge_detects_rising_and_falling(self) -> None:
         w = self._make_watcher("both", threshold=1.0)
-        assert w._detect_edge(0.5, 1.0) is True   # rising
-        assert w._detect_edge(1.5, 0.5) is True   # falling
+        assert w._detect_edge(0.5, 1.0) is True  # rising
+        assert w._detect_edge(1.5, 0.5) is True  # falling
 
     def test_both_edge_no_fire_when_same_side(self) -> None:
         w = self._make_watcher("both", threshold=1.0)
@@ -166,8 +165,8 @@ class TestFirstReadSuppression:
         trigger = _trigger(pv="SIM:SETPOINT", threshold=1.0, edge="rising", cool_down_sec=0.0)
         watcher, fake_pv = _arm_watcher(trigger, fire_cb, event_loop)
 
-        fake_pv.fire(0.0)   # first read (suppressed)
-        fake_pv.fire(2.0)   # rising crossing — should fire
+        fake_pv.fire(0.0)  # first read (suppressed)
+        fake_pv.fire(2.0)  # rising crossing — should fire
 
         # run_coroutine_threadsafe schedules on the loop; run a step to execute it.
         _run(asyncio.sleep(0), event_loop)
@@ -185,38 +184,34 @@ class TestCoolDown:
 
     def test_second_fire_suppressed_within_cool_down(self, event_loop) -> None:
         fire_cb = AsyncMock(return_value="dispatch-id")
-        trigger = _trigger(
-            pv="SIM:BEAM", threshold=1.0, edge="rising", cool_down_sec=9999.0
-        )
+        trigger = _trigger(pv="SIM:BEAM", threshold=1.0, edge="rising", cool_down_sec=9999.0)
         watcher, fake_pv = _arm_watcher(trigger, fire_cb, event_loop)
 
-        fake_pv.fire(0.0)   # first read (suppressed)
-        fake_pv.fire(2.0)   # crossing — fires
+        fake_pv.fire(0.0)  # first read (suppressed)
+        fake_pv.fire(2.0)  # crossing — fires
         _run(asyncio.sleep(0), event_loop)
         assert fire_cb.call_count == 1
 
         # Simulate falling back below then rising again within the cool-down window.
-        fake_pv.fire(0.0)   # falling
-        fake_pv.fire(2.0)   # rising again — suppressed by cool_down
+        fake_pv.fire(0.0)  # falling
+        fake_pv.fire(2.0)  # rising again — suppressed by cool_down
         _run(asyncio.sleep(0), event_loop)
         assert fire_cb.call_count == 1  # still 1, second fire suppressed
 
     def test_fire_allowed_after_cool_down_expires(self, event_loop) -> None:
         fire_cb = AsyncMock(return_value="dispatch-id")
-        trigger = _trigger(
-            pv="SIM:BEAM", threshold=1.0, edge="rising", cool_down_sec=0.001
-        )
+        trigger = _trigger(pv="SIM:BEAM", threshold=1.0, edge="rising", cool_down_sec=0.001)
         watcher, fake_pv = _arm_watcher(trigger, fire_cb, event_loop)
 
-        fake_pv.fire(0.0)   # first read (suppressed)
-        fake_pv.fire(2.0)   # crossing — fires
+        fake_pv.fire(0.0)  # first read (suppressed)
+        fake_pv.fire(2.0)  # crossing — fires
         _run(asyncio.sleep(0), event_loop)
         assert fire_cb.call_count == 1
 
         time.sleep(0.01)  # wait longer than cool_down_sec
 
-        fake_pv.fire(0.0)   # fall below
-        fake_pv.fire(2.0)   # rising again — cool-down expired, should fire
+        fake_pv.fire(0.0)  # fall below
+        fake_pv.fire(2.0)  # rising again — cool-down expired, should fire
         _run(asyncio.sleep(0), event_loop)
         assert fire_cb.call_count == 2
 
@@ -229,7 +224,7 @@ class TestNonNumericValue:
         trigger = _trigger(pv="SIM:ENUM", threshold=1.0, edge="rising", cool_down_sec=0.0)
         watcher, fake_pv = _arm_watcher(trigger, fire_cb, event_loop)
 
-        fake_pv.fire(0.0)        # numeric first read (suppressed)
+        fake_pv.fire(0.0)  # numeric first read (suppressed)
         fake_pv.fire("Enabled")  # non-numeric — must be ignored, not raise
         _run(asyncio.sleep(0), event_loop)
         fire_cb.assert_not_called()
@@ -276,20 +271,20 @@ class TestMultiPvIndependence:
         watcher_a, pv_a = _arm_watcher(trigger_a, fire_a, event_loop)
         watcher_b, pv_b = _arm_watcher(trigger_b, fire_b, event_loop)
 
-        pv_a.fire(0.0)   # first read A
-        pv_b.fire(0.0)   # first read B
+        pv_a.fire(0.0)  # first read A
+        pv_b.fire(0.0)  # first read B
 
-        pv_a.fire(2.0)   # A fires (1st)
-        pv_b.fire(2.0)   # B fires (1st)
+        pv_a.fire(2.0)  # A fires (1st)
+        pv_b.fire(2.0)  # B fires (1st)
         _run(asyncio.sleep(0), event_loop)
         assert fire_a.call_count == 1
         assert fire_b.call_count == 1
 
         # A is now in cool-down; B is not (cool_down=0).
         pv_a.fire(0.0)
-        pv_a.fire(2.0)   # A: suppressed
+        pv_a.fire(2.0)  # A: suppressed
         pv_b.fire(0.0)
-        pv_b.fire(2.0)   # B: fires (2nd)
+        pv_b.fire(2.0)  # B: fires (2nd)
         _run(asyncio.sleep(0), event_loop)
         assert fire_a.call_count == 1  # A still suppressed
         assert fire_b.call_count == 2  # B fired again
@@ -319,8 +314,8 @@ class TestMultiPvIndependence:
         assert fire_a.call_count == 0  # A's first read suppressed
 
         # A's 2nd value fires.
-        pv_a.fire(0.0)   # fall below
-        pv_a.fire(2.0)   # rise → fires
+        pv_a.fire(0.0)  # fall below
+        pv_a.fire(2.0)  # rise → fires
         _run(asyncio.sleep(0), event_loop)
         assert fire_a.call_count == 1
 
