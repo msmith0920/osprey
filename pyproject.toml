@@ -208,6 +208,7 @@ osprey = "osprey.cli.main:cli"
 [project.entry-points."osprey.trigger_sources"]
 webhook = "osprey.dispatch.sources.webhook:WebhookSource"
 cron = "osprey.dispatch.sources.cron:CronSource"
+epics_ca = "osprey.dispatch.sources.epics_ca:EpicsCaSource"
 
 # Hatchling build configuration
 [tool.hatch.version]

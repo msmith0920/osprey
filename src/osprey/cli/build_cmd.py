@@ -1315,6 +1315,16 @@ def _inject_dispatch(dispatch: DispatchConfig, profile_dir: Path, project_path: 
             deployed.append(name)
     config["deployed_services"] = deployed
 
+    # Derive web.panels.events.url from dispatcher_port so the port is a single
+    # source of truth.  Write only if the profile has not already set an explicit
+    # ``web.panels.events.url`` via a config override (merged earlier in the
+    # build); explicit overrides take precedence.
+    existing_events_url = config.get("web", {}).get("panels", {}).get("events", {}).get("url", "")
+    if not existing_events_url:
+        derived_url = f"http://localhost:{dispatch.dispatcher_port}/dashboard"
+        config.setdefault("web", {}).setdefault("panels", {}).setdefault("events", {})
+        config["web"]["panels"]["events"]["url"] = derived_url
+
     with open(config_path, "w") as fh:
         yaml.dump(config, fh)
 
