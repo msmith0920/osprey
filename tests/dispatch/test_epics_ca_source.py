@@ -123,7 +123,34 @@ def event_loop():
 
 
 def _run(coro, loop: asyncio.AbstractEventLoop):
-    return loop.run_until_complete(coro)
+    """Run ``coro`` on ``loop``, then drain any coroutines scheduled via
+    ``run_coroutine_threadsafe``.
+
+    ``run_coroutine_threadsafe`` hands work to the loop in two hops: a
+    threadsafe callback first creates the task, and only a later loop iteration
+    runs that task to completion.  A single ``run_until_complete(sleep(0))`` is
+    therefore not guaranteed to execute the dispatch coroutine — on some
+    platforms/Python builds the self-pipe wakeup and the task's first step land
+    in different iterations, leaving ``call_count`` at 0.  Pump the loop until
+    it has no pending tasks or ready callbacks so the assertions are
+    deterministic regardless of scheduling timing.
+    """
+    result = loop.run_until_complete(coro)
+    # ``run_coroutine_threadsafe`` needs at least two iterations to land: one to
+    # run the threadsafe callback that creates the task, and one (or more) to run
+    # the task itself.  The threadsafe callback may also still be queued and not
+    # yet have created its task, so requiring two *consecutive* idle checks
+    # ensures a just-created task is observed before we stop pumping.
+    idle_checks = 0
+    for _ in range(100):
+        if any(not t.done() for t in asyncio.all_tasks(loop)):
+            idle_checks = 0
+        else:
+            idle_checks += 1
+            if idle_checks >= 2:
+                break
+        loop.run_until_complete(asyncio.sleep(0))
+    return result
 
 
 def _arm_watcher(
