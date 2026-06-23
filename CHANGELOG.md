@@ -11,6 +11,10 @@ Compatibility is documented in release notes, not encoded in the version string.
 
 ## [Unreleased]
 
+### Added
+
+- `osprey skills install osprey-design-philosophy` — bundle OSPREY's design and architecture principles as an installable skill for framework contributors.
+
 ## [2026.6.1] - 2026-06-17
 
 ### Added
