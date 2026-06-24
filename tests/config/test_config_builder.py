@@ -284,7 +284,7 @@ control_system:
         monkeypatch.setenv("CONFIG_FILE", str(config_file))
 
         # Reset global config
-        import osprey.utils.config as config_module
+        from osprey.utils import config as config_module
 
         config_module._default_config = None
         config_module._default_configurable = None
@@ -301,7 +301,7 @@ class TestGetFacilityTimezone:
 
     @staticmethod
     def _reset_config_singleton():
-        import osprey.utils.config as config_module
+        from osprey.utils import config as config_module
 
         config_module._default_config = None
         config_module._default_configurable = None
@@ -352,7 +352,7 @@ class TestToFacilityIso:
 
     @staticmethod
     def _reset_config_singleton():
-        import osprey.utils.config as config_module
+        from osprey.utils import config as config_module
 
         config_module._default_config = None
         config_module._default_configurable = None
@@ -409,7 +409,7 @@ class TestTimezoneDriftWarning:
 
     @staticmethod
     def _reset(monkeypatch):
-        import osprey.utils.config as config_module
+        from osprey.utils import config as config_module
 
         config_module._default_config = None
         config_module._default_configurable = None
