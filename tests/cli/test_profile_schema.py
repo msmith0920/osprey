@@ -42,6 +42,43 @@ def test_valid_dispatch_validates(tmp_path: Path) -> None:
     profile.validate(tmp_path)
 
 
+def test_events_panel_with_dispatch_validates_without_url(tmp_path: Path) -> None:
+    """A dispatch-backed ``events`` panel needs no manual ``web.panels.events.url``.
+
+    The URL is derived post-build from ``dispatch.dispatcher_port`` (after this
+    validator runs), so the validator must accept the url-less events panel when
+    a dispatch block is present rather than aborting the build.
+    """
+    triggers = _write_triggers(tmp_path)
+    profile = BuildProfile(
+        name="x",
+        web_panels=["events"],
+        dispatch=DispatchConfig(triggers=triggers),
+    )
+    profile.validate(tmp_path)  # must not raise
+
+
+def test_events_panel_without_dispatch_still_requires_url(tmp_path: Path) -> None:
+    """The escape hatch is narrow: an ``events`` panel with no dispatch block and
+    no url override is still rejected (nothing would derive its URL)."""
+    profile = BuildProfile(name="x", web_panels=["events"])
+    with pytest.raises(BuildProfileError, match="events"):
+        profile.validate(tmp_path)
+
+
+def test_non_events_custom_panel_with_dispatch_still_requires_url(tmp_path: Path) -> None:
+    """The dispatch escape hatch applies only to ``events`` — any other url-less
+    custom panel is still rejected even when a dispatch block is present."""
+    triggers = _write_triggers(tmp_path)
+    profile = BuildProfile(
+        name="x",
+        web_panels=["grafana"],
+        dispatch=DispatchConfig(triggers=triggers),
+    )
+    with pytest.raises(BuildProfileError, match="grafana"):
+        profile.validate(tmp_path)
+
+
 def test_worker_count_below_one_raises(tmp_path: Path) -> None:
     triggers = _write_triggers(tmp_path)
     profile = BuildProfile(name="x", dispatch=DispatchConfig(triggers=triggers, worker_count=0))

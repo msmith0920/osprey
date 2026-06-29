@@ -1884,7 +1884,7 @@ class TestEventsPanelUrlDerivation:
         return yaml.safe_load((project_path / "config.yml").read_text()) or {}
 
     def test_events_panel_url_derived_from_dispatcher_port(self, tmp_path: Path) -> None:
-        """web.panels.events.url is written as http://localhost:{port}/dashboard."""
+        """events.url is a bare host and events.path carries the /dashboard route."""
         project_path = tmp_path / "project"
         project_path.mkdir()
         profile_dir = tmp_path / "profile"
@@ -1894,11 +1894,15 @@ class TestEventsPanelUrlDerivation:
         self._inject(self._dispatch(dispatcher_port=8888), project_path, profile_dir)
 
         config = self._read_config(project_path)
-        url = config["web"]["panels"]["events"]["url"]
-        assert url == "http://localhost:8888/dashboard"
+        events = config["web"]["panels"]["events"]
+        # Bare host in url + /dashboard in path matches the custom-panel proxy
+        # convention (url.rstrip('/') + '/' + path); /dashboard must NOT be baked
+        # into url or sub-routes would double-prefix.
+        assert events["url"] == "http://localhost:8888"
+        assert events["path"] == "/dashboard"
 
     def test_events_panel_url_reflects_custom_port(self, tmp_path: Path) -> None:
-        """Different dispatcher_port values produce different derived URLs."""
+        """Different dispatcher_port values produce different derived bare-host URLs."""
         project_path = tmp_path / "project"
         project_path.mkdir()
         profile_dir = tmp_path / "profile"
@@ -1908,10 +1912,39 @@ class TestEventsPanelUrlDerivation:
         self._inject(self._dispatch(dispatcher_port=9999), project_path, profile_dir)
 
         config = self._read_config(project_path)
-        assert config["web"]["panels"]["events"]["url"] == "http://localhost:9999/dashboard"
+        events = config["web"]["panels"]["events"]
+        assert events["url"] == "http://localhost:9999"
+        assert events["path"] == "/dashboard"
+
+    def test_events_panel_path_pinned_by_profile_preserved(self, tmp_path: Path) -> None:
+        """A facility-pinned web.panels.events.path is left untouched (setdefault)."""
+        from ruamel.yaml import YAML
+
+        project_path = tmp_path / "project"
+        project_path.mkdir()
+        profile_dir = tmp_path / "profile"
+        profile_dir.mkdir()
+
+        yaml = YAML()
+        config_pre = {
+            "deployed_services": [],
+            "services": {},
+            "web": {"panels": {"events": {"path": "/custom-route"}}},
+        }
+        with open(project_path / "config.yml", "w") as fh:
+            yaml.dump(config_pre, fh)
+
+        self._inject(self._dispatch(dispatcher_port=8020), project_path, profile_dir)
+
+        config = self._read_config(project_path)
+        events = config["web"]["panels"]["events"]
+        # url is still derived (no explicit url was set), but the pinned path wins.
+        assert events["url"] == "http://localhost:8020"
+        assert events["path"] == "/custom-route"
 
     def test_explicit_events_url_not_overwritten(self, tmp_path: Path) -> None:
-        """An explicit web.panels.events.url already in config.yml is not replaced."""
+        """An explicit web.panels.events.url already in config.yml is not replaced,
+        and the derivation does not force-inject a path alongside it."""
         from ruamel.yaml import YAML
 
         project_path = tmp_path / "project"
@@ -1933,8 +1966,12 @@ class TestEventsPanelUrlDerivation:
         self._inject(self._dispatch(dispatcher_port=8020), project_path, profile_dir)
 
         config = self._read_config(project_path)
+        events = config["web"]["panels"]["events"]
         # Explicit URL must survive — derivation must not overwrite it.
-        assert config["web"]["panels"]["events"]["url"] == "http://custom-host:7777/dashboard"
+        assert events["url"] == "http://custom-host:7777/dashboard"
+        # Derivation is fully skipped when an explicit url exists; it must not
+        # inject a path that would compose a double route against the explicit url.
+        assert "path" not in events
 
 
 def test_build_channel_finder_agent_requires_mode(tmp_path: Path) -> None:
