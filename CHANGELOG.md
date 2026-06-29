@@ -15,6 +15,12 @@ Compatibility is documented in release notes, not encoded in the version string.
 
 - `osprey web --project X` launched from another directory now spawns the interactive terminal's Claude Code with `cwd = X`, so it reads `X/.mcp.json` and starts the project's MCP servers (the PTY path previously ignored `--project` and inherited the launch directory) (#313).
 
+## [2026.6.3] - 2026-06-29
+
+### Fixed
+
+- The `events` web panel now builds and renders when its URL is derived from a `dispatch` block. Two regressions from the v2026.6.2 move of `events` out of `BUILTIN_PANELS` are addressed: (1) the build-profile validator now accepts a dispatch-backed `events` panel that has no manual `web.panels.events.url` (the URL is derived post-build, after validation, from `dispatch.dispatcher_port`); (2) the derivation emits a bare-host `url` plus a `/dashboard` `path` instead of baking `/dashboard` into `url`, matching the custom-panel proxy convention (`url.rstrip('/') + '/' + path`) so sub-routes are not double-prefixed. A facility-pinned `web.panels.events.path` is preserved, and an explicit `web.panels.events.url` override still wins.
+
 ## [2026.6.2] - 2026-06-28
 
 ### Added

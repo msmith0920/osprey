@@ -1319,11 +1319,18 @@ def _inject_dispatch(dispatch: DispatchConfig, profile_dir: Path, project_path: 
     # source of truth.  Write only if the profile has not already set an explicit
     # ``web.panels.events.url`` via a config override (merged earlier in the
     # build); explicit overrides take precedence.
+    #
+    # Emit a bare-host ``url`` plus a ``/dashboard`` ``path`` (rather than baking
+    # ``/dashboard`` into ``url``) to match the custom-panel proxy convention:
+    # the web terminal composes ``url.rstrip('/') + '/' + path``, so a path baked
+    # into ``url`` double-prefixes sub-routes. ``setdefault`` on ``path`` honors a
+    # facility that pinned its own ``web.panels.events.path``.
     existing_events_url = config.get("web", {}).get("panels", {}).get("events", {}).get("url", "")
     if not existing_events_url:
-        derived_url = f"http://localhost:{dispatch.dispatcher_port}/dashboard"
         config.setdefault("web", {}).setdefault("panels", {}).setdefault("events", {})
-        config["web"]["panels"]["events"]["url"] = derived_url
+        events_panel = config["web"]["panels"]["events"]
+        events_panel["url"] = f"http://localhost:{dispatch.dispatcher_port}"
+        events_panel.setdefault("path", "/dashboard")
 
     with open(config_path, "w") as fh:
         yaml.dump(config, fh)

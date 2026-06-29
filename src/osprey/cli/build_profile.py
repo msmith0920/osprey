@@ -377,11 +377,18 @@ class BuildProfile:
             if panel in BUILTIN_PANELS:
                 continue
             url_key = f"web.panels.{panel}.url"
-            if url_key not in self.config:
-                errors.append(
-                    f"Unknown web_panel {panel!r}: not in BUILTIN_PANELS "
-                    f"({sorted(BUILTIN_PANELS)}) and no '{url_key}' config override"
-                )
+            if url_key in self.config:
+                continue
+            # The ``events`` panel URL is derived post-build from the dispatch
+            # block (``_inject_dispatch`` in build_cmd.py), which runs after this
+            # validator. So a dispatch-backed events panel is legitimately
+            # url-less here — accept it rather than aborting the build.
+            if panel == "events" and self.dispatch is not None:
+                continue
+            errors.append(
+                f"Unknown web_panel {panel!r}: not in BUILTIN_PANELS "
+                f"({sorted(BUILTIN_PANELS)}) and no '{url_key}' config override"
+            )
 
         # Validate default_panel: must be a built-in, a declared web_panels
         # entry, or a custom panel backed by a `web.panels.<id>.url` override.
