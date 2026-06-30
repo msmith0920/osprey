@@ -500,7 +500,7 @@ window.addEventListener("load", load);</script>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="" />
-    <meta name="docbuild:last-update" content="Jun 24, 2026"/>
+    <meta name="docbuild:last-update" content="Jun 30, 2026"/>
   </head>
   
   
@@ -811,6 +811,14 @@ window.addEventListener("load", load);</script>
 <li class="toctree-l1"><a class="reference internal" href="add-mcp-server.html">Add an MCP Server</a></li>
 <li class="toctree-l1"><a class="reference internal" href="use-web-terminal.html">Use the Web Terminal</a></li>
 <li class="toctree-l1"><a class="reference internal" href="use-cli-chat.html">Use the CLI Chat Interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="non_interactive_query.html">Non-Interactive Agent Queries</a></li>
+
+
+
+
+
+
+
 <li class="toctree-l1"><a class="reference internal" href="use-python-executor.html">Python Execution Service</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Event Dispatch</a></li>
 <li class="toctree-l1"><a class="reference internal" href="add-connector.html">Add a Connector</a></li>
@@ -1031,14 +1039,30 @@ in the <strong>EVENTS</strong> tab of <code class="docutils literal notranslate"
 <p>Projects built from the <code class="docutils literal notranslate"><span class="pre">control-assistant</span></code> preset surface this dashboard as
 an <strong>EVENTS</strong> tab inside the web terminal, so <code class="docutils literal notranslate"><span class="pre">osprey</span> <span class="pre">web</span></code> exposes it without a
 separate browser window. The tab health-gates itself: while the dispatcher is
-down it shows <em>unavailable</em> rather than a broken frame, and turns live once the
-dispatcher answers <code class="docutils literal notranslate"><span class="pre">/health</span></code>.</p>
+down the tab is disabled with an offline indicator rather than showing a broken
+frame, and it turns live once the dispatcher answers <code class="docutils literal notranslate"><span class="pre">/health</span></code>.</p>
 <p>The panel points at <code class="docutils literal notranslate"><span class="pre">${EVENT_DISPATCHER_URL:-http://localhost:8020}</span></code>, which
 works out of the box for the host-run flow above. When the web terminal runs in
 a container, repoint it at the dispatcher service:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nv">EVENT_DISPATCHER_URL</span><span class="o">=</span>http://event-dispatcher:8020
 </pre></div>
 </div>
+<section id="auto-derived-url">
+<h3>Auto-derived URL<a class="headerlink" href="#auto-derived-url" title="Link to this heading">#</a></h3>
+<p>You do not have to set <code class="docutils literal notranslate"><span class="pre">web.panels.events.url</span></code> by hand. Whenever a profile
+lists the <code class="docutils literal notranslate"><span class="pre">events</span></code> panel <strong>and</strong> declares a <code class="docutils literal notranslate"><span class="pre">dispatch:</span></code> block, the build
+derives the panel’s route from <code class="docutils literal notranslate"><span class="pre">dispatch.dispatcher_port</span></code>:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><span class="nt">web.panels.events.url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://localhost:&lt;dispatcher_port&gt;</span><span class="w">   </span><span class="c1"># bare host</span>
+<span class="nt">web.panels.events.path</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/dashboard</span><span class="w">                          </span><span class="c1"># route</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">url</span></code> is the bare dispatcher host and <code class="docutils literal notranslate"><span class="pre">path</span></code> carries the <code class="docutils literal notranslate"><span class="pre">/dashboard</span></code>
+route — the web terminal composes the backend target as <code class="docutils literal notranslate"><span class="pre">url</span></code> + <code class="docutils literal notranslate"><span class="pre">path</span></code>, so
+baking <code class="docutils literal notranslate"><span class="pre">/dashboard</span></code> into <code class="docutils literal notranslate"><span class="pre">url</span></code> would double-prefix sub-routes. Keep them
+split. If a profile already pins <code class="docutils literal notranslate"><span class="pre">web.panels.events.path</span></code> the build leaves it
+untouched, and an explicit <code class="docutils literal notranslate"><span class="pre">web.panels.events.url</span></code> override always wins (use it
+for remote/containerized terminals that cannot reach <code class="docutils literal notranslate"><span class="pre">localhost</span></code>).</p>
+</section>
 </section>
 <section id="authoring-triggers">
 <h2>Authoring Triggers<a class="headerlink" href="#authoring-triggers" title="Link to this heading">#</a></h2>
@@ -1072,8 +1096,9 @@ denylist regardless of what a trigger requests: <code class="docutils literal no
 the Playwright browser tools, and all shell tools (<code class="docutils literal notranslate"><span class="pre">Bash</span></code>, <code class="docutils literal notranslate"><span class="pre">BashOutput</span></code>,
 <code class="docutils literal notranslate"><span class="pre">KillShell</span></code>). This sits on top of the per-trigger allowlist, so a trigger
 can never widen its way to a shell or the open network.</p>
-<p class="sd-card-text"><strong>Retry policy.</strong> <code class="docutils literal notranslate"><span class="pre">on_error:</span> <span class="pre">retry</span></code> fires only when the dispatcher <em>cannot
-reach the worker</em> (connection error or timeout) — it re-dispatches up to
+<p class="sd-card-text"><strong>Retry policy.</strong> <code class="docutils literal notranslate"><span class="pre">on_error:</span> <span class="pre">retry</span></code> fires only when the <em>dispatch itself</em>
+fails — the worker being unreachable (connection error or timeout), returning
+an HTTP error, or rejecting the dispatcher’s token — and it re-dispatches up to
 <code class="docutils literal notranslate"><span class="pre">max_retries</span></code> with <code class="docutils literal notranslate"><span class="pre">backoff_sec</span></code> between attempts. It does <em>not</em> retry a
 run that the agent itself ends in error, so firing a trigger against a healthy
 stack never exercises it; the behaviour is covered by
@@ -1168,7 +1193,10 @@ handoff.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#overview">Overview</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#bring-it-up">Bring It Up</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fire-a-trigger">Fire a Trigger</a></li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-events-panel">The EVENTS Panel</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#the-events-panel">The EVENTS Panel</a><ul class="visible nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#auto-derived-url">Auto-derived URL</a></li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#authoring-triggers">Authoring Triggers</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#authentication">Authentication</a></li>
 </ul>

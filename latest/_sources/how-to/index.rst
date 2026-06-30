@@ -66,6 +66,13 @@ Framework & Infrastructure
       Run the Osprey agent in your native terminal with companion services accessible
       in a browser.
 
+   .. grid-item-card:: Non-Interactive Agent Queries
+      :link: non_interactive_query
+      :link-type: doc
+
+      Run the OSPREY agent headlessly from CI pipelines and automated workflows
+      with ``osprey query`` — read-only, structured JSON output, and clear exit codes.
+
    .. grid-item-card:: Use the Python Executor
       :link: use-python-executor
       :link-type: doc
@@ -111,8 +118,9 @@ Services & Connectors
       :link: ariel/index
       :link-type: doc
 
-      Intelligent search over facility electronic logbooks with keyword, semantic,
-      RAG, and agentic retrieval modes.
+      Intelligent search over facility electronic logbooks with keyword and
+      semantic retrieval modes, plus multi-step reasoning delegated to the
+      Osprey agent.
 
    .. grid-item-card:: Facility Knowledge
       :link: use-facility-knowledge
@@ -133,6 +141,7 @@ Services & Connectors
    add-mcp-server
    use-web-terminal
    use-cli-chat
+   non_interactive_query
    use-python-executor
    event-dispatch
    add-connector
